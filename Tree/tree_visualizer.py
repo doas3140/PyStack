@@ -13,24 +13,22 @@ class TreeVisualiser():
         self.g = None # graph
 
     def style_node(self, node, node_idx):
-        s = node.node_type
-        if s == constants.node_types.terminal_fold:
-            self.g.attr('node', shape='circle', color='red', fontcolor='#03396c', fixedsize='true', width='0.3', height='0.3')
-            self.g.node(str(node_idx), str(node.current_player))
-        elif s == constants.node_types.terminal_call:
-            self.g.attr('node', shape='circle', color='purple', fontcolor='#03396c', fixedsize='true', width='0.3', height='0.3')
-            self.g.node(str(node_idx), str(node.current_player))
-        elif s == constants.node_types.check:
-            self.g.attr('node', shape='circle', color='blue', fontcolor='#03396c', fixedsize='true', width='0.3', height='0.3')
-            self.g.node(str(node_idx), str(node.current_player))
-        elif s == constants.node_types.chance_node:
+        node_type = node.node_type
+        type = node.type
+        if node_type == constants.node_types.chance_node:
             self.g.attr('node', shape='circle', color='yellow', fontcolor='#03396c', fixedsize='true', width='0.3', height='0.3')
             self.g.node(str(node_idx), str(node.current_player))
-        elif s == constants.node_types.inner_node:
+        elif node_type == constants.node_types.inner_node:
             self.g.attr('node', shape='circle', color='brown', fontcolor='#03396c', fixedsize='true', width='0.3', height='0.3')
             self.g.node(str(node_idx), str(node.current_player))
-        elif node.terminal:
-            self.g.attr('node', shape='circle', color='green', fontcolor='#03396c', fixedsize='true', width='0.3', height='0.3')
+        elif type == constants.node_types.terminal_fold:
+            self.g.attr('node', shape='circle', color='red', fontcolor='#03396c', fixedsize='true', width='0.3', height='0.3')
+            self.g.node(str(node_idx), str(node.current_player))
+        elif type == constants.node_types.terminal_call:
+            self.g.attr('node', shape='circle', color='purple', fontcolor='#03396c', fixedsize='true', width='0.3', height='0.3')
+            self.g.node(str(node_idx), str(node.current_player))
+        elif type == constants.node_types.check:
+            self.g.attr('node', shape='circle', color='blue', fontcolor='#03396c', fixedsize='true', width='0.3', height='0.3')
             self.g.node(str(node_idx), str(node.current_player))
         else:
             self.g.attr('node', shape='circle', color='white', fontcolor='#03396c', fixedsize='true', width='0.3', height='0.3')
@@ -45,16 +43,16 @@ class TreeVisualiser():
             edge_name = str(int(parent_action))
         self.g.edge(str(parent_idx), str(node_idx), edge_name)
 
-    def dfs(self, parent, parent_index, depth, show_node_variables=False, player=0):
+    def dfs(self, parent, parent_index, depth=0):
         ''' recursively creates edges and nodes for graphviz '''
         for i, child in enumerate(parent.children):
             parent_action = parent.actions[i]
             self.i += 1
             self.style_node(child, self.i)
             self.style_edge(parent_action, child, parent_index, self.i)
-            self.dfs(child, str(self.i), depth+1, show_node_variables, player)
+            self.dfs(child, str(self.i), depth+1)
 
-    def draw_tree(self, root, name='tree', save_pdf=False, show_variables=False, player=0):
+    def draw_tree(self, root, name='tree', save_pdf=False):
         self.i = 0
         self.g = Digraph(name, filename=name)
         self.g.attr(size='6,6', bgcolor='#fffef9')
@@ -63,7 +61,7 @@ class TreeVisualiser():
         # add first node (root node)
         self.style_node(root, self.i)
         # run depth first search and add edges and nodes to g
-        self.dfs(root, parent_index=0, depth=0, show_node_variables=show_variables, player=player)
+        self.dfs(root, parent_index=self.i, depth=0)
         # save pdf
         if save_pdf:
             g.view()

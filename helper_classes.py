@@ -29,6 +29,7 @@ class ACPCActions():
 
 class Node():
 	def __init__(self):
+		self.type = None # int
 		self.node_type = None # int
 		self.street = None # int
 		self.board = None # np.array (current_board_cards,)

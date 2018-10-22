@@ -50,13 +50,13 @@ class PokerTreeBuilder():
 		assert(parent_node.current_player == constants.players.chance)
 		if self.limit_to_street:
 			return []
-		next_boards = card_tools.get_second_round_boards() # (N,K)
+		next_boards = card_tools.get_second_round_boards() # (N,K), K = 1
 		next_boards_count = next_boards.shape[0]
 		subtree_height = -1
 		children = []
 		# 1.0 iterate over the next possible boards to build the corresponding subtrees
 		for i in range(next_boards_count):
-			next_board = next_boards[i] # ex: [1,4]
+			next_board = next_boards[i] # ex: [4]
 			# next_board_string = card_to_string.cards_to_string(next_board)
 			child = Node()
 			child.node_type = constants.node_types.inner_node
@@ -64,7 +64,7 @@ class PokerTreeBuilder():
 			child.current_player = constants.players.P1
 			child.street = parent_node.street + 1
 			child.board = next_board
-			child.board_string = next_board_string
+			# child.board_string = next_board_string
 			child.bets = parent_node.bets.copy()
 			children.append(child)
 		return children
