@@ -29,7 +29,7 @@ class TreeVisualiser():
         elif s == constants.node_types.inner_node:
             self.g.attr('node', shape='circle', color='brown', fontcolor='#03396c', fixedsize='true', width='0.3', height='0.3')
             self.g.node(str(node_idx), str(node.current_player))
-        elif not node.terminal:
+        elif node.terminal:
             self.g.attr('node', shape='circle', color='green', fontcolor='#03396c', fixedsize='true', width='0.3', height='0.3')
             self.g.node(str(node_idx), str(node.current_player))
         else:
@@ -50,8 +50,8 @@ class TreeVisualiser():
         for i, child in enumerate(parent.children):
             parent_action = parent.actions[i]
             self.i += 1
-            self.style_edge(parent_action, child, parent_index, self.i)
             self.style_node(child, self.i)
+            self.style_edge(parent_action, child, parent_index, self.i)
             self.dfs(child, str(self.i), depth+1, show_node_variables, player)
 
     def draw_tree(self, root, name='tree', save_pdf=False, show_variables=False, player=0):
