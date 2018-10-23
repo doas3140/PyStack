@@ -25,8 +25,8 @@ class TerminalEquity():
 		assert(board_cards.shape[0] == 1 or board_cards.shape[0] == 2, 'Only Leduc and extended Leduc are now supported' )
 		strength = evaluator.batch_eval(board_cards)
 		# handling hand stregths (winning probs)
-		strength_view_1 = strength.reshape([CC,1]) * np.ones(call_matrix.shape)
-		strength_view_2 = strength.reshape([1,CC]) * np.ones(call_matrix.shape)
+		strength_view_1 = strength.reshape([CC,1]) * np.ones_like(call_matrix)
+		strength_view_2 = strength.reshape([1,CC]) * np.ones_like(call_matrix)
 
 		call_matrix = strength_view_1 > strength_view_2
 		call_matrix -= strength_view_1 < strength_view_2
