@@ -15,7 +15,7 @@ import numpy as np
 from Settings.arguments import arguments
 from Settings.constants import constants
 from Game.card_tools import card_tools
-# from Game.card_to_string_conversion import card_to_string
+from Game.card_to_string_conversion import card_to_string
 from Tree.strategy_filling import StrategyFilling
 from Game.bet_sizing import BetSizing
 
@@ -51,20 +51,19 @@ class PokerTreeBuilder():
 		if self.limit_to_street:
 			return []
 		next_boards = card_tools.get_second_round_boards() # (N,K), K = 1
-		next_boards_count = next_boards.shape[0]
-		subtree_height = -1
+		subtree_height = -1 # ?
 		children = []
 		# 1.0 iterate over the next possible boards to build the corresponding subtrees
-		for i in range(next_boards_count):
+		for i in range(next_boards.shape[0]):
 			next_board = next_boards[i] # ex: [4]
-			# next_board_string = card_to_string.cards_to_string(next_board)
+			next_board_string = card_to_string.cards_to_string(next_board)
 			child = Node()
 			child.node_type = constants.node_types.inner_node
 			child.parent = parent_node
 			child.current_player = constants.players.P1
 			child.street = parent_node.street + 1
 			child.board = next_board
-			# child.board_string = next_board_string
+			child.board_string = next_board_string
 			child.bets = parent_node.bets.copy()
 			children.append(child)
 		return children
@@ -181,7 +180,7 @@ class PokerTreeBuilder():
 		children = self._get_children_nodes(current_node)
 		current_node.children = children
 		depth = 0
-		current_node.actions = np.zeros([len(children)])
+		current_node.actions = np.zeros([len(children)], dtype=int)
 		for i in range(len(children)):
 			children[i].parent = current_node
 			self._build_tree_dfs(children[i])
@@ -207,9 +206,8 @@ class PokerTreeBuilder():
 		root.bets = params.root_node.bets.copy()
 		root.current_player = params.root_node.current_player
 		root.board = params.root_node.board.copy()
-		params.bet_sizing = params.bet_sizing or BetSizing(arguments.bet_sizing)
-		assert(params.bet_sizing)
-		self.bet_sizing = params.bet_sizing
+		self.bet_sizing = params.bet_sizing or BetSizing(arguments.bet_sizing)
+		assert(self.bet_sizing)
 		self.limit_to_street = params.limit_to_street
 		self._build_tree_dfs(root)
 		strategy_filling = StrategyFilling()

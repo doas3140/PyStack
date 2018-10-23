@@ -52,10 +52,10 @@ class TreeVisualiser():
             self.style_edge(parent_action, child, parent_index, self.i)
             self.dfs(child, str(self.i), depth+1)
 
-    def draw_tree(self, root, name='tree', save_pdf=False):
+    def draw_tree(self, root, name='tree', save_pdf=False, size='6,6'):
         self.i = 0
         self.g = Digraph(name, filename=name)
-        self.g.attr(size='6,6', bgcolor='#fffef9')
+        self.g.attr(size=size, bgcolor='#fffef9')
         self.g.node_attr.update(style='filled', fontcolor='#e6e6ea')
         self.g.edge_attr.update(color='#e6e6ea', fontcolor='#03396c')
         # add first node (root node)
@@ -64,7 +64,7 @@ class TreeVisualiser():
         self.dfs(root, parent_index=self.i, depth=0)
         # save pdf
         if save_pdf:
-            g.view()
+            self.g.view()
         return self.g
 
 

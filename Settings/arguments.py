@@ -8,7 +8,7 @@ class Parameters():
 		# whether to run on GPU
 		self.gpu = False
 		# list of pot-scaled bet sizes to use in tree
-		self.bet_sizing = np.array([1])
+		self.bet_sizing = np.array([1], dtype=float)
 		# server running the ACPC dealer
 		self.acpc_server = "localhost"
 		# server port running the ACPC dealer

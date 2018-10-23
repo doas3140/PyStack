@@ -35,7 +35,7 @@ class StrategyFilling():
 		# filling strategy
 		# we will fill strategy with an uniform probability, but it has to be
 		# zero for hands that are not possible on corresponding board
-		node.strategy = np.zeros([len(node.children), CC])
+		node.strategy = np.zeros([len(node.children), CC], dtype=np.float32)
 		# setting probability of impossible hands to 0
 		for i in range(len(node.children)):
 			child_node = node.children[i]
@@ -54,7 +54,7 @@ class StrategyFilling():
 				or node.current_player == constants.players.P2)
 		if node.terminal:
 			return
-		node.strategy = np.zeros([len(node.children), CC])
+		node.strategy = np.zeros([len(node.children), CC], dtype=np.float32)
 		node.strategy.fill(1.0 / len(node.children))
 
 
