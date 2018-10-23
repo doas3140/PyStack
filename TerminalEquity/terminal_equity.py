@@ -72,7 +72,7 @@ class TerminalEquity():
 		CC = game_settings.card_count
 		BCC = game_settings.board_card_count
 		street = card_tools.board_to_street(board)
-		self.equity_matrix = np.zeros([CC, CC], dtype=float)
+		self.equity_matrix = np.zeros([CC, CC], dtype=float) # ? - :zero()
 		if street == 1:
         	# iterate through all possible next round streets
 			next_round_boards = card_tools.get_second_round_boards()
