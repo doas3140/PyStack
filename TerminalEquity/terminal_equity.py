@@ -9,7 +9,9 @@ from ..Game.card_tools import card_tools
 
 class TerminalEquity():
     def __init__(self):
-        pass
+		self.equity_matrix = None # (CC,CC), can be named as call matrix
+		self.fold_matrix = None # (CC,CC)
+    	self.set_board(np.zeros([]))
 
 
     def get_last_round_call_matrix(self, board_cards, call_matrix):
@@ -18,8 +20,17 @@ class TerminalEquity():
 			is the equity for the first player when no player folds.
         @param: board_cards a non-empty vector of board cards
         @param: call_matrix a tensor where the computed matrix is stored
-        '''
-		pass
+        ''' # call_matrix == self.equity_matrix ?
+		CC = game_settings.card_count
+		assert(board_cards.shape[0] == 1 or board_cards.shape[0] == 2, 'Only Leduc and extended Leduc are now supported' )
+		strength = evaluator.batch_eval(board_cards)
+		# handling hand stregths (winning probs)
+		strength_view_1 = strength.reshape([CC,1]) * np.ones(call_matrix.shape)
+		strength_view_2 = strength.reshape([1,CC]) * np.ones(call_matrix.shape)
+
+		call_matrix = strength_view_1 > strength_view_2
+		call_matrix -= strength_view_1 < strength_view_2
+		self._handle_blocking_cards(call_matrix, board_cards)
 
 
     def _handle_blocking_cards(self, equity_matrix, board):
@@ -28,7 +39,10 @@ class TerminalEquity():
         @param: equity_matrix the matrix to modify
         @param: board a possibly empty vector of board cards
         '''
-		pass
+		CC = game_settings.card_count
+		possible_hand_indexes = card_tools.get_possible_hand_indexes(board) # (CC,) bool type
+		possible_hand_matrix = possible_hand_indexes.reshape([1,CC]) * possible_hand_indexes.reshape([CC,1])
+		equity_matrix *= possible_hand_matrix
 
 
     def _set_fold_matrix(self, board):
@@ -38,9 +52,12 @@ class TerminalEquity():
         	for the player who doesn't fold
         @param: board a possibly empty vector of board cards
         '''
-		pass
+		CC = game_settings.card_count
+		self.fold_matrix = np.ones([CC,CC], dtype=float)
 		# setting cards that block each other to zero -
 		# exactly elements on diagonal in leduc variants
+		self.fold_matrix -= np.eye(CC).astype(self.fold_matrix)
+		self._handle_blocking_cards(self.fold_matrix, board)
 
 
     def _set_call_matrix(self, board):
@@ -52,10 +69,27 @@ class TerminalEquity():
 			gives the weighted average of all such possible matrices.
         @param: board a possibly empty vector of board cards
         '''
-		pass
-        # iterate through all possible next round streets
-        # averaging the values in the call matrix
-        # for last round we just return the matrix
+		CC = game_settings.card_count
+		BCC = game_settings.board_card_count
+		street = card_tools.board_to_street(board)
+		self.equity_matrix = np.zeros([CC, CC], dtype=float)
+		if street == 1:
+        	# iterate through all possible next round streets
+			next_round_boards = card_tools.get_second_round_boards()
+			next_round_equity_matrix = np.zeros([CC, CC])
+			for board in range(next_round_boards.shape[0]):
+				next_board = next_round_boards[board]
+				self.get_last_round_call_matrix(next_board, next_round_equity_matrix)
+				self.equity_matrix += next_round_equity_matrix
+			# averaging the values in the call matrix
+			weight_constant = 1/(CC-2) if BCC == 1 else 2/((CC-2)*(CC-3))
+			# tas pats: weight_constant = BCC == 1 and 1/(CC-2) or 2/((CC-2)*(CC-3))
+			self.equity_matrix *= weight_constant
+		elif street == 2:
+			# for last round we just return the matrix
+			self.get_last_round_call_matrix(board, self.equity_matrix)
+		else:
+			assert(False, 'impossible street')
 
 
     def set_board(self, board):
@@ -63,7 +97,8 @@ class TerminalEquity():
 			structures.
         @param: board a possibly empty vector of board cards
         '''
-        pass
+        self._set_call_matrix(board)
+		self._set_fold_matrix(board)
 
 
     def call_value(self, ranges, result):
@@ -74,7 +109,7 @@ class TerminalEquity():
 				N is the batch size and K is the range size
         @param: result a (N,K) tensor in which to save the cfvs
         '''
-		pass
+		result = np.dot(ranges, self.equity_matrix)
 
 
     def fold_value(self, ranges, result):
@@ -86,7 +121,7 @@ class TerminalEquity():
         @param: result A (N,K) tensor in which to save the cfvs. Positive cfvs
 				are returned, and must be negated if the player in question folded.
         '''
-		pass
+		result = np.dot(ranges, self.fold_matrix)
 
 
     def get_call_matrix(self):
@@ -97,7 +132,7 @@ class TerminalEquity():
 				player when no player folds. For nodes in the first betting round,
 				the weighted average of all such possible matrices.
         '''
-        pass
+        return self.equity_matrix
 
 
     def tree_node_call_value(self, ranges, result):
@@ -108,7 +143,9 @@ class TerminalEquity():
 				(where K is the range size)
         @param: result a (2,K) tensor in which to store the cfvs for each player
         '''
-        pass
+		assert(ranges.ndim == 2 and result.ndim == 2)
+		self.call_value(ranges[0].reshape([1,-1]), result[1].reshape([1,-1]))
+		self.call_value(ranges[1].reshape([1,-1]), result[0].reshape([1,-1]))
 
 
     def tree_node_fold_value(self, ranges, result, folding_player):
@@ -120,7 +157,10 @@ class TerminalEquity():
         @param: result a (2,K) tensor in which to store the cfvs for each player
         @param: folding_player which player folded
         '''
-        pass
+        assert(ranges.ndim == 2 and result.ndim == 2)
+		self.fold_value(ranges[0].reshape([1,-1]), result[1].reshape([1,-1])) # np?
+		self.fold_value(ranges[1].reshape([1,-1]), result[0].reshape([1,-1]))
+		result[folding_player] *= -1
 
 
 
