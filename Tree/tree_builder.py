@@ -139,6 +139,7 @@ class PokerTreeBuilder():
 			assert (possible_bets.shape[1] == 2)
 			for i in range(possible_bets.shape[0]):
 				child = Node()
+				child.node_type = constants.node_types.inner_node # ? - nebuvo ju implementacijoj
 				child.parent = parent_node
 				child.current_player = 1 - parent_node.current_player
 				child.street = parent_node.street
