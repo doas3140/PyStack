@@ -135,7 +135,7 @@ class CardTools():
 			return out
 		elif BCC == 2:
 			out = np.zeros([BC, 2], dtype=int)
-			board_idx = -1
+			board_idx = 0
 			for card_1 in range(CC):
 				for card_2 in range(card_1+1, CC):
 					out[board_idx, 0] = card_1
@@ -166,11 +166,11 @@ class CardTools():
 		@return (CC,CC) matrix, where (i,j) == (j,i), because its the
 				same hand combo. matrix ex: if CC = 6:
 				[[ 0,  0,  1,  2,  3,  4],
-					 [ 0,  0,  5,  6,  7,  8],
-				  [ 1,  5,  0,  9, 10, 11],
-				  [ 2,  6,  9,  0, 12, 13],
-				  [ 3,  7, 10, 12,  0, 14],
-				  [ 4,  8, 11, 13, 14,  0]]
+				 [ 0,  0,  5,  6,  7,  8],
+				 [ 1,  5,  0,  9, 10, 11],
+				 [ 2,  6,  9,  0, 12, 13],
+				 [ 3,  7, 10, 12,  0, 14],
+				 [ 4,  8, 11, 13, 14,  0]]
 		'''
 		pass
 
