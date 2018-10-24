@@ -57,8 +57,7 @@ class TreeCFR():
 				terminal_equity.tree_node_fold_value(node.ranges_absolute, values, opponent_index)
 			else:
 				terminal_equity.tree_node_call_value(node.ranges_absolute, values)
-			# multiply by the pot
-			values *= node.pot
+			values *= node.pot # multiply by the pot
 			node.cf_values = values.reshape(node.ranges_absolute.shape)
 		else:
 			actions_count = len(node.children)
@@ -74,7 +73,7 @@ class TreeCFR():
 				node.possitive_regrets = node.regrets.copy()
 				node.possitive_regrets[node.possitive_regrets <= self.regret_epsilon] = self.regret_epsilon
 				# compute the current strategy
-				regrets_sum = node.possitive_regrets.sum(axis=action_dim)
+				regrets_sum = node.possitive_regrets.sum(axis=action_dim, keepdims=True) # ? - torch grazina [1,6], np - [6,]
 				current_strategy = node.possitive_regrets.copy()
 				current_strategy /= ( regrets_sum * np.ones_like(current_strategy) )
 		# current cfv [[actions, players, ranges]]
@@ -82,14 +81,14 @@ class TreeCFR():
 		cf_values_allactions = np.zeros([AC,PC,CC], dtype=float)
 		children_ranges_absolute = {}
 		if node.current_player == constants.players.chance:
-			ranges_mul_matrix = node.ranges_absolute[1]:repeatTensor(actions_count, 1) # ?
+			ranges_mul_matrix = node.ranges_absolute[0] * np.ones([AC,1], dtype=node.ranges_absolute.dtype) # ?
       		children_ranges_absolute[0] = current_strategy * ranges_mul_matrix # ?
-			ranges_mul_matrix = node.ranges_absolute[2]:repeatTensor(actions_count, 1) # ?
+			ranges_mul_matrix = node.ranges_absolute[1] * np.ones([AC,1], dtype=node.ranges_absolute.dtype) # ?
       		children_ranges_absolute[1] = current_strategy * ranges_mul_matrix # ?
 		else:
-			ranges_mul_matrix = node.ranges_absolute[node.current_player]:repeatTensor(actions_count, 1) # ?
+			ranges_mul_matrix = node.ranges_absolute[node.current_player] * np.ones([AC,1], dtype=node.ranges_absolute.dtype)
 			children_ranges_absolute[node.current_player] = current_strategy * ranges_mul_matrix # ?
-			children_ranges_absolute[opponent_index] = node.ranges_absolute[opponent_index]:repeatTensor(actions_count, 1).copy() # ?
+			children_ranges_absolute[opponent_index] = node.ranges_absolute[opponent_index] * np.ones([AC,1], dtype=node.ranges_absolute.dtype)
 		for i in range(len(node.children)):
 			child_node = node.children[i]
 			# set new absolute ranges (after the action) for the child
@@ -101,14 +100,14 @@ class TreeCFR():
 		node.cf_values = np.zeros([PC,CC], dtype=float)
 		if node.current_player != constants.players.chance:
 			strategy_mul_matrix = current_strategy.reshape([AC,CC])
-			node.cf_values[node.current_player] = strategy_mul_matrix * cf_values_allactions[ : ,node.current_player, : ]).sum(axis=0) # ?
-			node.cf_values[opponent_index] = cf_values_allactions[ : , opponent_index, : ].sum(axis=0) # ?
+			node.cf_values[node.current_player] = strategy_mul_matrix * cf_values_allactions[ : ,node.current_player, : ][ : , np.newaxis, : ].sum(axis=0) # ?
+			node.cf_values[opponent_index] = cf_values_allactions[ : , opponent_index, : ][ : , np.newaxis, : ].sum(axis=0) # ?
 		else:
-			node.cf_values[0] = cf_values_allactions[ : , 0, : ].sum(axis=0) # ?
-      		node.cf_values[1] = cf_values_allactions[ : , 1, : ].sum(axis=0) # ?
+			node.cf_values[0] = cf_values_allactions[ : , 0, : ][ : , np.newaxis, : ].sum(axis=0) # ?
+      		node.cf_values[1] = cf_values_allactions[ : , 1, : ][ : , np.newaxis, : ].sum(axis=0) # ?
 		if node.current_player != constants.players.chance:
 			# computing regrets
-			current_regrets = cf_values_allactions[ : , node.current_player, : ].reshape([AC,CC]).clone() # ?
+			current_regrets = cf_values_allactions[ : , node.current_player, : ][ : , np.newaxis, : ].reshape([AC,CC]).copy() # ?
 			current_regrets -= node.cf_values[node.current_player].reshape([1,CC]) * np.ones_like(current_regrets)
 			self.update_regrets(node, current_regrets)
 			# accumulating average strategy

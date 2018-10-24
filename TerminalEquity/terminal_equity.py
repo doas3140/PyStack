@@ -20,16 +20,16 @@ class TerminalEquity():
 			is the equity for the first player when no player folds.
         @param: board_cards a non-empty vector of board cards
         @param: call_matrix a tensor where the computed matrix is stored
-        ''' # call_matrix == self.equity_matrix ?
+        '''
 		CC = game_settings.card_count
 		assert(board_cards.shape[0] == 1 or board_cards.shape[0] == 2, 'Only Leduc and extended Leduc are now supported' )
 		strength = evaluator.batch_eval(board_cards)
 		# handling hand stregths (winning probs)
-		strength_view_1 = strength.reshape([CC,1]) * np.ones_like(call_matrix)
+		strength_view_1 = strength.reshape([CC,1]) * np.ones_like(call_matrix) # ? galima broadcastint
 		strength_view_2 = strength.reshape([1,CC]) * np.ones_like(call_matrix)
 
-		call_matrix = strength_view_1 > strength_view_2
-		call_matrix -= strength_view_1 < strength_view_2
+		call_matrix = (strength_view_1 > strength_view_2)
+		call_matrix -= (strength_view_1 < strength_view_2)
 		self._handle_blocking_cards(call_matrix, board_cards)
 
 
@@ -41,8 +41,7 @@ class TerminalEquity():
         '''
 		CC = game_settings.card_count
 		possible_hand_indexes = card_tools.get_possible_hand_indexes(board) # (CC,) bool type
-		possible_hand_matrix = possible_hand_indexes.reshape([1,CC]) * possible_hand_indexes.reshape([CC,1])
-		equity_matrix *= possible_hand_matrix
+		equity_matrix *= possible_hand_indexes.reshape([1,CC]) * possible_hand_indexes.reshape([CC,1]) # np.dot can be faster
 
 
     def _set_fold_matrix(self, board):
@@ -76,17 +75,16 @@ class TerminalEquity():
 		if street == 1:
         	# iterate through all possible next round streets
 			next_round_boards = card_tools.get_second_round_boards()
-			next_round_equity_matrix = np.zeros([CC, CC])
+			next_round_equity_matrix = np.zeros([CC, CC], dtype=float)
 			for board in range(next_round_boards.shape[0]):
 				next_board = next_round_boards[board]
 				self.get_last_round_call_matrix(next_board, next_round_equity_matrix)
 				self.equity_matrix += next_round_equity_matrix
 			# averaging the values in the call matrix
-			weight_constant = 1/(CC-2) if BCC == 1 else 2/((CC-2)*(CC-3))
+			weight_constant = 1/(CC-2) if BCC == 1 else 2/((CC-2)*(CC-3)) # ?
 			# tas pats: weight_constant = BCC == 1 and 1/(CC-2) or 2/((CC-2)*(CC-3))
 			self.equity_matrix *= weight_constant
-		elif street == 2:
-			# for last round we just return the matrix
+		elif street == 2: # for last round we just return the matrix
 			self.get_last_round_call_matrix(board, self.equity_matrix)
 		else:
 			assert(False, 'impossible street')
