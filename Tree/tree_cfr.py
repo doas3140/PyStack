@@ -100,11 +100,11 @@ class TreeCFR():
 		node.cf_values = np.zeros([PC,CC], dtype=float)
 		if node.current_player != constants.players.chance:
 			strategy_mul_matrix = current_strategy.reshape([AC,CC])
-			node.cf_values[node.current_player] = strategy_mul_matrix * cf_values_allactions[ : ,node.current_player, : ][ : , np.newaxis, : ].sum(axis=0) # ?
-			node.cf_values[opponent_index] = cf_values_allactions[ : , opponent_index, : ][ : , np.newaxis, : ].sum(axis=0) # ?
+			node.cf_values[node.current_player] = strategy_mul_matrix * cf_values_allactions[ : ,node.current_player, : ][ : , np.newaxis, : ].sum(axis=0, keepdims=True) # ?
+			node.cf_values[opponent_index] = cf_values_allactions[ : , opponent_index, : ][ : , np.newaxis, : ].sum(axis=0, keepdims=True) # ?
 		else:
-			node.cf_values[0] = cf_values_allactions[ : , 0, : ][ : , np.newaxis, : ].sum(axis=0) # ?
-      		node.cf_values[1] = cf_values_allactions[ : , 1, : ][ : , np.newaxis, : ].sum(axis=0) # ?
+			node.cf_values[0] = cf_values_allactions[ : , 0, : ][ : , np.newaxis, : ].sum(axis=0, keepdims=True) # ?
+      		node.cf_values[1] = cf_values_allactions[ : , 1, : ][ : , np.newaxis, : ].sum(axis=0, keepdims=True) # ?
 		if node.current_player != constants.players.chance:
 			# computing regrets
 			current_regrets = cf_values_allactions[ : , node.current_player, : ][ : , np.newaxis, : ].reshape([AC,CC]).copy() # ?
