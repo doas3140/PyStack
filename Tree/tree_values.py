@@ -2,6 +2,7 @@
 	Computes the expected value of a strategy profile on a game's public tree,
 	as well as the value of a best response against the profile.
 '''
+import numpy as np
 
 from Settings.arguments import arguments
 from Settings.constants import constants
@@ -26,7 +27,7 @@ class TreeValues():
 		node.ranges_absolute = ranges_absolute.copy()
 		if node.terminal:
 			return
-		assert(node.strategy)
+		assert(node.strategy is not None)
 		actions_count = len(node.children)
 		AC = actions_count
 		# check that it's a legal strategy
@@ -43,9 +44,9 @@ class TreeValues():
 		# check if the range consists only of cards that don't overlap with the board
 		CC = game_settings.card_count
 		PC = constants.players_count
-		impossible_hands_mask = np.ones_like(hands_mask) - hands_mask
+		impossible_hands_mask = np.ones_like(hands_mask,dtype=int) - hands_mask
 		impossible_range_sum = (node.ranges_absolute.copy() * impossible_hands_mask.reshape([1,CC])).sum() # ? delete .copy()
-  		assert(impossible_range_sum == 0, impossible_range_sum)
+		assert(impossible_range_sum == 0, impossible_range_sum)
 		children_ranges_absolute = np.zeros([len(node.children), PC, CC], dtype=float)
 		# chance player
 		if node.current_player == constants.players.chance:
@@ -60,7 +61,7 @@ class TreeValues():
 			opponent = 1 - node.current_player
 			children_ranges_absolute[ : , opponent, : ] = node.ranges_absolute[opponent].copy() * np.ones([AC,1], dtype=children_ranges_absolute.dtype)
 			# multiply the range for the acting player using his strategy
-			ranges_mul_matrix = node.ranges_absolute[node.current_player] * np.ones([AC,1], dtype=ranges_mul_matrix.dtype)
+			ranges_mul_matrix = node.ranges_absolute[node.current_player] * np.ones([AC,1], dtype=node.ranges_absolute.dtype)
 			children_ranges_absolute[ : , node.current_player, : ] = node.strategy * ranges_mul_matrix
 		# fill the ranges for the children
 		for i in range(len(node.children)):
@@ -101,7 +102,7 @@ class TreeValues():
 			# [[actions, players, ranges]]
 			cf_values_allactions = np.zeros([len(node.children), 2, ranges_size], dtype=float)
 			cf_values_br_allactions = np.zeros([len(node.children), 2, ranges_size], dtype=float)
-			for i in range(node.children):
+			for i in range(len(node.children)):
 				child_node = node.children[i]
 				self._compute_values_dfs(child_node)
 				cf_values_allactions[i] = child_node.cf_values
@@ -123,18 +124,18 @@ class TreeValues():
 				node.cf_values_br[node.current_player] = cf_values_br_allactions[ : , node.current_player, : ].max(axis=0, keepdims=True)
 		# counterfactual values weighted by the reach prob
 		node.cfv_infset = np.zeros([2])
-		node.cfv_infset[0] = node.cf_values[0] * node.ranges_absolute[0]
-		node.cfv_infset[1] = node.cf_values[1] * node.ranges_absolute[1]
+		node.cfv_infset[0] = np.dot(node.cf_values[0], node.ranges_absolute[0])
+		node.cfv_infset[1] = np.dot(node.cf_values[1], node.ranges_absolute[1])
 		# compute CFV-BR values weighted by the reach prob
 		node.cfv_br_infset = np.zeros([2])
-		node.cfv_br_infset[0] = node.cf_values_br[0] * node.ranges_absolute[0]
-		node.cfv_br_infset[1] = node.cf_values_br[1] * node.ranges_absolute[1]
+		node.cfv_br_infset[0] = np.dot(node.cf_values_br[0], node.ranges_absolute[0])
+		node.cfv_br_infset[1] = np.dot(node.cf_values_br[1], node.ranges_absolute[1])
 		#
 		node.epsilon = node.cfv_br_infset - node.cfv_infset
-  		node.exploitability = node.epsilon.mean()
+		node.exploitability = node.epsilon.mean()
 
 
-	def compute_values(self, root, starting_ranges):
+	def compute_values(self, root, starting_ranges=None):
 		''' Compute the self play and best response values of a strategy profile
 			on the given game tree.
 			The cfvs for each player in the given strategy profile when playing

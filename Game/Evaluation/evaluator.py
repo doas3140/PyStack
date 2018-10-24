@@ -16,14 +16,14 @@ from Game.card_tools import card_tools
 from Settings.arguments import arguments
 
 class Evaluator():
-    def __init__(self):
+	def __init__(self):
 		pass
 
 	def evaluate_two_card_hand(self, hand_ranks):
-	    ''' Gives a strength representation for a hand containing two cards.
-	    @param: hand_ranks the rank of each card in the hand
-	    @return the strength value of the hand
-	    ''' # ? - this fun
+		''' Gives a strength representation for a hand containing two cards.
+		@param: hand_ranks the rank of each card in the hand
+		@return the strength value of the hand
+		''' # ? - this fun
 		RC = game_settings.rank_count
 		# check for the pair
 		hand_ranks += 1 # reikia +1 pridet pries skaiciuojant value, nes 0*x = 0
@@ -34,13 +34,13 @@ class Evaluator():
 		return hand_value
 
 
-    def evaluate_three_card_hand(self, hand_ranks):
-        ''' Gives a strength representation for a hand containing three cards.
-        @param: hand_ranks the rank of each card in the hand
-        @return the strength value of the hand
-        '''
+	def evaluate_three_card_hand(self, hand_ranks):
+		''' Gives a strength representation for a hand containing three cards.
+		@param: hand_ranks the rank of each card in the hand
+		@return the strength value of the hand
+		'''
 		RC = game_settings.rank_count
-        hand_value += 1 # reikia +1 pridet pries skaiciuojant value, nes 0*x = 0
+		hand_value += 1 # reikia +1 pridet pries skaiciuojant value, nes 0*x = 0
 		# check for the pair
 		if hand_ranks[0] == hand_ranks[1]:
 			# paired hand, value of the pair goes first, value of the kicker goes second
@@ -55,14 +55,14 @@ class Evaluator():
 		return hand_value
 
 
-    def evaluate(self, hand, impossible_hand_value=None):
-        ''' Gives a strength representation for a two or three card hand.
-        @param: hand a vector of two or three cards
-        @param: [opt] impossible_hand_value the value to return
+	def evaluate(self, hand, impossible_hand_value=None):
+		''' Gives a strength representation for a two or three card hand.
+		@param: hand a vector of two or three cards
+		@param: [opt] impossible_hand_value the value to return
 				if the hand is invalid
-        @return the strength value of the hand, or `impossible_hand_value`
+		@return the strength value of the hand, or `impossible_hand_value`
 				if the hand is invalid
-        '''
+		'''
 		CC = game_settings.card_count
 		assert(hand.max() <= CC and hand.min() > 0, 'hand does not correspond to any cards' )
 		impossible_hand_value = impossible_hand_value or -1
@@ -81,15 +81,15 @@ class Evaluator():
 		assert(False, 'unsupported size of hand!')
 
 
-    def batch_eval(self, board, impossible_hand_value=None):
-        ''' Gives strength representations for all private hands
+	def batch_eval(self, board, impossible_hand_value=None):
+		''' Gives strength representations for all private hands
 			on the given board.
-        @param: board a possibly empty vector of board cards
-        @param: impossible_hand_value the value to assign to hands
+		@param: board a possibly empty vector of board cards
+		@param: impossible_hand_value the value to assign to hands
 				which are invalid on the board
-        @return a vector containing a strength value or
+		@return a vector containing a strength value or
 				`impossible_hand_value` for every private hand
-        '''
+		'''
 		CC = game_settings.card_count
 		SC = game_settings.suit_count
 		hand_values = np.full([CC], -1, dtype=int)
