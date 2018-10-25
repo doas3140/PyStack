@@ -10,6 +10,7 @@
 
 	For a player node, `strategy[i][j]` gives the probability of taking the
 	action that leads to the `i`th child when the player holds the `j`th card.
+	strategy[ : , j ] -> sums to 1, % kad eis i kiekviena vaika (i).
 
 	For a chance node, `strategy[i][j]` gives the probability of reaching the
 	`i`th child for either player when that player holds the `j`th card.
@@ -40,7 +41,6 @@ class StrategyFilling():
 		for i in range(len(node.children)):
 			child_node = node.children[i]
 			mask = card_tools.get_possible_hand_indexes(child_node.board)
-			node.strategy[i].fill(0)
 			# remove 2 because each player holds one card
 			node.strategy[i][mask] = 1.0 / (CC - 2)
 
@@ -54,8 +54,8 @@ class StrategyFilling():
 				or node.current_player == constants.players.P2)
 		if node.terminal:
 			return
-		node.strategy = np.zeros([len(node.children), CC], dtype=np.float32)
-		node.strategy.fill(1.0 / len(node.children))
+		value = 1.0 / len(node.children)
+		node.strategy = np.full([len(node.children), CC], value, dtype=np.float32)
 
 
 	def _fill_uniform_dfs(self, node):

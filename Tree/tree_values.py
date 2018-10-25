@@ -61,8 +61,8 @@ class TreeValues():
 			opponent = 1 - node.current_player
 			children_ranges_absolute[ : , opponent, : ] = node.ranges_absolute[opponent].copy() * np.ones([AC,1], dtype=children_ranges_absolute.dtype)
 			# multiply the range for the acting player using his strategy
-			ranges_mul_matrix = node.ranges_absolute[node.current_player] * np.ones([AC,1], dtype=node.ranges_absolute.dtype)
-			children_ranges_absolute[ : , node.current_player, : ] = node.strategy * ranges_mul_matrix
+			current_range_matrix = node.ranges_absolute[node.current_player] * np.ones([AC,1], dtype=node.ranges_absolute.dtype)
+			children_ranges_absolute[ : , node.current_player, : ] = node.strategy * current_range_matrix
 		# fill the ranges for the children
 		for i in range(len(node.children)):
 			child_node = node.children[i]
@@ -152,7 +152,7 @@ class TreeValues():
 		uniform_ranges = np.full([PC,CC], 1/CC, dtype=float)
 		starting_ranges = starting_ranges or uniform_ranges
 		# 2.0 check the starting ranges
-		checksum = starting_ranges.sum(axis=1, keepdims=True)[ : , 0]
+		checksum = starting_ranges.sum(axis=1)
 		assert(abs(checksum[0] - 1) < 0.0001, 'starting range does not sum to 1')
 		assert(abs(checksum[1] - 1) < 0.0001, 'starting range does not sum to 1')
 		assert((starting_ranges < 0).sum() == 0)

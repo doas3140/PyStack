@@ -48,8 +48,8 @@ class TerminalEquity():
 	def _set_fold_matrix(self, board):
 		''' Sets the evaluator's fold matrix, which gives the equity for terminal
 			nodes where one player has folded.
-			Creates the matrix `B` such that for player ranges `x` and `y`, `x'By` is the equity
-			for the player who doesn't fold
+			Creates the matrix `B` such that for player ranges `x` and `y`,
+			`x'By` is the equity for the player who doesn't fold
 		@param: board a possibly empty vector of board cards
 		'''
 		CC = game_settings.card_count
@@ -108,7 +108,7 @@ class TerminalEquity():
 				N is the batch size and K is the range size
 		@param: result a (N,K) tensor in which to save the cfvs
 		'''
-		result = np.dot(ranges, self.equity_matrix)
+		result[ : , : ] = np.dot(ranges, self.equity_matrix)
 
 
 	def fold_value(self, ranges, result):
@@ -120,7 +120,7 @@ class TerminalEquity():
 		@param: result A (N,K) tensor in which to save the cfvs. Positive cfvs
 				are returned, and must be negated if the player in question folded.
 		'''
-		result = np.dot(ranges, self.fold_matrix)
+		result[ : , : ] = np.dot(ranges, self.fold_matrix)
 
 
 	def get_call_matrix(self):
