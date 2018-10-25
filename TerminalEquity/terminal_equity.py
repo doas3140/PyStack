@@ -56,7 +56,7 @@ class TerminalEquity():
 		self.fold_matrix = np.ones([CC,CC], dtype=arguments.dtype)
 		# setting cards that block each other to zero -
 		# exactly elements on diagonal in leduc variants
-		self.fold_matrix -= np.eye(CC, self.fold_matrix.dtype)
+		self.fold_matrix -= np.eye(CC, dtype=self.fold_matrix.dtype)
 		self._handle_blocking_cards(self.fold_matrix, board)
 
 
