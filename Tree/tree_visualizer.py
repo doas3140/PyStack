@@ -57,8 +57,6 @@ class TreeVisualiser():
         color = self.get_color(node)
         self.g.attr('node', shape='box', color=color, fontcolor='#03396c', fontsize='10', fixedsize='true', width='1.5', height='0.5')
         bets = np.array2string(node.bets, suppress_small=True, precision=2)
-        if node.strategy is None: strat = ''
-        else: strat = np.array2string(node.strategy, suppress_small=True, precision=2)
         pot = np.array2string(node.pot, suppress_small=True, precision=2)
         board_str = card_to_string.cards_to_string(node.board)
         type = node.type
@@ -78,25 +76,40 @@ class TreeVisualiser():
         self.g.node(str(node_idx), 'B: {} T: {}\npot: {} board: "{}"\ndepth: {} P: {}'.format(bets, type, pot, board_str, depth, player))
 
 
+    def style_edge_with_strats(self, parent_action, parent_node, node, parent_idx, node_idx):
+        if parent_node.node_type == constants.node_types.chance_node:
+            edge_name = ''
+        else:
+            if parent_node.actions[parent_action] == -1:
+                edge_name = 'C'
+            elif parent_node.actions[parent_action] == -2:
+                edge_name = 'F'
+            else: # == bet
+                edge_name = str(int(parent_node.actions[parent_action]))
+        if parent_node.strategy is None: strat = ''
+        else: strat = np.array2string(parent_node.strategy[parent_action], suppress_small=True, precision=2)
+        edge_name = '{} s:{}'.format(edge_name, strat)
+        self.g.attr('edge', fontsize='6')
+        self.g.edge(str(parent_idx), str(node_idx), edge_name)
+
     def style_edge(self, parent_action, parent_node, node, parent_idx, node_idx):
         if parent_node.node_type == constants.node_types.chance_node:
             edge_name = ''
         else:
-            if parent_action == -1:
+            if parent_node.actions[parent_action] == -1:
                 edge_name = 'C'
-            elif parent_action == -2:
+            elif parent_node.actions[parent_action] == -2:
                 edge_name = 'F'
             else:
-                edge_name = str(int(parent_action))
+                edge_name = str(int(parent_node.actions[parent_action]))
         self.g.edge(str(parent_idx), str(node_idx), edge_name)
 
     def dfs(self, parent, parent_index, depth=0):
         ''' recursively creates edges and nodes for graphviz '''
         for i, child in enumerate(parent.children):
-            parent_action = parent.actions[i]
             self.i += 1
             self.style_node_with_vars(child, self.i)
-            self.style_edge(parent_action, parent, child, parent_index, self.i)
+            self.style_edge_with_strats(i, parent, child, parent_index, self.i)
             self.dfs(child, str(self.i), depth+1)
 
     def draw_tree(self, root, name='tree', save_pdf=False, size='6,6'):
