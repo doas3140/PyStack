@@ -38,17 +38,17 @@ class CardTools():
 				! pakeista: 0 -> False, 1 -> True !
 		'''
 		CC = game_settings.card_count
-		out = np.zeros([CC], dtype=bool)
+		out = np.zeros([CC], dtype=bool) # ?
 		if board.ndim == 0:
 			out.fill(1)
 			return out
 		whole_hand = np.zeros([board.shape[0] + 1], dtype=int)
 		# priskiria boardus -> whole_hand, isskyrus pask. el.
-		whole_hand[ :-1] = board.copy() # == [{ {1,-2} }] ?
+		whole_hand[ :-1] = board.copy()
 		for card in range(CC):
 			whole_hand[-1] = card
 			if self.hand_is_possible(whole_hand):
-				out[card] = True # ?
+				out[card] = 1
 		return out
 
 

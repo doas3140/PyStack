@@ -25,17 +25,17 @@ class BetSizing():
 		'''
 		current_player = node.current_player
 		assert (current_player == 0 or current_player == 1, 'Wrong player for bet size computation')
-		opponent = 1 - node.current_player
+		opponent = 1 - current_player
 		opponent_bet = node.bets[opponent]
 		assert(node.bets[current_player] <= opponent_bet)
 		# compute min possible raise size
-		max_raise_size = arguments.stack - opponent_bet
+		max_raise_size = arguments.stack - opponent_bet # == call_size
 		min_raise_size = opponent_bet - node.bets[current_player]
 		min_raise_size = max(min_raise_size, arguments.ante)
 		min_raise_size = min(max_raise_size, min_raise_size)
 		if min_raise_size == 0:
 			return np.zeros([], dtype=int) # (N,P), when N = 0
-		elif min_raise_size == max_raise_size:
+		elif min_raise_size == max_raise_size: # all in
 			out = np.full([1,2], opponent_bet, dtype=int)
 			out[0][current_player] = opponent_bet + min_raise_size
 			return out # (N,P)
@@ -55,7 +55,8 @@ class BetSizing():
 			# adding allin
 			assert (used_bets_count <= max_possible_bets_count)
 			out[used_bets_count, current_player] = opponent_bet + max_raise_size
-			return out[ :used_bets_count+1 , : ] # == out[{ {1, used_bets_count}, {} }] ?
+			used_bets_count += 1
+			return out[ :used_bets_count , : ]
 
 
 
