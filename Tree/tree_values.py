@@ -148,9 +148,8 @@ class TreeValues():
 				at the root node (default uniform)
 		'''
 		PC, CC = constants.players_count, game_settings.card_count
-		# 1.0 set the starting range
-		uniform_ranges = np.full([PC,CC], 1/CC, dtype=float)
-		starting_ranges = starting_ranges or uniform_ranges
+		# 1.0 set the starting range (uniform if r=None)
+		starting_ranges = np.full([PC,CC], 1/CC, dtype=float) if starting_ranges is None else starting_ranges
 		# 2.0 check the starting ranges
 		checksum = starting_ranges.sum(axis=1)
 		assert(abs(checksum[0] - 1) < 0.0001, 'starting range does not sum to 1')

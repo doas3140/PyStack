@@ -41,7 +41,14 @@ class Node():
 		self.terminal = None # boolean
 		self.parent = None # Node
 		self.actions = None # np.array (len(children),)
-		self.strategy = None # np.array (len(children), game_settings.card_count)
+		self.strategy = None # np.array (len(children), CC)
+		# cfr
+		self.iter_weight_sum = None # np.array (CC,)
+		self.regrets = None # np.array (AC,CC)
+		self.possitive_regrets = None # np.array (AC,CC)
+		self.cf_values = None # np.array (PC,CC)
+		self.ranges_absolute = None # np.array (PC,CC)
+
 
 	# def copy(self):
 	# 	new_node = Node()

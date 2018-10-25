@@ -69,7 +69,9 @@ class CardTools():
 		@return range vector (num_cards,) where invalid hands have
 				0 probability and valid hands have uniform probability
 		'''
-		pass
+		out = self.get_possible_hand_indexes(board)
+		out = out / out.sum()
+		return out
 
 
 	def get_random_range(self, board, seed=np.random.random()):
