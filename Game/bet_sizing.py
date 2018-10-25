@@ -55,7 +55,7 @@ class BetSizing():
 			# adding allin
 			assert (used_bets_count <= max_possible_bets_count)
 			out[used_bets_count, current_player] = opponent_bet + max_raise_size
-			return out[ :used_bets_count , : ] # == out[{ {1, used_bets_count}, {} }] ?
+			return out[ :used_bets_count+1 , : ] # == out[{ {1, used_bets_count}, {} }] ?
 
 
 
