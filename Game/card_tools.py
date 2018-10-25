@@ -38,11 +38,11 @@ class CardTools():
 				! pakeista: 0 -> False, 1 -> True !
 		'''
 		CC = game_settings.card_count
-		out = np.zeros([CC], dtype=bool) # ?
+		out = np.zeros([CC], dtype=bool) # arguments.dtype -> bool
 		if board.ndim == 0:
 			out.fill(1)
 			return out
-		whole_hand = np.zeros([board.shape[0] + 1], dtype=int)
+		whole_hand = np.zeros([board.shape[0] + 1], dtype=arguments.dtype)
 		# priskiria boardus -> whole_hand, isskyrus pask. el.
 		whole_hand[ :-1] = board.copy()
 		for card in range(CC):
@@ -134,12 +134,12 @@ class CardTools():
 		CC = game_settings.card_count
 		BCC = game_settings.board_card_count
 		if BCC == 1:
-			out = np.zeros([BC, 1], dtype=int)
+			out = np.zeros([BC, 1], dtype=arguments.dtype)
 			for card in range(CC): # TODO: -> np.arange
 				out[card, 0] = card
 			return out
 		elif BCC == 2:
-			out = np.zeros([BC, 2], dtype=int)
+			out = np.zeros([BC, 2], dtype=arguments.dtype)
 			board_idx = 0
 			for card_1 in range(CC):
 				for card_2 in range(card_1+1, CC):

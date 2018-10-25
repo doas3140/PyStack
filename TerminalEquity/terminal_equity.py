@@ -53,10 +53,10 @@ class TerminalEquity():
 		@param: board a possibly empty vector of board cards
 		'''
 		CC = game_settings.card_count
-		self.fold_matrix = np.ones([CC,CC], dtype=float)
+		self.fold_matrix = np.ones([CC,CC], dtype=arguments.dtype)
 		# setting cards that block each other to zero -
 		# exactly elements on diagonal in leduc variants
-		self.fold_matrix -= np.eye(CC).astype(self.fold_matrix.dtype)
+		self.fold_matrix -= np.eye(CC, self.fold_matrix.dtype)
 		self._handle_blocking_cards(self.fold_matrix, board)
 
 
@@ -72,11 +72,11 @@ class TerminalEquity():
 		CC = game_settings.card_count
 		BCC = game_settings.board_card_count
 		street = card_tools.board_to_street(board)
-		self.equity_matrix = np.zeros([CC, CC], dtype=float) # ? - :zero()
+		self.equity_matrix = np.zeros([CC, CC], dtype=arguments.dtype)
 		if street == 1:
 			# iterate through all possible next round streets
 			next_round_boards = card_tools.get_second_round_boards()
-			next_round_equity_matrix = np.zeros_like(self.equity_matrix)
+			next_round_equity_matrix = np.zeros(self.equity_matrix.shape, dtype=arguments.dtype)
 			for board in range(next_round_boards.shape[0]):
 				next_board = next_round_boards[board]
 				self.get_last_round_call_matrix(next_board, next_round_equity_matrix)

@@ -67,8 +67,8 @@ class TreeCFR():
 				current_strategy = node.strategy
 			else: # we have to compute current strategy at the beginning of each iteraton
 				# initialize regrets in the first iteration
-				node.regrets = np.full([AC,CC], self.regret_epsilon, dtype=float) if node.regrets is None else node.regrets
-				node.possitive_regrets = np.full([AC,CC], self.regret_epsilon, dtype=float) if node.possitive_regrets is None else node.possitive_regrets
+				node.regrets = np.full([AC,CC], self.regret_epsilon, dtype=arguments.dtype) if node.regrets is None else node.regrets
+				node.possitive_regrets = np.full([AC,CC], self.regret_epsilon, dtype=arguments.dtype) if node.possitive_regrets is None else node.possitive_regrets
 				# compute positive regrets so that we can compute the current strategy from them
 				node.possitive_regrets = node.regrets.copy()
 				node.possitive_regrets[node.possitive_regrets <= self.regret_epsilon] = self.regret_epsilon
@@ -77,7 +77,7 @@ class TreeCFR():
 				current_strategy = node.possitive_regrets.copy()
 				current_strategy /= ( regrets_sum * np.ones_like(current_strategy) )
 			# current cfv [[actions, players, ranges]]
-			cf_values_allactions = np.zeros([AC,PC,CC], dtype=float)
+			cf_values_allactions = np.zeros([AC,PC,CC], dtype=arguments.dtype)
 			children_ranges_absolute = {}
 			if node.current_player == constants.players.chance:
 				ranges_mul_matrix = node.ranges_absolute[0] * np.ones([AC,1], dtype=node.ranges_absolute.dtype) # ?
@@ -96,7 +96,7 @@ class TreeCFR():
 				child_node.ranges_absolute[1] = children_ranges_absolute[1][i].copy() # == :copy() ?
 				self.cfrs_iter_dfs(child_node, iter) # ? - card_count ?
 				cf_values_allactions[i] = child_node.cf_values
-			node.cf_values = np.zeros([PC,CC], dtype=float)
+			node.cf_values = np.zeros([PC,CC], dtype=arguments.dtype)
 			if node.current_player != constants.players.chance:
 				strategy_mul_matrix = current_strategy.reshape([AC,CC])
 				node.cf_values[node.current_player] = (strategy_mul_matrix * cf_values_allactions[ : ,node.current_player, : ]).sum(axis=0, keepdims=True) # ?
@@ -131,8 +131,8 @@ class TreeCFR():
 		actions_count = len(node.children) # ?
 		AC, CC = actions_count, game_settings.card_count
 		if iter > arguments.cfr_skip_iters:
-			node.strategy = np.zeros([AC,CC], dtype=float) if node.strategy is None else node.strategy
-			node.iter_weight_sum = np.zeros([CC], dtype=float) if node.iter_weight_sum is None else node.iter_weight_sum
+			node.strategy = np.zeros([AC,CC], dtype=arguments.dtype) if node.strategy is None else node.strategy
+			node.iter_weight_sum = np.zeros([CC], dtype=arguments.dtype) if node.iter_weight_sum is None else node.iter_weight_sum
 			iter_weight_contribution = node.ranges_absolute[node.current_player].copy()
 			iter_weight_contribution[iter_weight_contribution <= 0] = self.regret_epsilon
 			node.iter_weight_sum += iter_weight_contribution

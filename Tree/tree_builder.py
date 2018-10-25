@@ -181,7 +181,7 @@ class PokerTreeBuilder():
 		children = self._get_children_nodes(current_node)
 		current_node.children = children
 		depth = 0
-		current_node.actions = np.zeros([len(children)], dtype=int)
+		current_node.actions = np.zeros([len(children)], dtype=arguments.dtype)
 		for i in range(len(children)):
 			children[i].parent = current_node
 			self._build_tree_dfs(children[i])

@@ -93,13 +93,13 @@ class Evaluator():
 		'''
 		CC = game_settings.card_count
 		SC = game_settings.suit_count
-		hand_values = np.full([CC], -1, dtype=int)
+		hand_values = np.full([CC], -1, dtype=arguments.dtype)
 		if board.ndim == 0:
 			for hand in range(CC):
 				hand_values[hand] = np.floor(hand / SC) + 1
 		else:
 			assert(board.shape[0] == 1 or board.shape[0] == 2, 'Incorrect board size for Leduc')
-			whole_hand = np.zeros([board.shape[0] + 1], dtype=int)
+			whole_hand = np.zeros([board.shape[0] + 1], dtype=arguments.dtype)
 			whole_hand[ :-1] = board.copy()
 			for card in range(CC):
 				whole_hand[-1] = card

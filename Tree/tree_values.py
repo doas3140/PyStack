@@ -47,7 +47,7 @@ class TreeValues():
 		impossible_hands_mask = np.ones_like(hands_mask,dtype=int) - hands_mask
 		impossible_range_sum = (node.ranges_absolute.copy() * impossible_hands_mask.reshape([1,CC])).sum() # ? delete .copy()
 		assert(impossible_range_sum == 0, impossible_range_sum)
-		children_ranges_absolute = np.zeros([len(node.children), PC, CC], dtype=float)
+		children_ranges_absolute = np.zeros([len(node.children), PC, CC], dtype=arguments.dtype)
 		# chance player
 		if node.current_player == constants.players.chance:
 			# multiply ranges of both players by the chance prob
@@ -100,15 +100,15 @@ class TreeValues():
 			AC = actions_count
 			ranges_size = node.ranges_absolute.shape[1]
 			# [[actions, players, ranges]]
-			cf_values_allactions = np.zeros([len(node.children), 2, ranges_size], dtype=float)
-			cf_values_br_allactions = np.zeros([len(node.children), 2, ranges_size], dtype=float)
+			cf_values_allactions = np.zeros([len(node.children), 2, ranges_size], dtype=arguments.dtype)
+			cf_values_br_allactions = np.zeros([len(node.children), 2, ranges_size], dtype=arguments.dtype)
 			for i in range(len(node.children)):
 				child_node = node.children[i]
 				self._compute_values_dfs(child_node)
 				cf_values_allactions[i] = child_node.cf_values
 				cf_values_br_allactions[i] = child_node.cf_values_br
-			node.cf_values = np.zeros([2, ranges_size], dtype=float)
-			node.cf_values_br = np.zeros([2, ranges_size], dtype=float)
+			node.cf_values = np.zeros([2, ranges_size], dtype=arguments.dtype)
+			node.cf_values_br = np.zeros([2, ranges_size], dtype=arguments.dtype)
 			# strategy = [[actions x range]]
 			strategy_mul_matrix = node.strategy.reshape([AC, ranges_size])
 			# compute CFVs given the current strategy for this node
@@ -123,11 +123,11 @@ class TreeValues():
 				node.cf_values_br[opponent] = cf_values_br_allactions[ : , opponent, : ].sum(axis=0, keepdims=True)
 				node.cf_values_br[node.current_player] = cf_values_br_allactions[ : , node.current_player, : ].max(axis=0, keepdims=True)
 		# counterfactual values weighted by the reach prob
-		node.cfv_infset = np.zeros([2])
+		node.cfv_infset = np.zeros([2], dtype=arguments.dtype)
 		node.cfv_infset[0] = np.dot(node.cf_values[0], node.ranges_absolute[0])
 		node.cfv_infset[1] = np.dot(node.cf_values[1], node.ranges_absolute[1])
 		# compute CFV-BR values weighted by the reach prob
-		node.cfv_br_infset = np.zeros([2])
+		node.cfv_br_infset = np.zeros([2], dtype=arguments.dtype)
 		node.cfv_br_infset[0] = np.dot(node.cf_values_br[0], node.ranges_absolute[0])
 		node.cfv_br_infset[1] = np.dot(node.cf_values_br[1], node.ranges_absolute[1])
 		#
@@ -149,7 +149,7 @@ class TreeValues():
 		'''
 		PC, CC = constants.players_count, game_settings.card_count
 		# 1.0 set the starting range (uniform if r=None)
-		starting_ranges = np.full([PC,CC], 1/CC, dtype=float) if starting_ranges is None else starting_ranges
+		starting_ranges = np.full([PC,CC], 1/CC, dtype=arguments.dtype) if starting_ranges is None else starting_ranges
 		# 2.0 check the starting ranges
 		checksum = starting_ranges.sum(axis=1)
 		assert(abs(checksum[0] - 1) < 0.0001, 'starting range does not sum to 1')

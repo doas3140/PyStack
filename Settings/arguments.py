@@ -7,18 +7,16 @@ class Parameters():
 	def __init__(self):
 		# whether to run on GPU
 		self.gpu = False
+		# the tensor datatype used for storing DeepStack's internal data
+		self.dtype = np.float32
 		# list of pot-scaled bet sizes to use in tree
-		self.bet_sizing = np.array([1], dtype=float)
+		self.bet_sizing = np.array([1], dtype=self.dtype)
 		# server running the ACPC dealer
 		self.acpc_server = "localhost"
 		# server port running the ACPC dealer
 		self.acpc_server_port = 20000
 		# the number of betting rounds in the game
 		self.streets_count = 2
-		'''
-		# the tensor datatype used for storing DeepStack's internal data
-		self.Tensor = torch.FloatTensor
-		'''
 		# the directory for data files
 		self.data_directory = '../Data/'
 		# the size of the game's ante, in chips
