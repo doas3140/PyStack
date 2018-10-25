@@ -101,7 +101,10 @@ class CardTools():
 		@param: board a possibly empty vector of board cards
 		@return () int of the current betting round
 		'''
-		pass
+		if board.ndim == 0:
+			return 1
+		else:
+			return 2
 
 
 	def get_second_round_boards(self):

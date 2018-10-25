@@ -29,8 +29,8 @@ class TerminalEquity():
 		strength_view_1 = strength.reshape([CC,1]) * np.ones_like(call_matrix) # ? galima broadcastint
 		strength_view_2 = strength.reshape([1,CC]) * np.ones_like(call_matrix)
 
-		call_matrix = (strength_view_1 > strength_view_2)
-		call_matrix -= (strength_view_1 < strength_view_2)
+		call_matrix[:,:] = (strength_view_1 > strength_view_2).astype(int)
+		call_matrix[:,:] -= (strength_view_1 < strength_view_2).astype(int)
 		self._handle_blocking_cards(call_matrix, board_cards)
 
 
@@ -42,7 +42,7 @@ class TerminalEquity():
 		'''
 		CC = game_settings.card_count
 		possible_hand_indexes = card_tools.get_possible_hand_indexes(board) # (CC,) bool type
-		equity_matrix *= possible_hand_indexes.reshape([1,CC]) * possible_hand_indexes.reshape([CC,1]) # np.dot can be faster
+		equity_matrix[:,:] *= possible_hand_indexes.reshape([1,CC]) * possible_hand_indexes.reshape([CC,1]) # np.dot can be faster
 
 
 	def _set_fold_matrix(self, board):
@@ -76,7 +76,7 @@ class TerminalEquity():
 		if street == 1:
 			# iterate through all possible next round streets
 			next_round_boards = card_tools.get_second_round_boards()
-			next_round_equity_matrix = np.zeros([CC, CC], dtype=float)
+			next_round_equity_matrix = np.zeros_like(self.equity_matrix)
 			for board in range(next_round_boards.shape[0]):
 				next_board = next_round_boards[board]
 				self.get_last_round_call_matrix(next_board, next_round_equity_matrix)

@@ -9,6 +9,7 @@
 	, where a lower strength means a stronger hand:
 	high pair < low pair < high card < low card
 '''
+import numpy as np
 
 from Settings.game_settings import game_settings
 from Game.card_to_string_conversion import card_to_string
@@ -40,7 +41,7 @@ class Evaluator():
 		@return the strength value of the hand
 		'''
 		RC = game_settings.rank_count
-		hand_value += 1 # reikia +1 pridet pries skaiciuojant value, nes 0*x = 0
+		hand_ranks += 1 # reikia +1 pridet pries skaiciuojant value, nes 0*x = 0
 		# check for the pair
 		if hand_ranks[0] == hand_ranks[1]:
 			# paired hand, value of the pair goes first, value of the kicker goes second

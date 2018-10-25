@@ -40,7 +40,7 @@ class CardToStringConversion():
 		@return () the index of the rank
 		'''
 		SC = game_settings.suit_count
-		return int( np.floor( (card-1) / SC ) )
+		return int( np.floor(card / SC) )
 
 	def card_to_string(self, card):
 		''' Converts a card's numeric representation to its string representation.
