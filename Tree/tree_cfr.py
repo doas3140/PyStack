@@ -11,6 +11,7 @@ from Settings.arguments import arguments
 from Settings.constants import constants
 from Settings.game_settings import game_settings
 from Game.card_tools import card_tools
+from Game.card_to_string_conversion import card_to_string
 from TerminalEquity.terminal_equity import TerminalEquity
 
 class TreeCFR():
@@ -30,11 +31,14 @@ class TreeCFR():
 		@return a @{terminal_equity|TerminalEquity} evaluator for the node
 		'''
 		try:
-			cached = self._cached_terminal_equities[node.board.tostring()]
+			board_str = card_to_string.cards_to_string(node.board)
+			cached = self._cached_terminal_equities[board_str]
 		except:
+			# print(np.fromstring(node.board.tostring(), dtype=node.board.dtype))
 			cached = TerminalEquity()
 			cached.set_board(node.board)
-			self._cached_terminal_equities[node.board.tostring()] = cached
+			board_str = card_to_string.cards_to_string(node.board)
+			self._cached_terminal_equities[board_str] = cached
 		return cached
 
 
@@ -67,13 +71,13 @@ class TreeCFR():
 				current_strategy = node.strategy
 			else: # we have to compute current strategy at the beginning of each iteraton
 				# initialize regrets in the first iteration
-				node.regrets = np.full([AC,CC], self.regret_epsilon, dtype=arguments.dtype) if node.regrets is None else node.regrets
-				node.possitive_regrets = np.full([AC,CC], self.regret_epsilon, dtype=arguments.dtype) if node.possitive_regrets is None else node.possitive_regrets
+				if node.regrets is None: node.regrets = np.full([AC,CC], self.regret_epsilon, dtype=arguments.dtype)
+				if node.possitive_regrets is None: node.possitive_regrets = np.full([AC,CC], self.regret_epsilon, dtype=arguments.dtype)
 				# compute positive regrets so that we can compute the current strategy from them
 				node.possitive_regrets = node.regrets.copy()
 				node.possitive_regrets[node.possitive_regrets <= self.regret_epsilon] = self.regret_epsilon
 				# compute the current strategy
-				regrets_sum = node.possitive_regrets.sum(axis=action_dim, keepdims=True) # ? - torch grazina [1,6], np - [6,]
+				regrets_sum = node.possitive_regrets.sum(axis=action_dim, keepdims=True)
 				current_strategy = node.possitive_regrets.copy()
 				current_strategy /= ( regrets_sum * np.ones_like(current_strategy) )
 			# current cfv [[actions, players, ranges]]
@@ -94,7 +98,7 @@ class TreeCFR():
 				child_node.ranges_absolute = node.ranges_absolute.copy()
 				child_node.ranges_absolute[0] = children_ranges_absolute[0][i].copy()
 				child_node.ranges_absolute[1] = children_ranges_absolute[1][i].copy() # == :copy() ?
-				self.cfrs_iter_dfs(child_node, iter) # ? - card_count ?
+				self.cfrs_iter_dfs(child_node, iter)
 				cf_values_allactions[i] = child_node.cf_values
 			node.cf_values = np.zeros([PC,CC], dtype=arguments.dtype)
 			if node.current_player != constants.players.chance:
@@ -156,7 +160,8 @@ class TreeCFR():
 		root.ranges_absolute = starting_ranges
 		for iter in range(iter_count):
 			self.cfrs_iter_dfs(root, iter)
-
+		for k,v in self._cached_terminal_equities.items():
+			print(k, v)
 
 
 
