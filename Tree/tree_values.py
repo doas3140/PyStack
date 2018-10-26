@@ -24,27 +24,25 @@ class TreeValues():
 		@param: ranges_absolute a (2,K) tensor containing the probabilities of each
 				player reaching the current node with each private hand
 		'''
+		actions_count = len(node.children)
+		CC, PC, AC = game_settings.card_count, constants.players_count, actions_count
 		node.ranges_absolute = ranges_absolute.copy()
 		if node.terminal:
 			return
 		assert(node.strategy is not None)
-		actions_count = len(node.children)
-		AC = actions_count
 		# check that it's a legal strategy
-		strategy_to_check = node.strategy
-		hands_mask = card_tools.get_possible_hand_indexes(node.board)
 		if node.current_player != constants.players.chance:
-			checksum = strategy_to_check.sum(axis=0)
-			assert(not np.any(strategy_to_check < 0))
+			node.strategy[ node.strategy < 0 ] = 0 # kartais skaiciai yra -1e11
+			checksum = node.strategy.sum(axis=0)
+			assert(not np.any(node.strategy < 0))
 			assert(not np.any(checksum > 1.001))
 			assert(not np.any(checksum < 0.999))
 			assert(not np.any(checksum != checksum))
 		assert((node.ranges_absolute < 0).sum() == 0)
 		assert((node.ranges_absolute > 1).sum() == 0)
 		# check if the range consists only of cards that don't overlap with the board
-		CC = game_settings.card_count
-		PC = constants.players_count
-		impossible_hands_mask = np.ones_like(hands_mask,dtype=int) - hands_mask
+		hands_mask = card_tools.get_possible_hand_indexes(node.board)
+		impossible_hands_mask = np.ones_like(hands_mask,dtype=arguments.int_dtype) - hands_mask
 		impossible_range_sum = (node.ranges_absolute.copy() * impossible_hands_mask.reshape([1,CC])).sum() # ? delete .copy()
 		assert(impossible_range_sum == 0, impossible_range_sum)
 		children_ranges_absolute = np.zeros([len(node.children), PC, CC], dtype=arguments.dtype)
@@ -148,8 +146,8 @@ class TreeValues():
 				at the root node (default uniform)
 		'''
 		PC, CC = constants.players_count, game_settings.card_count
-		# 1.0 set the starting range (uniform if r=None)
-		starting_ranges = np.full([PC,CC], 1/CC, dtype=arguments.dtype) if starting_ranges is None else starting_ranges
+		# 1.0 set the starting range (uniform if ranges=None)
+		if starting_ranges is None: starting_ranges = np.full([PC,CC], 1/CC, dtype=arguments.dtype)
 		# 2.0 check the starting ranges
 		checksum = starting_ranges.sum(axis=1)
 		assert(abs(checksum[0] - 1) < 0.0001, 'starting range does not sum to 1')

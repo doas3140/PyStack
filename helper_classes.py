@@ -78,17 +78,6 @@ class TreeParams():
 		self.limit_to_street = None # boolean
 		self.bet_sizing = None
 
-	def init_root_node(self): # from Player.continual_resolving lua file
-		import numpy as np
-		from Settings.constants import constants
-		from Settings.arguments import arguments
-		first_node = Node()
-		first_node.board = np.zeros([], dtype=int)
-		first_node.street = 1
-		first_node.current_player = constants.players.P1
-		first_node.bets = np.array([arguments.ante, arguments.ante], dtype=int)
-		self.root_node = first_node
-		self.limit_to_street = True
 
 
 
