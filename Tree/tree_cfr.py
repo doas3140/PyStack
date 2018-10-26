@@ -160,8 +160,6 @@ class TreeCFR():
 		root.ranges_absolute = starting_ranges
 		for iter in range(iter_count):
 			self.cfrs_iter_dfs(root, iter)
-		for k,v in self._cached_terminal_equities.items():
-			print(k, v)
 
 
 
