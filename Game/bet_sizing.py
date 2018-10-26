@@ -7,12 +7,13 @@ import numpy as np
 from Settings.arguments import arguments
 
 class BetSizing():
-	def __init__(self, pot_fractions):
+	def __init__(self, pot_fractions=None):
 		''' Constructor
 		@param: pot_fractions (num_fractions,) a list of fractions of the pot
 				which are allowed as bets, sorted in ascending (min->max) order
 		'''
-		self.pot_fractions = pot_fractions or np.array([1], dtype=float)
+		if pot_fractions is not None: self.pot_fractions = pot_fractions
+		else: self.pot_fractions = np.array([1], dtype=arguments.dtype)
 
 
 	def get_possible_bets(self, node):
@@ -34,15 +35,15 @@ class BetSizing():
 		min_raise_size = max(min_raise_size, arguments.ante)
 		min_raise_size = min(max_raise_size, min_raise_size)
 		if min_raise_size == 0:
-			return np.zeros([], dtype=arguments.dtype) # (N,P), when N = 0
+			return np.zeros([], dtype=arguments.int_dtype) # (N,P), when N = 0
 		elif min_raise_size == max_raise_size: # all in
-			out = np.full([1,2], opponent_bet, dtype=arguments.dtype)
+			out = np.full([1,2], opponent_bet, dtype=arguments.int_dtype)
 			out[0][current_player] = opponent_bet + min_raise_size
 			return out # (N,P)
 		else:
 			# iterate through all bets and check if they are possible
 			max_possible_bets_count = self.pot_fractions.shape[0] + 1 # we can always go allin
-			out = np.full([max_possible_bets_count,2], opponent_bet, dtype=arguments.dtype)
+			out = np.full([max_possible_bets_count,2], opponent_bet, dtype=arguments.int_dtype)
 			# take pot size after opponent bet is called
 			pot = opponent_bet * 2
 			used_bets_count = 0

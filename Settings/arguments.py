@@ -9,6 +9,7 @@ class Parameters():
 		self.gpu = False
 		# the tensor datatype used for storing DeepStack's internal data
 		self.dtype = np.float32
+		self.int_dtype = np.uint16
 		# list of pot-scaled bet sizes to use in tree
 		self.bet_sizing = np.array([1], dtype=self.dtype)
 		# server running the ACPC dealer

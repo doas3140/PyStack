@@ -81,9 +81,9 @@ class CardToStringConversion():
 				representation of the card
 		'''
 		if card_string == '':
-			return np.zeros([], dtype=arguments.dtype)
+			return np.zeros([], dtype=arguments.int_dtype)
 		else:
-			return np.array([self.string_to_card(card_string)], dtype=arguments.dtype)
+			return np.array([self.string_to_card(card_string)], dtype=arguments.int_dtype)
 
 
 
