@@ -9,7 +9,7 @@ class Parameters():
 		self.gpu = False
 		# the tensor datatype used for storing DeepStack's internal data
 		self.dtype = np.float32
-		self.int_dtype = np.uint16
+		self.int_dtype = np.int16
 		# list of pot-scaled bet sizes to use in tree
 		self.bet_sizing = np.array([1], dtype=self.dtype)
 		# server running the ACPC dealer
@@ -41,7 +41,8 @@ class Parameters():
 		# the name of the neural net file
 		self.value_net_name = 'final'
 		# the neural net architecture
-		self.net = '{nn.Linear(input_size, 50), nn.PReLU(), nn.Linear(50, output_size)}'
+		self.num_layers = 2 # (including output layer)
+		self.num_neurons = 50
 		# how often to save the model during training
 		self.save_epoch = 2
 		# how many epochs to train for
