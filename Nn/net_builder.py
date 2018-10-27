@@ -37,7 +37,7 @@ class NetBuilder():
 		# feed forward part
 		ff = m_input
 		for _ in range(num_layers-1):
-		    ff = keras.layers.Dense(500)(ff)
+		    ff = keras.layers.Dense(arguments.num_neurons)(ff)
 		    ff = keras.layers.PReLU()(ff)
 		ff = keras.layers.Dense(num_output, name='feed_forward_output')(ff)
 		# dot product of both (feed forward and player ranges)
@@ -48,8 +48,7 @@ class NetBuilder():
 		# divide it by 2
 		d = keras.layers.Lambda(lambda x: x/2)(d)
 		# subtract input (without pot) and last layer
-		o = keras.layers.subtract([sp,d], name='zero_sum_output')
-		m_output = o
+		m_output = keras.layers.subtract([sp,d], name='zero_sum_output')
 		model = keras.models.Model(m_input, m_output)
 		return model
 
