@@ -170,19 +170,19 @@ class CardTools():
 		''' Initializes the board index table.
 		@return (CC,CC) matrix, where (i,j) == (j,i), because its the
 				same hand combo. matrix ex: if CC = 6:
-				[[-1,  1,  2,  3,  4,  5],
-		         [ 1, -1,  6,  7,  8,  9],
-		         [ 2,  6, -1, 10, 11, 12],
-		         [ 3,  7, 10, -1, 13, 14],
-		         [ 4,  8, 11, 13, -1, 15],
-		         [ 5,  9, 12, 14, 15, -1]]
+				[[-1,  0,  1,  2,  3,  4],
+		         [ 0, -1,  5,  6,  7,  8],
+		         [ 1,  5, -1,  9, 10, 11],
+		         [ 2,  6,  9, -1, 12, 13],
+		         [ 3,  7, 10, 12, -1, 14],
+		         [ 4,  8, 11, 13, 14, -1]]
 		'''
 		BCC, CC = game_settings.board_card_count, game_settings.card_count
 		if BCC == 1:
-			self._board_index_table = np.arange(1, CC+1, dtype=arguments.int_dtype) # uint?
+			self._board_index_table = np.arange(CC, dtype=arguments.int_dtype) # uint?
 		elif BCC == 2:
 			self._board_index_table = np.full([CC,CC], -1, dtype=arguments.int_dtype) # int?
-			board_idx = 1
+			board_idx = 0
 			for card_1 in range(CC):
 				for card_2 in range(card_1+1, CC):
 					self._board_index_table[card_1][card_2] = board_idx

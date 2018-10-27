@@ -31,7 +31,7 @@ class TreeCFR():
 		@return a @{terminal_equity|TerminalEquity} evaluator for the node
 		'''
 		# board_idx = card_to_string.cards_to_string(node.board)
-		if node.board.ndim == 0: board_idx = 0
+		if node.board.ndim == 0: board_idx = -2
 		else: board_idx = card_tools.get_board_index(node.board)
 		try:
 			cached = self._cached_terminal_equities[board_idx]
