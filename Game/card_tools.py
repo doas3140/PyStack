@@ -13,7 +13,7 @@ from Settings.constants import constants
 
 class CardTools():
 	def __init__(self):
-		pass
+		self._init_board_index_table()
 
 
 	def hand_is_possible(self, hand):
@@ -170,14 +170,26 @@ class CardTools():
 		''' Initializes the board index table.
 		@return (CC,CC) matrix, where (i,j) == (j,i), because its the
 				same hand combo. matrix ex: if CC = 6:
-				[[ 0,  0,  1,  2,  3,  4],
-				 [ 0,  0,  5,  6,  7,  8],
-				 [ 1,  5,  0,  9, 10, 11],
-				 [ 2,  6,  9,  0, 12, 13],
-				 [ 3,  7, 10, 12,  0, 14],
-				 [ 4,  8, 11, 13, 14,  0]]
+				[[-1,  1,  2,  3,  4,  5],
+		         [ 1, -1,  6,  7,  8,  9],
+		         [ 2,  6, -1, 10, 11, 12],
+		         [ 3,  7, 10, -1, 13, 14],
+		         [ 4,  8, 11, 13, -1, 15],
+		         [ 5,  9, 12, 14, 15, -1]]
 		'''
-		pass
+		BCC, CC = game_settings.board_card_count, game_settings.card_count
+		if BCC == 1:
+			self._board_index_table = np.arange(1, CC+1, dtype=arguments.int_dtype) # uint?
+		elif BCC == 2:
+			self._board_index_table = np.full([CC,CC], -1, dtype=arguments.int_dtype) # int?
+			board_idx = 1
+			for card_1 in range(CC):
+				for card_2 in range(card_1+1, CC):
+					self._board_index_table[card_1][card_2] = board_idx
+					self._board_index_table[card_2][card_1] = board_idx
+					board_idx += 1
+		else:
+			assert(False, 'unsupported board size')
 
 
 	def get_board_index(self, board):
@@ -185,7 +197,11 @@ class CardTools():
 		@param: board a non-empty vector of board cards
 		@return () int of the numerical index for the board
 		'''
-		pass
+		index = self._board_index_table # ? - nereikia copy?
+		for i in range(board.shape[0]):
+			index = index[ board[i] ] # ? - t[board] = tas pats?
+		assert(index > 0, index)
+		return index
 
 
 	def normalize_range(self, board, range):

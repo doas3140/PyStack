@@ -30,15 +30,15 @@ class TreeCFR():
 		@param: node the terminal node to evaluate
 		@return a @{terminal_equity|TerminalEquity} evaluator for the node
 		'''
+		# board_idx = card_to_string.cards_to_string(node.board)
+		if node.board.ndim == 0: board_idx = 0
+		else: board_idx = card_tools.get_board_index(node.board)
 		try:
-			board_str = card_to_string.cards_to_string(node.board)
-			cached = self._cached_terminal_equities[board_str]
+			cached = self._cached_terminal_equities[board_idx]
 		except:
-			# print(np.fromstring(node.board.tostring(), dtype=node.board.dtype))
 			cached = TerminalEquity()
 			cached.set_board(node.board)
-			board_str = card_to_string.cards_to_string(node.board)
-			self._cached_terminal_equities[board_str] = cached
+			self._cached_terminal_equities[board_idx] = cached
 		return cached
 
 
@@ -132,7 +132,7 @@ class TreeCFR():
 		@param: current_strategy the CFR strategy for the current iteration
 		@param: iter the iteration number of the current CFR iteration
 		'''
-		actions_count = len(node.children) # ?
+		actions_count = len(node.children)
 		AC, CC = actions_count, game_settings.card_count
 		if iter > arguments.cfr_skip_iters:
 			node.strategy = np.zeros([AC,CC], dtype=arguments.dtype) if node.strategy is None else node.strategy
