@@ -28,7 +28,8 @@ class TreeVisualiser():
         if type == constants.node_types.terminal_fold:
             return self.C1
         if type == constants.node_types.check:
-            return self.C3 # not needed
+            pass
+            # return self.C2 # not needed
         if type == constants.node_types.terminal_call:
             return self.C3
         if node_type == constants.node_types.chance_node:
