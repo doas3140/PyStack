@@ -12,22 +12,31 @@ class TreeVisualiser():
     def __init__(self):
         self.i = 0
         self.g = None # graph
+        self.show_vars = None # bool
+        self.C1 = '#d11141' # red
+        self.C2 = '#00b159' # green
+        self.C3 = '#00aedb' # blue
+        self.C4 = '#f37735' # orange
+        self.C5 = '#ffc425' # yellow
+        self.BG = '#fffef9' #
+        self.FT = '#fffef9'
+        self.FTE = '#03396c' # edge
 
     def get_color(self, node):
         node_type = node.node_type
         type = node.type
         if type == constants.node_types.terminal_fold:
-            return 'red'
+            return self.C1
         if type == constants.node_types.check:
-            return '#DDA0DD' # purple
+            return self.C3 # not needed
         if type == constants.node_types.terminal_call:
-            return 'blue'
+            return self.C3
         if node_type == constants.node_types.chance_node:
-            return 'yellow'
+            return self.C5
         if node_type == constants.node_types.inner_node:
-            return 'orange'
+            return self.C4
         else:
-            return 'white'
+            return '#6f7c85'
 
 
     def style_node(self, node, node_idx):
@@ -39,7 +48,7 @@ class TreeVisualiser():
         # if node_type == constants.node_types.inner_node:
         #     print(node.type)
         color = self.get_color(node)
-        self.g.attr('node', shape='circle', color=color, fontcolor='#03396c', fixedsize='true', width='0.3', height='0.3')
+        self.g.attr('node', shape='circle', color=color, fontcolor=self.FT, fixedsize='true', width='0.3', height='0.3')
         if type == constants.node_types.terminal_fold:
             self.g.node(str(node_idx), terminal_str)
         if type == constants.node_types.check: # NOTE: check = terminal_call = -1
@@ -55,7 +64,7 @@ class TreeVisualiser():
 
     def style_node_with_vars(self, node, node_idx):
         color = self.get_color(node)
-        self.g.attr('node', shape='box', color=color, fontcolor='#03396c', fontsize='10', fixedsize='true', width='1.5', height='0.5')
+        self.g.attr('node', shape='box', color=color, fontcolor=self.FT, fontsize='10', fixedsize='true', width='1.5', height='0.5')
         bets = np.array2string(node.bets, suppress_small=True, precision=2)
         pot = np.array2string(node.pot, suppress_small=True, precision=2)
         board_str = card_to_string.cards_to_string(node.board)
@@ -68,7 +77,7 @@ class TreeVisualiser():
             type = 'TC'
         type = type or node.node_type
         if type == constants.node_types.chance_node:
-            type = 'VV'
+            type = 'C'
         elif type == constants.node_types.inner_node:
             type = 'D'
         depth = node.depth
@@ -108,18 +117,22 @@ class TreeVisualiser():
         ''' recursively creates edges and nodes for graphviz '''
         for i, child in enumerate(parent.children):
             self.i += 1
-            self.style_node_with_vars(child, self.i)
-            self.style_edge_with_strats(i, parent, child, parent_index, self.i)
+            if not self.show_vars: self.style_node(child, self.i)
+            else: self.style_node_with_vars(child, self.i)
+            if not self.show_vars: self.style_edge(i, parent, child, parent_index, self.i)
+            else: self.style_edge_with_strats(i, parent, child, parent_index, self.i)
             self.dfs(child, str(self.i), depth+1)
 
-    def draw_tree(self, root, name='tree', save_pdf=False, size='6,6'):
+    def draw_tree(self, root, name='tree', save_pdf=False, size='6,6', show_vars=False):
+        self.show_vars = show_vars
         self.i = 0
         self.g = Digraph(name, filename=name)
-        self.g.attr(size=size, bgcolor='#fffef9')
-        self.g.node_attr.update(style='filled', fontcolor='#e6e6ea')
-        self.g.edge_attr.update(color='#e6e6ea', fontcolor='#03396c')
+        self.g.attr(size=size, bgcolor=self.BG)
+        self.g.node_attr.update(style='filled', fontcolor=self.FT)
+        self.g.edge_attr.update(color='#e6e6ea', fontcolor=self.FTE)
         # add first node (root node)
-        self.style_node_with_vars(root, self.i)
+        if not self.show_vars: self.style_node(root, self.i)
+        else: self.style_node_with_vars(root, self.i)
         # run depth first search and add edges and nodes to g
         self.dfs(root, parent_index=self.i, depth=0)
         # save pdf
