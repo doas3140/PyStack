@@ -52,7 +52,6 @@ class Evaluator():
 		else:
 			# hand is a high card
 			hand_value = hand_ranks[0] * RC * RC + hand_ranks[1] * RC + hand_ranks[2]
-		end
 		return hand_value
 
 
