@@ -40,5 +40,7 @@ class Constants():
 		self.acpc_actions.ccall = "ccall" # (check/call)
 		self.acpc_actions.raise_ = "raise"
 
+		self.max_number = 999999
+
 
 constants = Constants()
