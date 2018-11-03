@@ -20,11 +20,11 @@ class RangeGenerator():
 		'''
 		batch_size = cards.shape[0]
 		assert(mass.shape[0] == batch_size)
-		card_count = cards.shape[0]
+		card_count = cards.shape[1]
 		CC, BS = card_count, batch_size
 		# we terminate recursion at size of 1
 		if CC == 1:
-			cards[:] = mass.copy()
+			cards[ : , 0 ] = mass.copy() # (10,1) <- (10,)
 		else:
 			rand = np.random.rand(batch_size)
 			mass1 = mass.copy() * rand
@@ -35,21 +35,23 @@ class RangeGenerator():
 			if halfSize % 1 != 0:
 				# if end is .5 then init randomly between two numbers
 				halfSize = int(halfSize - 0.5)
-      			halfSize = halfSize + np.random.randint(2) # (0 or 1)
+				halfSize = halfSize + np.random.randint(2) # (0 or 1)
+			halfSize = int(halfSize)
+
 			self._generate_recursion(cards[ : , :halfSize ], mass1)
 			self._generate_recursion(cards[ : , halfSize: ], mass2)
 
 
-	def _generate_sorted_range(self, range):
+	def _generate_sorted_range(self, ranges):
 		''' Samples a batch of ranges with hands sorted by strength on the board.
 		@param: range a (N,K) tensor in which to store the sampled ranges, where N is
 				the number of ranges to sample and K is the range size
 		@see generate_range
 		'''
-		batch_size = range.shape[0]
+		batch_size = ranges.shape[0]
 		BS = batch_size
 		mass = np.ones([BS], dtype=arguments.dtype)
-		self._generate_recursion(range, mass)
+		self._generate_recursion(ranges, mass)
 
 
 	def set_board(self, board):
@@ -58,11 +60,11 @@ class RangeGenerator():
 			share any cards with the board.
 		@param: board a possibly empty vector of board cards
 		'''
-		hand_strengths = evaluator.batch_eval(board)
-		possible_hand_indexes = card_toos.get_possible_hand_indexes(board) # (CC) dtype=bool
+		hand_strengths = evaluator.batch_eval(board) # (CC,)
+		possible_hand_indexes = card_tools.get_possible_hand_indexes(board) # (CC,) dtype=bool
 		self.possible_hands_count = possible_hand_indexes.sum(axis=0)
 		PH = self.possible_hands_count
- 		self.possible_hands_mask = possible_hand_indexes.reshape([1,-1]) # (1,CC)
+		self.possible_hands_mask = possible_hand_indexes # .reshape([1,-1]) # (1,CC)
 		non_coliding_strengths = np.zeros([PH], dtype=hand_strengths.dtype)
 		non_coliding_strengths = hand_strengths[self.possible_hands_mask]
 		order = np.argsort(non_coliding_strengths)
@@ -72,7 +74,7 @@ class RangeGenerator():
 		# self.sorted_range = np.zeros([])
 
 
-	def generate_range(self, range):
+	def generate_range(self, ranges):
 		''' Samples a batch of random range vectors.
 			Each vector is sampled indepently by randomly splitting the probability
 			mass between the bottom half and the top half of the range, and then
@@ -81,30 +83,30 @@ class RangeGenerator():
 		@param: range a (N,K) tensor in which to store the sampled ranges, where N is
 				the number of ranges to sample and K is the range size
 		'''
-		batch_size = range.shape[0]
+		batch_size = ranges.shape[0]
 		BS, PH = batch_size, self.possible_hands_count
 		self.sorted_range = np.zeros([BS,PH], dtype=arguments.dtype)
 		self._generate_sorted_range(self.sorted_range)
 		# we have to reorder the the range back to undo the sort by strength
-		index = self.reverse_order * np.ones_like(self.sorted_range)
+		index = self.reverse_order * np.ones(self.sorted_range.shape, dtype=arguments.int_dtype)
 		self.reordered_range = np_gather(self.sorted_range, 1, index)
-		mask = self.possible_hands_mask * np.ones_like(range, dtype=bool)
-		range.fill(0)
-		range[mask] = self.reordered_range
+		mask = self.possible_hands_mask * np.ones_like(ranges, dtype=bool)
+		ranges.fill(0)
+		ranges[:,:] = mask * self.reordered_range
 
 
 
 
 def np_gather(a, dim, index):
 	''' Does gather operation: https://github.com/torch/torch7/blob/master/doc/tensor.md#tensor-gatherdim-index '''
-    expanded_index = []
-    for i in range(a.ndim):
-        if dim==i:
-            expanded_index.append( index )
-        else:
-            shape = [-1 if i==j else 1 for j in range(a.ndim)]
-            expanded_index.append( np.arange(a.shape[i]).reshape(shape) )
-    return a[expanded_index]
+	expanded_index = []
+	for i in range(a.ndim):
+		if dim==i:
+			expanded_index.append( index )
+		else:
+			shape = [-1 if i==j else 1 for j in range(a.ndim)]
+			expanded_index.append( np.arange(a.shape[i]).reshape(shape) )
+	return a[expanded_index]
 
 
 
