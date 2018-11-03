@@ -110,7 +110,7 @@ class DataGeneration():
 				bucket_conversion.card_range_to_bucket_range(values[player], targets[ b*BS:(b+1)*BS , start_idx:end_idx ])
 			# computing a mask of possible buckets
 			bucket_mask = bucket_conversion.get_possible_bucket_mask()
-		    masks[ b*BS:(b+1)*BS , : ] = bucket_mask * np.ones([BS,bC], dtype=bucket_mask.dtype)
+			masks[ b*BS:(b+1)*BS , : ] = bucket_mask * np.ones([BS,bC], dtype=bucket_mask.dtype)
 		np.save(file_name + '.inputs', inputs)
 		np.save(file_name + '.targets', targets)
 		np.save(file_name + '.masks', masks)

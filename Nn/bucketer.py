@@ -36,7 +36,7 @@ class Bucketer():
 		# can be [0, CC, 2xCC, 3xCC, (BC-1)xCC]
 		shift = board_idx * CC
 		# shift buckets indexes by shift scalar
-  		buckets += shift
+		buckets += shift
 		# impossible hands will have bucket number -1
 		# cards that are on board are impossible ?
 		for i in range(board.shape[0]):

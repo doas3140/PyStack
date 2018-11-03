@@ -10,7 +10,7 @@ from Settings.game_settings import game_settings
 class BucketConversion():
 	def __init__(self):
 		self.bucketer = None
-  		self.bucket_count = None
+		self.bucket_count = None
 		self._range_matrix = None
 		self._reverse_value_matrix = None
 
@@ -23,17 +23,17 @@ class BucketConversion():
 			self._range_matrix =    	 12 13 14 15 16 17  (indexes)
 										  V  V  V  V  V  V
 	[[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
- 	 [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+	  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
 	 [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
 	 [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
 	 [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
 	 [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
 		'''
 		self.bucketer = Bucketer()
-  		self.bucket_count = self.bucketer.get_bucket_count() # BC*CC
+		self.bucket_count = self.bucketer.get_bucket_count() # BC*CC
 		CC, bC = game_settings.card_count, self.bucket_count
 		self._range_matrix = np.zeros([CC,bC], dtype=arguments.int_dtype)
- 		class_ids = np.arange(bC, dtype=arguments.int_dtype)
+		class_ids = np.arange(bC, dtype=arguments.int_dtype)
 		class_ids = class_ids.reshape([1,bC]) * np.ones([CC,bC], dtype=class_ids.int_dtype)
 		buckets = self.bucketer.compute_buckets(board) # [BC*CC, ..., (BC+1)*CC)
 		card_buckets = buckets.reshape([CC,1]) * np.ones([CC,bC], dtype=buckets.int_dtype)
