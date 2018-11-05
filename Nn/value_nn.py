@@ -1,6 +1,7 @@
 '''
 	Wraps the calls to the final neural net.
 '''
+import tensorflow.keras as keras
 
 from Settings.arguments import arguments
 
@@ -8,11 +9,9 @@ class ValueNn():
 	def __init__(self):
 		''' Loads the neural net from disk.
 		'''
-		pass
-		# 0.0 select the correct model cpu/gpu
-		# 1.0 load model information
-		# import GPU modules only if needed
-		# 2.0 load model
+		self.mlp = keras.models.load_model(net_file + '.model')
+		print('NN architecture:')
+		self.mlp.summary()
 
 
 	def get_value(self, inputs, output):
@@ -22,7 +21,7 @@ class ValueNn():
 		@param: output An (N,O) tensor in which to store N sets of
 				neural net outputs. See @{net_builder} for details of each output.
 		'''
-		pass
+		output[:,:] = self.mlp.predict(inputs)
 
 
 
