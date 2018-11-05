@@ -78,6 +78,46 @@ class TreeParams():
 		self.limit_to_street = None # boolean
 		self.bet_sizing = None
 
+class Lookahead():
+	def __init__(self):
+		self.ccall_action_index = None # int
+		self.fold_action_index = None # int
+		self.tree = None # Node obj
+		self.next_street_boxes = None # dict [int->NextRoundValue obj]
+		self.regret_epsilon = None # const int
+		self.acting_player = None # arr[depth+1]
+		self.depth = None # int
+		self.bets_count = None # dict
+		self.nonallinbets_count = None # dict
+		self.terminal_actions_count = None # dict
+		self.actions_count = None # dict
+		# node counts
+		self.nonterminal_nodes_count = None # dict
+		self.nonterminal_nonallin_nodes_count = None # dict
+		self.all_nodes_count = None # dict
+		self.terminal_nodes_count = None # dict
+		self.allin_nodes_count = None # dict
+		self.inner_nodes_count = None # dict
+		# lookahead main data structures
+  		# all the structures are per-layer tensors, that is,
+		# each layer holds the data in n-dimensional tensors
+		self.pot_size = None # dict
+		self.ranges_data = None # dict
+		self.average_strategies_data = None # dict
+		self.current_strategy_data = None # dict
+		self.cfvs_data = None # dict
+		self.average_cfvs_data = None # dict
+		self.regrets_data = None # dict
+		self.current_regrets_data = None # dict
+		self.positive_regrets_data = None # dict
+		self.placeholder_data = None # dict
+		self.regrets_sum = None # dict
+		self.empty_action_mask = None # dict
+		# used to hold and swap inner (nonterminal) nodes when doing some transpose operations
+		self.inner_nodes = None # dict
+		self.inner_nodes_p1 = None # dict
+		self.swap_data = None # dict
+
 
 
 
