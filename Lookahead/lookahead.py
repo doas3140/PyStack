@@ -77,7 +77,7 @@ class Lookahead():
 	def _compute_current_strategies(self):
 		''' Uses regret matching to generate the players' current strategies.
 		'''
-		for d in range(2,self.depth+2):
+		for d in range(2,self.depth+1):
 		    self.positive_regrets_data[d] = self.regrets_data[d].copy()
 		    self.positive_regrets_data[d] = np.clip(self.positive_regrets_data[d], self.regret_epsilon, constants.max_number)
 		    # 1.0 set regret of empty actions to 0
@@ -132,7 +132,7 @@ class Lookahead():
 			values at each lookahead state which is a terminal state of the game.
 		'''
 		CC = game_settings.card_count
-		for d in range(2, self.depth+2):
+		for d in range(2, self.depth+1):
 			# call term eq evaluation
 			if self.tree.street == 1:
 				if d > 2 or self.first_call_terminal:
@@ -161,7 +161,7 @@ class Lookahead():
 		'''
 		PC, CC = constants.players_count, game_settings.card_count
 		assert(self.tree.street == 1)
-		for d in range(2, self.depth+2):
+		for d in range(2, self.depth+1):
 			if d > 2 or self.first_call_transition:
 				self.next_street_boxes_inputs = self.next_street_boxes_inputs or {}
 				self.next_street_boxes_outputs = self.next_street_boxes_outputs or {}
@@ -227,7 +227,7 @@ class Lookahead():
 			self._compute_terminal_equities_next_street_box()
 		self._compute_terminal_equities_terminal_equity()
 		# multiply by pot scale factor
-		for d in range(2, self.depth+2):
+		for d in range(2, self.depth+1):
 			self.cfvs_data[d] *= self.pot_size[d]
 
 
@@ -235,7 +235,7 @@ class Lookahead():
 		''' Using the players' reach probabilities and terminal counterfactual
 			values, computes their cfvs at all states of the lookahead.
 		'''
-		for d in range(self.depth, 0, -1):
+		for d in range(self.depth, 1, -1):
 			gp_layer_terminal_actions_count = self.terminal_actions_count[d-2]
 			ggp_layer_nonallin_bets_count = self.nonallinbets_count[d-3]
 
@@ -290,8 +290,7 @@ class Lookahead():
 			total regrets for every state in the lookahead.
 		'''
 		CC = game_settings.card_count
-		# for d=self.depth,2,-1 do
-		for d in range(self.depth, 0, -1):
+		for d in range(self.depth, 1, -1):
 			gp_layer_terminal_actions_count = self.terminal_actions_count[d-2]
 			gp_layer_bets_count = self.bets_count[d-2]
 			ggp_layer_nonallin_bets_count = self.nonallinbets_count[d-3]
