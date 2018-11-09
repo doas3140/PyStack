@@ -28,7 +28,7 @@ class LookaheadBuilder():
 		self.lookahead.next_street_boxes = {}
 		for d in range(2, self.lookahead.depth+1):
 			self.lookahead.next_street_boxes[d] = NextRoundValue(neural_net)
-			self.lookahead.next_street_boxes[d].start_computation( self.lookahead.pot_size[d][ 2 , : , : , 1, 1 ].copy().reshape([-1]) )
+			self.lookahead.next_street_boxes[d].start_computation( self.lookahead.pot_size[d][ 1 , : , : , 0, 0 ].copy().reshape([-1]) )
 
 
 	def _compute_structure(self):
@@ -38,10 +38,10 @@ class LookaheadBuilder():
 		assert(self.lookahead.tree.street >= 1 and self.lookahead.tree.street <= 2)
 		self.lookahead.regret_epsilon = 1.0 / 1000000000
 		# which player acts at particular depth
-		self.lookahead.acting_player = np.full([self.lookahead.depth+1], -1)
-		self.lookahead.acting_player[1] = 1 # in lookahead, 1 does not stand for player IDs, it's just the first player to act
+		self.lookahead.acting_player = {}
+		self.lookahead.acting_player[1] = 0
 		for d in range(2, self.lookahead.depth+2):
-			self.lookahead.acting_player[d] = 3 - self.lookahead.acting_player[d-1]
+			self.lookahead.acting_player[d] = 1 - self.lookahead.acting_player[d-1]
 		self.lookahead.bets_count[-1] = 1
 		self.lookahead.bets_count[0] = 1
 		self.lookahead.nonallinbets_count[-1] = 1
@@ -71,7 +71,7 @@ class LookaheadBuilder():
 		self.lookahead.allin_nodes_count[2] = 1
 		self.lookahead.inner_nodes_count[1] = 1
 		self.lookahead.inner_nodes_count[2] = 1
-		for d in range(1, self.lookahead.depth):
+		for d in range(2, self.lookahead.depth+1):
 			self.lookahead.all_nodes_count[d+1] = self.lookahead.nonterminal_nonallin_nodes_count[d-1] * self.lookahead.bets_count[d-1] * self.lookahead.actions_count[d]
 			self.lookahead.allin_nodes_count[d+1] = self.lookahead.nonterminal_nonallin_nodes_count[d-1] * self.lookahead.bets_count[d-1] * 1
 			self.lookahead.nonterminal_nodes_count[d+1] = self.lookahead.nonterminal_nonallin_nodes_count[d-1] * self.lookahead.nonallinbets_count[d-1] * self.lookahead.bets_count[d]
@@ -186,7 +186,7 @@ class LookaheadBuilder():
 			prev_layer_bets_count = self.lookahead.bets_count[layer-1]
 			# compute next coordinates for parent and grandparent
 			next_parent_id = action_id - prev_layer_terminal_actions_count
-			next_gp_id = (gp_id - 1) * gp_nonallinbets_count + (parent_id)
+			next_gp_id = gp_id * gp_nonallinbets_count + parent_id
 			if (not node.terminal) and (node.current_player != constants.players.chance):
 				# parent is not an allin raise
 				assert(parent_id <= self.lookahead.nonallinbets_count[layer-2])
@@ -207,10 +207,10 @@ class LookaheadBuilder():
 						self.set_datastructures_from_tree_dfs(child_node, layer+1, child_id, next_parent_id, next_gp_id)
 					# we need to make sure that even though there are fewer actions, the last action/allin is has the same last index as if we had full number of actions
 					# we manually set the action_id as the last action (allin)
-					for b in range(existing_bets_count):
-						self.set_datastructures_from_tree_dfs(node.children[len(node.children-b+1)], layer+1, self.lookahead.actions_count[layer]-b+1, next_parent_id, next_gp_id)
+					for b in range(1, existing_bets_count+1):
+						self.set_datastructures_from_tree_dfs(node.children[len(node.children)-b], layer+1, self.lookahead.actions_count[layer]-b, next_parent_id, next_gp_id)
 					# mask out empty actions
-					self.lookahead.empty_action_mask[layer+1][ terminal_actions_count+1:-(existing_bets_count+1), next_parent_id, next_gp_id, : ] = 0
+					self.lookahead.empty_action_mask[layer+1][ terminal_actions_count:-existing_bets_count, next_parent_id, next_gp_id, : ] = 0
 				else:
 					# node has full action count, easy to handle
 					for child_id in range(len(node.children)):
@@ -236,7 +236,7 @@ class LookaheadBuilder():
 		self.construct_data_structures()
 		# traverse the tree and fill the datastructures (pot sizes, non-existin actions, ...)
 		# node, layer, action, parent_action, gp_id
-		self.set_datastructures_from_tree_dfs(tree, 1, 1, 1, 1)
+		self.set_datastructures_from_tree_dfs(tree, 1, 0, 0, 0)
 		# set additional info
 		assert(self.lookahead.terminal_actions_count[1] == 1 or self.lookahead.terminal_actions_count[1] == 2)
 		self.lookahead.first_call_terminal = self.lookahead.tree.children[2].terminal
@@ -245,8 +245,8 @@ class LookaheadBuilder():
 		# we mask out fold as a possible action when check is for free, due to
 		# 1) fewer actions means faster convergence
 		# 2) we need to make sure prob of free fold is zero because ACPC dealer changes such action to check
-		if self.lookahead.tree.bets[1] == self.lookahead.tree.bets[2]:
-			self.lookahead.empty_action_mask[2][1].fill(0)
+		if self.lookahead.tree.bets[0] == self.lookahead.tree.bets[1]:
+			self.lookahead.empty_action_mask[2][0].fill(0)
 		# construct the neural net query boxes
 		self._construct_transition_boxes()
 
