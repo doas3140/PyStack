@@ -150,8 +150,8 @@ class Lookahead():
 			# correctly set the folded player by mutliplying by -1
 			# fold_mutliplier = self.acting_player[d]*2 - 3
 			fold_mutliplier = -1 if self.acting_player[d] == constants.players.P1 else 1
-			self.cfvs_data[d][ 0, : , : , 0, : ] *= fold_mutliplier)
-			self.cfvs_data[d][ 0, : , : , 1, : ] *= -fold_mutliplier)
+			self.cfvs_data[d][ 0, : , : , 0, : ] *= fold_mutliplier
+			self.cfvs_data[d][ 0, : , : , 1, : ] *= -fold_mutliplier
 
 
 	def _compute_terminal_equities_next_street_box(self):
@@ -165,10 +165,10 @@ class Lookahead():
 			if d > 2 or self.first_call_transition:
 				self.next_street_boxes_inputs = self.next_street_boxes_inputs or {}
 				self.next_street_boxes_outputs = self.next_street_boxes_outputs or {}
-
-				self.next_street_boxes_inputs[d] = self.next_street_boxes_inputs[d] or np.zeros_like(self.ranges_data[d][ 1, : , : , : , : ].reshape([-1,PC,CC]) # ? - indexe nera {1} -> keepdims?
-				self.next_street_boxes_outputs[d] = self.next_street_boxes_outputs[d] or self.next_street_boxes_inputs[d].copy()
-
+				if self.next_street_boxes_inputs[d] is None:
+					self.next_street_boxes_inputs[d] = np.zeros_like( self.ranges_data[d][ 1, : , : , : , : ].reshape([-1,PC,CC]) )
+				if self.next_street_boxes_outputs[d] is None:
+					self.next_street_boxes_outputs[d] = self.next_street_boxes_inputs[d].copy()
 				# now the neural net accepts the input for P1 and P2 respectively, so we need to swap the ranges if necessary
 				self.next_street_boxes_outputs[d] = self.ranges_data[d][ 1, : , : , : , : ].copy()
 				if self.tree.current_player == constants.players.P1: # ? - buvo == 1
@@ -199,10 +199,10 @@ class Lookahead():
 		''' # ? - a lot of indexes (batch_idx can be -1)
 		assert( not (action_index == 2 and self.first_call_terminal) )
 		# check if we should not use the first layer for transition call
-		if action_index == 1 and self.first_call_transition:
+		if action_index == 2 and self.first_call_transition:
 			box_outputs = np.zeros_like(self.next_street_boxes_inputs[2])
 			assert(box_outputs.shape[0] == 1)
-			batch_index = 0
+			batch_index = 1
 			next_street_box = self.next_street_boxes[2]
 			pot_mult = self.pot_size[2][2]
 		else:
@@ -273,7 +273,7 @@ class Lookahead():
 		player_avg_strategy -= player_avg_strategy_sum * np.ones_like(player_avg_strategy)
 		# if the strategy is 'empty' (zero reach), strategy does not matter but we need to make sure
 		# it sums to one -> now we set to always fold
-		player_avg_strategy[1][ player_avg_strategy[1] != player_avg_strategy[1] ] = 1
+		player_avg_strategy[0][ player_avg_strategy[0] != player_avg_strategy[0] ] = 1
 		player_avg_strategy[ player_avg_strategy != player_avg_strategy ] = 0
 
 
@@ -336,14 +336,14 @@ class Lookahead():
 			out.root_cfvs = self.average_cfvs_data[1].reshape([PC,CC])[1].copy()
 			# swap cfvs indexing
 			out.root_cfvs_both_players = self.average_cfvs_data[1].reshape([PC,CC]).copy()
-			out.root_cfvs_both_players[2] = self.average_cfvs_data[1].reshape([PC,CC])[1].copy()
-			out.root_cfvs_both_players[1] = self.average_cfvs_data[1].reshape([PC,CC])[2].copy()
+			out.root_cfvs_both_players[2] = self.average_cfvs_data[1].reshape([PC,CC])[0].copy()
+			out.root_cfvs_both_players[1] = self.average_cfvs_data[1].reshape([PC,CC])[1].copy()
 		# 4.0 children CFVs
 		# [actions x range]
-		out.children_cfvs = self.average_cfvs_data[2][ : , : , : , 1, : ].copy().reshape([-1,CC])
+		out.children_cfvs = self.average_cfvs_data[2][ : , : , : , 0, : ].copy().reshape([-1,CC])
 		# IMPORTANT divide average CFVs by average strategy in here
 		scaler = self.average_strategies_data[2].reshape([-1,CC]).copy()
-		range_mul = self.ranges_data[1][ : , : , : , 1, : ].reshape([1,CC]).copy()
+		range_mul = self.ranges_data[1][ : , : , : , 0, : ].reshape([1,CC]).copy()
 		range_mul = range_mul * np.ones_like(scaler)
 		scaler = scaler * range_mul
 		scaler = np.sum(scaler, axis=1, keepdims=True) * np.ones_like(range_mul)

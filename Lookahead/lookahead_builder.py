@@ -126,7 +126,7 @@ class LookaheadBuilder():
 		self.lookahead.positive_regrets_data[1] = None
 		self.lookahead.positive_regrets_data[2] = np.zeros_like(self.lookahead.average_strategies_data[2])
 		self.lookahead.empty_action_mask[1] = None
-		self.lookahead.empty_action_mask[2] = np.zeros_like(self.lookahead.average_strategies_data[2])
+		self.lookahead.empty_action_mask[2] = np.ones_like(self.lookahead.average_strategies_data[2])
 		# data structures for summing over the actions [1 x parent_action x grandparent_id x range]
 		self.lookahead.regrets_sum[1] = np.zeros([1, 1, 1, CC], dtype=arguments.dtype)
 		self.lookahead.regrets_sum[2] = np.zeros([1, self.lookahead.bets_count[1], 1, CC], dtype=arguments.dtype)
@@ -191,8 +191,7 @@ class LookaheadBuilder():
 				# parent is not an allin raise
 				assert(parent_id <= self.lookahead.nonallinbets_count[layer-2])
 				# do we need to mask some actions for that node? (that is, does the node have fewer children than the max number of children for any node on this layer)
-				node_with_empty_actions = (len(node.children) < self.lookahead.actions_count[layer])
-				if node_with_empty_actions:
+				if len(node.children) < self.lookahead.actions_count[layer]:
 					# we need to mask nonexisting padded bets
 					assert(layer > 1)
 					terminal_actions_count = self.lookahead.terminal_actions_count[layer]
