@@ -174,7 +174,7 @@ class LookaheadBuilder():
 		# fill the potsize
 		assert(node.pot)
 		self.lookahead.pot_size[layer][ action_id, parent_id, gp_id, : , : ] = node.pot
-		node.lookahead_coordinates = np.zeros([action_id, parent_id, gp_id], dtype=arguments.dtype)
+		node.lookahead_coordinates = np.array([action_id, parent_id, gp_id], dtype=arguments.dtype)
 		# transition call cannot be allin call
 		if node.current_player == constants.players.chance:
 			assert(parent_id <= self.lookahead.nonallinbets_count[layer-2])
