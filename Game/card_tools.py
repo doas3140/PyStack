@@ -59,7 +59,9 @@ class CardTools():
 				(private card), which is `1` if the hand shares at least
 				one card with the board and `0` otherwise
 		'''
-		pass
+		out = self.get_possible_hand_indexes(board)
+		out = 1 - out
+		return out
 
 
 	def get_uniform_range(self, board):
@@ -93,9 +95,11 @@ class CardTools():
 		@return `true` if the range puts 0 probability on invalid hands and has
 				total probability 1
 		'''
-		pass
-		# impossible_hands_probabilities.sum() will only be 0 if in range vector
-		# all impossible hands are 0 probability
+		check = range.copy()
+		only_possible_hands = (range.copy() * self.get_impossible_hand_indexes(board)).sum() == 0
+		sums_to_one = abs(1.0 - range.sum()) < 0.0001
+		is_valid = only_possible_hands and sums_to_one
+		return is_valid
 
 
 	def board_to_street(self, board):

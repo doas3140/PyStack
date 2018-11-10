@@ -9,7 +9,7 @@ from Settings.game_settings import game_settings
 class CardToStringConversion():
 	def __init__(self):
 		CC = game_settings.card_count
-		self.suit_table = ['h', 's', 'c', 'd']
+		self.suit_table = ['s', 'h', 'c', 'd']
 		self.rank_table = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2']
 		# card -> string table
 		table = {}

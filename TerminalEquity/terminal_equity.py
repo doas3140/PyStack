@@ -42,7 +42,8 @@ class TerminalEquity():
 		'''
 		CC = game_settings.card_count
 		possible_hand_indexes = card_tools.get_possible_hand_indexes(board) # (CC,) bool type
-		equity_matrix[:,:] *= possible_hand_indexes.reshape([1,CC]) * possible_hand_indexes.reshape([CC,1]) # np.dot can be faster
+		equity_matrix[:,:] *= possible_hand_indexes.reshape([1,CC])
+		equity_matrix[:,:] *= possible_hand_indexes.reshape([CC,1]) # np.dot can be faster
 
 
 	def _set_fold_matrix(self, board):

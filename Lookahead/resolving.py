@@ -9,6 +9,7 @@ from Tree.tree_builder import PokerTreeBuilder
 from Settings.arguments import arguments
 from Settings.constants import constants
 from Game.card_tools import card_tools
+from helper_classes import TreeParams
 
 class Resolving():
 	def __init__(self):
@@ -19,9 +20,9 @@ class Resolving():
 		''' Builds a depth-limited public tree rooted at a given game node.
 		@param: node the root of the tree
 		'''
-		build_tree_params = {}
+		build_tree_params = TreeParams()
 		build_tree_params.root_node = node
-		build_tree_params.limit_to_street = true
+		build_tree_params.limit_to_street = True
 		self.lookahead_tree = self.tree_builder.build_tree(build_tree_params)
 
 
@@ -55,7 +56,7 @@ class Resolving():
 		self.lookahead = Lookahead()
 		self.lookahead.build_lookahead(self.lookahead_tree)
 		self.lookahead.resolve(player_range, opponent_cfvs)
-		self.resolve_results = self.lookahead:get_results()
+		self.resolve_results = self.lookahead.get_results()
 		return self.resolve_results
 
 
@@ -65,9 +66,9 @@ class Resolving():
 		@param: action a legal action at the node
 		@return the index of the action
 		'''
-		actions = self:get_possible_actions(action)
+		actions = self.get_possible_actions()
 		action_id = -1
-		for i in range(1, actions.shape[0]+1):
+		for i in range(actions.shape[0]):
 			if action == actions[i]:
 				action_id = i
 		assert(action_id != -1)
@@ -76,7 +77,7 @@ class Resolving():
 
 	def get_possible_actions(self):
 		''' Gives a list of possible actions at the node being re-solved.
- 			The node must first be re-solved with @{resolve} or @{resolve_first_node}.
+			 The node must first be re-solved with @{resolve} or @{resolve_first_node}.
 		@return a list of legal actions
 		'''
 		return self.lookahead_tree.actions
@@ -127,7 +128,7 @@ class Resolving():
 		@return a vector of cfvs
 		'''
 		action_id = self._action_to_action_id(action)
-		return self.lookahead:get_chance_action_cfv(action_id, board)
+		return self.lookahead.get_chance_action_cfv(action_id, board)
 
 
 	def get_action_strategy(self, action):

@@ -15,7 +15,7 @@ class NextRoundValue():
 		@param: nn the neural network
 		'''
 		self.nn = nn
-    	self._init_bucketing()
+		self._init_bucketing()
 
 
 	def _init_bucketing(self):
@@ -24,7 +24,7 @@ class NextRoundValue():
 		CC, BC, bC = game_settings.card_count, self.board_count, self.bucket_count
 		self.bucketer = Bucketer()
 		self.bucket_count = self.bucketer.get_bucket_count()
-		local boards = card_tools.get_second_round_boards()
+		boards = card_tools.get_second_round_boards()
 		self.board_count = boards.shape[0]
 		self._range_matrix = np.zeros([CC,BC*bC], dtype=arguments.dtype)
 		self._range_matrix_board_view = self._range_matrix.reshape([CC,BC,bC])
@@ -71,7 +71,7 @@ class NextRoundValue():
 		@param: card_value a vector in which to store the output values over
 				private hands
 		'''
-		board_idx = card_tools:get_board_index(board)
+		board_idx = card_tools.get_board_index(board)
 		board_matrix = self._range_matrix_board_view[ : , board_idx, : ].T
 		serialized_card_value = card_value.reshape([-1,CC])
 		serialized_bucket_value = bucket_value[ : , : , board_idx, : ].copy().reshape([-1,bC])

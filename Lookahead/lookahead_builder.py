@@ -1,12 +1,13 @@
 '''
 	Builds the internal data structures of a @{lookahead|Lookahead} object.
 '''
+import numpy as np
 
 from Settings.arguments import arguments
 from Settings.constants import constants
 from Settings.game_settings import game_settings
-# from Tree.tree_builder import PokerTreeBuilder # dont need here?
-# from Tree.tree_visualiser import TreeVisualiser # dont need here?
+# from Tree.tree_builder import PokerTreeBuilder
+# from Tree.tree_visualiser import TreeVisualiser
 from Nn.next_round_value import NextRoundValue
 from Nn.value_nn import ValueNn
 
@@ -156,15 +157,15 @@ class LookaheadBuilder():
 			self.lookahead.regrets_sum[d] = np.zeros([1, self.lookahead.bets_count[d-2], self.lookahead.nonterminal_nonallin_nodes_count[d-2], PC, CC], dtype=arguments.dtype)
 			# data structures for the layers except the last one
 			if d < self.lookahead.depth:
-				self.lookahead.inner_nodes[d] = np.zeros(self.lookahead.bets_count[d-1], self.lookahead.nonallinbets_count[d-2], self.lookahead.nonterminal_nonallin_nodes_count[d-2], PC, CC], dtype=arguments.dtype)
-				self.lookahead.inner_nodes_p1[d] = np.zeros(self.lookahead.bets_count[d-1], self.lookahead.nonallinbets_count[d-2], self.lookahead.nonterminal_nonallin_nodes_count[d-2], 1, CC], dtype=arguments.dtype)
+				self.lookahead.inner_nodes[d] = np.zeros([self.lookahead.bets_count[d-1], self.lookahead.nonallinbets_count[d-2], self.lookahead.nonterminal_nonallin_nodes_count[d-2], PC, CC], dtype=arguments.dtype)
+				self.lookahead.inner_nodes_p1[d] = np.zeros([self.lookahead.bets_count[d-1], self.lookahead.nonallinbets_count[d-2], self.lookahead.nonterminal_nonallin_nodes_count[d-2], 1, CC], dtype=arguments.dtype)
 				self.lookahead.swap_data[d] = np.transpose(self.lookahead.inner_nodes[d], [0,2,1,3,4]) # :transpose(2, 3):clone()
 
 
 	def set_datastructures_from_tree_dfs(self, node, layer, action_id, parent_id, gp_id):
 		''' Traverses the tree to fill in lookahead data structures that
 			summarize data contained in the tree.
- 			ex: saves pot sizes and numbers of actions at each lookahead state.
+			 ex: saves pot sizes and numbers of actions at each lookahead state.
 		@param: node the current node of the public tree
 		@param: layer the depth of the current node
 		@param: action_id the index of the action that led to this node
@@ -199,7 +200,7 @@ class LookaheadBuilder():
 					existing_bets_count = len(node.children) - terminal_actions_count
 					# allin situations
 					if existing_bets_count == 0:
-						assert(action_id == self.lookahead.actions_count[layer-1])
+						assert(action_id == self.lookahead.actions_count[layer-1]-1)
 					for child_id in range(terminal_actions_count):
 						child_node = node.children[child_id]
 						# go deeper
@@ -209,7 +210,8 @@ class LookaheadBuilder():
 					for b in range(1, existing_bets_count+1):
 						self.set_datastructures_from_tree_dfs(node.children[len(node.children)-b], layer+1, self.lookahead.actions_count[layer]-b, next_parent_id, next_gp_id)
 					# mask out empty actions
-					self.lookahead.empty_action_mask[layer+1][ terminal_actions_count:-existing_bets_count, next_parent_id, next_gp_id, : ] = 0
+					a = self.lookahead.empty_action_mask[layer+1].shape[0] - existing_bets_count
+					self.lookahead.empty_action_mask[layer+1][ terminal_actions_count:a, next_parent_id, next_gp_id, : ] = 0
 				else:
 					# node has full action count, easy to handle
 					for child_id in range(len(node.children)):
@@ -238,8 +240,8 @@ class LookaheadBuilder():
 		self.set_datastructures_from_tree_dfs(tree, 1, 0, 0, 0)
 		# set additional info
 		assert(self.lookahead.terminal_actions_count[1] == 1 or self.lookahead.terminal_actions_count[1] == 2)
-		self.lookahead.first_call_terminal = self.lookahead.tree.children[2].terminal
-		self.lookahead.first_call_transition = self.lookahead.tree.children[2].current_player == constants.players.chance
+		self.lookahead.first_call_terminal = self.lookahead.tree.children[1].terminal
+		self.lookahead.first_call_transition = self.lookahead.tree.children[1].current_player == constants.players.chance
 		self.lookahead.first_call_check = (not self.lookahead.first_call_terminal) and (not self.lookahead.first_call_transition)
 		# we mask out fold as a possible action when check is for free, due to
 		# 1) fewer actions means faster convergence
@@ -258,9 +260,8 @@ class LookaheadBuilder():
 		@param: current_layer a list of tree nodes at the current depth
 		@param: current_depth the depth of the current tree nodes
 		'''
-		layer_actions_count = 0
-		layer_terminal_actions_count = 0
-		next_layer = {}
+		layer_actions_count, layer_terminal_actions_count = 0, 0
+		next_layer = []
 		for n in range(len(current_layer)):
 			node = current_layer[n]
 			layer_actions_count = max(layer_actions_count, len(node.children))

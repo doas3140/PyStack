@@ -80,6 +80,31 @@ class TreeParams():
 		self.limit_to_street = None # boolean
 		self.bet_sizing = None
 
+class ResolvingParams():
+	def __init__(self):
+		self.node = None # node
+		self.range = None # p2_range
+		self.player = None # player
+		self.cf_values = None # cf_values
+		self.resolving = None
+		self.our_last_action = None
+		self.opponent_range = None
+
+class LookaheadResults():
+	def __init__(self):
+		self.strategy = None
+		self.achieved_cfvs = None
+		self.root_cfvs = None
+		self.root_cfvs_both_players = None
+		self.children_cfvs = None
+
+	def __str__(self):
+		s = 'strat\n {} \ncfvs\n {} \nroot_cfvs\n {} \nboth_P_root_cfvs\n {} \nchildren_cfvs\n {}'. \
+							format(  self.strategy, self.achieved_cfvs, \
+		 							 self.root_cfvs, self.root_cfvs_both_players, \
+									 self.children_cfvs )
+		return s
+
 class Lookahead():
 	def __init__(self):
 		self.ccall_action_index = None # int
