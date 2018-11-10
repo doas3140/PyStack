@@ -3,7 +3,9 @@
 	For the Leduc implementation, we simply assign every possible
 	set of private and board cards to a unique bucket.
 '''
+import numpy as np
 
+from Settings.arguments import arguments
 from Settings.game_settings import game_settings
 from Game.card_tools import card_tools
 
@@ -30,7 +32,7 @@ class Bucketer():
 		CC = game_settings.card_count
 		board_idx = card_tools.get_board_index(board) # [0,...,BC-1]
 		# buckets are for each card [0,1,2,3,4,5]
-		buckets = np.arange(CC, dtype=arguments.dtype)
+		buckets = np.arange(CC, dtype=arguments.int_dtype)
 		# shift, that changes starting point of buckets,
 		# to create total of CC * BC buckets (bC)
 		# can be [0, CC, 2xCC, 3xCC, (BC-1)xCC]

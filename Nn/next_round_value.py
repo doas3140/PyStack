@@ -1,6 +1,7 @@
 '''
 	Uses the neural net to estimate value at the end of the first betting round.
 '''
+import numpy as np
 
 from Nn.bucketer import Bucketer
 from Game.card_tools import card_tools
@@ -14,6 +15,7 @@ class NextRoundValue():
 			on any board.
 		@param: nn the neural network
 		'''
+		self._values_are_prepared = False
 		self.nn = nn
 		self._init_bucketing()
 
@@ -21,17 +23,17 @@ class NextRoundValue():
 	def _init_bucketing(self):
 		''' Initializes the tensor that translates hand ranges to bucket ranges.
 		'''
-		CC, BC, bC = game_settings.card_count, self.board_count, self.bucket_count
 		self.bucketer = Bucketer()
 		self.bucket_count = self.bucketer.get_bucket_count()
 		boards = card_tools.get_second_round_boards()
 		self.board_count = boards.shape[0]
+		CC, BC, bC = game_settings.card_count, self.board_count, self.bucket_count
 		self._range_matrix = np.zeros([CC,BC*bC], dtype=arguments.dtype)
 		self._range_matrix_board_view = self._range_matrix.reshape([CC,BC,bC])
-		for idx in range(1,self.board_count+1):
+		for idx in range(BC):
 			board = boards[idx]
 			buckets = self.bucketer.compute_buckets(board)
-			class_ids = np.arange(1, self.bucket_count+1)
+			class_ids = np.arange(bC)
 			class_ids = class_ids.reshape([1,bC]) * np.ones([CC,bC], dtype=class_ids.dtype)
 			card_buckets = buckets.reshape([CC,1]) * np.ones([CC,bC], dtype=class_ids.dtype)
 			# finding all strength classes
@@ -41,7 +43,7 @@ class NextRoundValue():
 		self._reverse_value_matrix = self._range_matrix.T.copy()
 		# we need to div the matrix by the sum of possible boards
 		# (from point of view of each hand)
-		weight_constant = 1/(self.board_count - 2) # count
+		weight_constant = 1 / (BC-2) # count
 		self._reverse_value_matrix *= weight_constant
 
 
@@ -71,6 +73,7 @@ class NextRoundValue():
 		@param: card_value a vector in which to store the output values over
 				private hands
 		'''
+		CC, bC = game_settings.card_count, self.bucket_count
 		board_idx = card_tools.get_board_index(board)
 		board_matrix = self._range_matrix_board_view[ : , board_idx, : ].T
 		serialized_card_value = card_value.reshape([-1,CC])
@@ -106,9 +109,9 @@ class NextRoundValue():
 		'''
 		PC, BC = constants.players_count, self.board_count
 		BS, bC = self.batch_size, self.bucket_count
-		assert(ranges and values)
+		assert(ranges is not None and values is not None)
 		assert(ranges.shape[0] == self.batch_size)
-		self.iter = self.iter + 1
+		self.iter += 1
 		if self.iter == 1:
 			# initializing data structures
 			self.next_round_inputs = np.zeros([BS,BC,bC*PC + 1], dtype=arguments.dtype)
@@ -132,16 +135,16 @@ class NextRoundValue():
 		self._card_range_to_bucket_range( ranges.reshape([BS*PC,-1]), self.next_round_extended_range.reshape([BS*PC,-1]) )
 		self.range_normalization = np.sum(self.next_round_serialized_range, axis=1, keepdims=True)
 		rn_view = self.range_normalization.reshape([BS,PC,BC])
-		for player in range(1,constants.players_count+1):
-			self.value_normalization[ : , player, : ] = rn_view[ : , 3 - player, : ].copy()
+		for player in range(constants.players_count):
+			self.value_normalization[ : , player, : ] = rn_view[ : , 1 - player, : ].copy()
 		if use_memory:
-			self.range_normalization_memory += self.value_normalization
+			self.range_normalization_memory += self.value_normalization.reshape(self.range_normalization_memory.shape)
 		# eliminating division by zero
 		self.range_normalization[ self.range_normalization == 0 ] = 1
 		self.next_round_serialized_range /= self.range_normalization * np.ones_like(self.next_round_serialized_range)
 		serialized_range_by_player = self.next_round_serialized_range.reshape([BS,PC,BC,bC])
-		for player in range(1, constants.players_count+1):
-			self.next_round_inputs[ : , : , (player-1)*bC+1:player*bC ] = self.next_round_extended_range[ : , player, : ].copy()
+		for player in range(constants.players_count):
+			self.next_round_inputs[ : , : , player*bC:(player+1)*bC ] = self.next_round_extended_range[ : , player, : ].copy().reshape(self.next_round_inputs[ : , : , player*bC:(player+1)*bC ].shape)
 		# using nn to compute values
 		serialized_inputs_view = self.next_round_inputs.reshape([BS*BC,-1])
 		serialized_values_view = self.next_round_values.reshape([BS*BC,-1])
@@ -167,7 +170,7 @@ class NextRoundValue():
 		@param: values a tensor in which to store the values
 		'''
 		# check if we have evaluated correct number of iterations
-		assert(self.iter == arguments.cfr_iters )
+		assert(self.iter == arguments.cfr_iters)
 		batch_size = values.shape[0]
 		assert(batch_size == self.batch_size)
 		self._prepare_next_round_values()
@@ -178,7 +181,8 @@ class NextRoundValue():
 		''' Normalizes the counterfactual values remembered between @{get_value}
 			calls so that they are an average rather than a sum.
 		'''
-		assert(self.iter == arguments.cfr_iters )
+		bC = self.bucket_count
+		assert(self.iter == arguments.cfr_iters)
 		# do nothing if already prepared
 		if self._values_are_prepared:
 			return
