@@ -1,6 +1,7 @@
 '''
 	Converts between vectors over private hands and vectors over buckets.
 '''
+import numpy as np
 
 from Nn.bucketer import Bucketer
 from Game.card_tools import card_tools
@@ -34,9 +35,9 @@ class BucketConversion():
 		CC, bC = game_settings.card_count, self.bucket_count
 		self._range_matrix = np.zeros([CC,bC], dtype=arguments.int_dtype)
 		class_ids = np.arange(bC, dtype=arguments.int_dtype)
-		class_ids = class_ids.reshape([1,bC]) * np.ones([CC,bC], dtype=class_ids.int_dtype)
+		class_ids = class_ids.reshape([1,bC]) * np.ones([CC,bC], dtype=class_ids.dtype)
 		buckets = self.bucketer.compute_buckets(board) # [BC*CC, ..., (BC+1)*CC)
-		card_buckets = buckets.reshape([CC,1]) * np.ones([CC,bC], dtype=buckets.int_dtype)
+		card_buckets = buckets.reshape([CC,1]) * np.ones([CC,bC], dtype=buckets.dtype)
 		# finding all strength classes
 		# matrix for transformation from card ranges to strength class ranges
 		self._range_matrix[class_ids == card_buckets] = 1
@@ -51,7 +52,7 @@ class BucketConversion():
 		@param: bucket_range (1,bC) a vector in which to save the resulting probability
 				vector over buckets
 		'''
-		bucket_range = np.dot(card_range, self._range_matrix)
+		bucket_range[:,:] = np.dot(card_range, self._range_matrix)
 
 
 	def bucket_value_to_card_value(self, bucket_value, card_value):
@@ -61,7 +62,7 @@ class BucketConversion():
 		@param: card_value a vector in which to save the resulting vector of values
 				over private hands
 		'''
-		card_value = np.dot(bucket_value, self._reverse_value_matrix)
+		card_value[:,:] = np.dot(bucket_value, self._reverse_value_matrix)
 
 
 	def get_possible_bucket_mask(self):

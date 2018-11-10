@@ -2,6 +2,8 @@
 	Generates neural net training data by solving random poker situations.
 '''
 import time
+import numpy as np
+from tqdm import tqdm
 
 from Settings.arguments import arguments
 from Settings.game_settings import game_settings
@@ -55,8 +57,8 @@ class DataGeneration():
 		BS, PC = arguments.gen_batch_size, constants.players_count
 		BCC, CC = game_settings.board_card_count, game_settings.card_count
 		range_generator = RangeGenerator()
-		assert(data_count % batch_size == 0, 'data count has to be divisible by the batch size')
-		batch_count = data_count / BS
+		assert(data_count % BS == 0, 'data count has to be divisible by the batch size')
+		batch_count = int(data_count / BS)
 		bucketer = Bucketer()
 		bucket_count = bucketer.get_bucket_count()
 		bC = bucket_count
@@ -66,7 +68,7 @@ class DataGeneration():
 		inputs = np.zeros([data_count, input_size], dtype=arguments.dtype)
 		masks = np.zeros([data_count, bC], dtype=arguments.dtype) # ? - bool?
 		bucket_conversion = BucketConversion()
-		for b in range(batch_count):
+		for b in tqdm(range(batch_count)):
 			board = card_generator.generate_cards(BCC)
 			range_generator.set_board(board)
 			bucket_conversion.set_board(board)
@@ -83,7 +85,7 @@ class DataGeneration():
 			pot_size_features = random_pot_sizes.copy() * (1/arguments.stack)
 			# translating ranges to features
 			pot_feature_index = -1
-			inputs[ b*BS:(b+1)*BS, pot_feature_index ] = pot_size_features
+			inputs[ b*BS:(b+1)*BS, pot_feature_index ] = pot_size_features.reshape(inputs[ b*BS:(b+1)*BS, pot_feature_index ].shape)
 			player_indexes = [ (0,bC), (bC,bC*2) ]
 			for player in range(PC):
 				start_idx, end_idx = player_indexes[player]

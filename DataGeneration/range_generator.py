@@ -64,9 +64,9 @@ class RangeGenerator():
 		possible_hand_indexes = card_tools.get_possible_hand_indexes(board) # (CC,) dtype=bool
 		self.possible_hands_count = possible_hand_indexes.sum(axis=0)
 		PH = self.possible_hands_count
-		self.possible_hands_mask = possible_hand_indexes # .reshape([1,-1]) # (1,CC)
+		self.possible_hands_mask = possible_hand_indexes.reshape([1,-1]) # (1,CC)
 		non_coliding_strengths = np.zeros([PH], dtype=hand_strengths.dtype)
-		non_coliding_strengths = hand_strengths[self.possible_hands_mask]
+		non_coliding_strengths = hand_strengths[self.possible_hands_mask.reshape([-1])]
 		order = np.argsort(non_coliding_strengths)
 		self.reverse_order = np.argsort(order)
 		self.reverse_order = self.reverse_order.reshape([1,-1]) # (1,PH) # ? - :long()
@@ -92,7 +92,7 @@ class RangeGenerator():
 		self.reordered_range = np_gather(self.sorted_range, 1, index)
 		mask = self.possible_hands_mask * np.ones_like(ranges, dtype=bool)
 		ranges.fill(0)
-		ranges[:,:] = mask * self.reordered_range
+		ranges[mask] = self.reordered_range.reshape([-1])
 
 
 

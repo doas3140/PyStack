@@ -35,9 +35,9 @@ class Parameters():
 		# how many poker situations are used in each neural net training batch
 		self.train_batch_size = 100
 		# path to the solved poker situation data used to train the neural net
-		self.data_path = '../Data/TrainSamples/PotBet/'
+		self.data_path = './Data/TrainSamples/PotBet/'
 		# path to the neural net model
-		self.model_path = '../Data/Models/PotBet/'
+		self.model_path = './Data/Models/PotBet/'
 		# the name of the neural net file
 		self.value_net_name = 'final'
 		# the neural net architecture
