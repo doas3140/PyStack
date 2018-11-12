@@ -40,7 +40,7 @@ class NetBuilder():
 		sp = keras.layers.Lambda(lambda x: x[ : , :-1 ], name='input_ranges')(m_input)
 		# feed forward part
 		ff = m_input
-		for i in range(num_layers):
+		for i in range(arguments.num_layers):
 			names = [s.format(i) for s in ('dense_{}', 'prelu_{}')]
 			ff = keras.layers.Dense(arguments.num_neurons, name=names[0])(ff)
 			ff = keras.layers.PReLU(name=names[1])(ff)
