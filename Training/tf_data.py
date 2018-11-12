@@ -46,7 +46,7 @@ def create_parse_fn(x_shape, y_shape):
 
 
 def create_input_fn( filenames, train, input_name, output_name, x_shape, y_shape, \
-                     batch_size=256, buffer_size=2048 ):
+                     batch_size=1024, buffer_size=2048 ):
     '''
     @param: Filenames for the TFRecords files.
     @param: Boolean whether training (True) or testing (False).
@@ -67,11 +67,9 @@ def create_input_fn( filenames, train, input_name, output_name, x_shape, y_shape
         dataset = dataset.map( create_parse_fn(x_shape,y_shape) )
         if train: # If training then read a buffer of the given size and randomly shuffle it.
             dataset = dataset.shuffle(buffer_size=buffer_size)
-            num_repeat = None # Allow infinite reading of the data.
+            dataset = dataset.repeat(None) # Allow infinite reading of the data.
         else: # If testing then don't shuffle the data.
-            num_repeat = 1 # Only go through the data once.
-        # Repeat the dataset the given number of times.
-        dataset = dataset.repeat(num_repeat)
+            dataset = dataset.repeat(1) # Only go through the data once.
         # Get a batch of data with the given size.
         dataset = dataset.batch(batch_size)
         # Create an iterator for the dataset and the above modifications.
