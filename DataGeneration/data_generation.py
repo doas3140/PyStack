@@ -1,6 +1,7 @@
 '''
 	Generates neural net training data by solving random poker situations.
 '''
+import os
 import time
 import numpy as np
 from tqdm import tqdm
@@ -19,40 +20,32 @@ from helper_classes import Node
 
 class DataGeneration():
 	def __init__(self):
-		pass
+		self.dirpath = os.path.join(arguments.data_path, 'npy')
+		self.counter = 0
 
-	def generate_data(self, train_data_count, valid_data_count):
+
+	def generate_data(self, data_count, num_files=1):
 		''' Generates training and validation files by sampling random poker
 			situations and solving them.
 			Makes two calls to @{generate_data_file}. The files are saved to
 			@{arguments.data_path}, respectively appended with `valid` and `train`.
-		@param: train_data_count the number of training examples to generate
-		@param: valid_data_count the number of validation examples to generate
+		@param: the number of training examples to generate per file
+		@param: number files to create (total examples: num_files x data_count)
 		'''
-		# valid data generation
-		file_name = arguments.data_path + 'valid'
-		t0 = time.time()
-		print('Generating validation data ...')
-		self.generate_data_file(valid_data_count, file_name)
-		print('valid gen time:', time.time() - t0)
-		# train data generation
-		file_name = arguments.data_path + 'train'
-		t0 = time.time()
-		print('Generating train data ...')
-		self.generate_data_file(train_data_count, file_name)
-		print('train gen time:', time.time() - t0)
-		print('Done!')
+		for self.counter in range(num_files):
+			t0 = time.time()
+			print('Generating data... (iteration:{})'.format(self.counter))
+			self.generate_data_file(data_count)
+			print('Gen time:', time.time() - t0)
 
 
-	def generate_data_file(self, data_count, file_name):
+	def generate_data_file(self, data_count):
 		''' Generates data files containing examples of random poker situations with
 			counterfactual values from an associated solution.
 			Each poker situation is randomly generated using @{range_generator} and
 			@{random_card_generator}. For description of neural net input and target
 			type, see @{net_builder}.
 		@param: data_count the number of examples to generate
-		@param: file_name the prefix of the files where the data is saved (appended
-				with `.inputs`, `.targets`, and `.mask`).
 		'''
 		BS, PC = arguments.gen_batch_size, constants.players_count
 		BCC, CC = game_settings.board_card_count, game_settings.card_count
@@ -66,7 +59,7 @@ class DataGeneration():
 		targets = np.zeros([data_count, target_size], dtype=arguments.dtype)
 		input_size = bC * PC + 1
 		inputs = np.zeros([data_count, input_size], dtype=arguments.dtype)
-		masks = np.zeros([data_count, bC], dtype=arguments.dtype) # ? - bool?
+		masks = np.zeros([data_count, bC], dtype=np.uint8)
 		bucket_conversion = BucketConversion()
 		for b in tqdm(range(batch_count)):
 			board = card_generator.generate_cards(BCC)
@@ -112,10 +105,11 @@ class DataGeneration():
 				bucket_conversion.card_range_to_bucket_range(values[player], targets[ b*BS:(b+1)*BS , start_idx:end_idx ])
 			# computing a mask of possible buckets
 			bucket_mask = bucket_conversion.get_possible_bucket_mask()
-			masks[ b*BS:(b+1)*BS , : ] = bucket_mask * np.ones([BS,bC], dtype=bucket_mask.dtype)
-		np.save(file_name + '.inputs', inputs)
-		np.save(file_name + '.targets', targets)
-		np.save(file_name + '.masks', masks)
+			masks[ b*BS:(b+1)*BS , : ] = bucket_mask * np.ones([BS,bC], dtype=np.uint8)
+		fpath = os.path.join(self.dirpath, '{}.{}')
+		np.save(fpath.format('inputs', self.counter), inputs.astype(np.float32))
+		np.save(fpath.format('targets', self.counter), targets.astype(np.float32))
+		np.save(fpath.format('masks', self.counter), masks.astype(np.uint8))
 
 
 

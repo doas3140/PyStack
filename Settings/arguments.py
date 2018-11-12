@@ -31,29 +31,29 @@ class Parameters():
 		self.cfr_skip_iters = 500
 		# how many poker situations are solved simultaneously during
 		# data generation
-		self.gen_batch_size = 10
+		self.gen_batch_size = 1
 		# how many poker situations are used in each neural net training batch
 		self.train_batch_size = 100
 		# path to the solved poker situation data used to train the neural net
 		self.data_path = './Data/TrainSamples/PotBet/'
 		# path to the neural net model
 		self.model_path = './Data/Models/PotBet/'
-		# the name of the neural net file
-		self.value_net_name = 'final'
+		# path where to save tf.profiler information
+		self.profiler_path = './Data/Models/PotBet/profiler'
 		# the neural net architecture
-		self.num_layers = 2 # (including output layer)
+		self.num_layers = 2 # (excluding output layer)
 		self.num_neurons = 50
 		# how often to save the model during training
 		self.save_epoch = 2
 		# how many epochs to train for
 		self.epoch_count = 10
-		# how many solved poker situations are generated for use as
-		# training examples
-		self.train_data_count = 100
-		# how many solved poker situations are generated for use as
-		# validation examples
-		self.valid_data_count = 100
-		# learning rate for neural net training
-		self.learning_rate = 0.001
+		# how many solved poker situations are generated
+		self.gen_data_count = 100
+		# how many files to create
+		# total situations = data_count x num_files
+		self.gen_num_files = 1
+
+
+
 
 arguments = Parameters()
