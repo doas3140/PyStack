@@ -22,35 +22,40 @@ class NetBuilder():
 	def build_net(self):
 		''' Builds a neural net with architecture specified by @{arguments.net}.
 		@return a newly constructed neural net
+		@return input shape (ex: [224,224,3] if img)
+		@return output shape (ex: [10] if 10 classes)
 		'''
+		print('Building model...')
 		# input and output parameters
 		bucketer = Bucketer()
 		bucket_count = bucketer.get_bucket_count()
 		player_count = 2
 		num_output = bucket_count * player_count
 		num_input = num_output + 1
+		input_shape = [num_input]
+		output_shape = [num_output]
 		# neural network architecture
-		m_input = keras.layers.Input([num_input])
-		m = m_input
+		m_input = keras.layers.Input(input_shape, name='input')
 		# slicing off pot size ([1,2001] -> [1,2000])
 		sp = keras.layers.Lambda(lambda x: x[ : , :-1 ], name='input_ranges')(m_input)
 		# feed forward part
 		ff = m_input
-		for _ in range(num_layers-1):
-		    ff = keras.layers.Dense(arguments.num_neurons)(ff)
-		    ff = keras.layers.PReLU()(ff)
+		for i in range(num_layers):
+			names = [s.format(i) for s in ('dense_{}', 'prelu_{}')]
+			ff = keras.layers.Dense(arguments.num_neurons, name=names[0])(ff)
+			ff = keras.layers.PReLU(name=names[1])(ff)
 		ff = keras.layers.Dense(num_output, name='feed_forward_output')(ff)
 		# dot product of both (feed forward and player ranges)
-		d = keras.layers.dot([ff,sp], axes=1)
+		d = keras.layers.dot([ff,sp], axes=1, name='dot_product_of_ranges_and_ff_output')
 		# repeat this number from shape [1] -> [2000]
-		d = keras.layers.RepeatVector(num_output)(d)
-		d = keras.layers.Flatten()(d)
+		d = keras.layers.RepeatVector(num_output, name='repeat_dot_product_scalar')(d)
+		d = keras.layers.Flatten(name='flatten_repeat_vector')(d)
 		# divide it by 2
-		d = keras.layers.Lambda(lambda x: x/2)(d)
+		d = keras.layers.Lambda(lambda x: x/2, name='divide_by_2')(d)
 		# subtract input (without pot) and last layer
 		m_output = keras.layers.subtract([sp,d], name='zero_sum_output')
 		model = keras.models.Model(m_input, m_output)
-		return model
+		return model, input_shape, output_shape
 
 
 
