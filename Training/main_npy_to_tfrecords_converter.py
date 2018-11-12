@@ -1,5 +1,6 @@
-
-''' Script that converts npy files into TFRecords files '''
+'''
+Script that converts npy files into TFRecords files
+'''
 import sys
 import os
 sys.path.append(os.getcwd())
