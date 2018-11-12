@@ -19,7 +19,7 @@ def create_parse_fn(x_shape, y_shape):
         features = {
                     'input': tf.FixedLenFeature([], tf.string),
                     'output': tf.FixedLenFeature([], tf.string),
-                    'mask': tf.FixedLenFeature([], tf.string)
+                    # 'mask': tf.FixedLenFeature([], tf.string)
                    }
         # Parse the serialized data so we get a dict with our data.
         parsed_example = tf.parse_single_example( serialized=serialized,
@@ -27,15 +27,16 @@ def create_parse_fn(x_shape, y_shape):
         # Get the image as raw bytes.
         x_raw = parsed_example['input']
         y_raw = parsed_example['output']
-        m_raw = parsed_example['mask']
+        # m_raw = parsed_example['mask']
         # Decode the raw bytes so it becomes a tensor with type.
         x = tf.decode_raw(x_raw, tf.float32)
         y = tf.decode_raw(y_raw, tf.float32)
-        m = tf.decode_raw(m_raw, tf.uint8)
+        # m = tf.decode_raw(m_raw, tf.uint8)
         # apply transormations
-        m = tf.cast(m, tf.float32)
-        y = y * m
-        x = x * m
+        # m = tf.cast(m, tf.float32)
+        # # repeat mask 2 times ex: (36,) -> (72,)
+        # y = y * m
+        # x = x * m
         # apply shape
         x = tf.reshape(x, x_shape)
         y = tf.reshape(y, y_shape)
@@ -63,7 +64,7 @@ def create_input_fn( filenames, train, input_name, output_name, x_shape, y_shape
         dataset = tf.data.TFRecordDataset(filenames=filenames)
         # Parse the serialized data in the TFRecords files.
         # This returns TensorFlow tensors for the x, y and m.
-        dataset = dataset.map( create_parse(x_shape,y_shape) )
+        dataset = dataset.map( create_parse_fn(x_shape,y_shape) )
         if train: # If training then read a buffer of the given size and randomly shuffle it.
             dataset = dataset.shuffle(buffer_size=buffer_size)
             num_repeat = None # Allow infinite reading of the data.

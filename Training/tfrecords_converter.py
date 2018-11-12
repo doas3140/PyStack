@@ -85,16 +85,19 @@ class TFRecordsConverter():
 		with tf.python_io.TFRecordWriter(out_path) as writer:
 			# Iterate over all the X, Y and MASK pairs.
 			for x,y,m in zip(X, Y, MASK):
+				# make m twice as big [1,2] -> [1,2,1,2]
+				m = np.tile(m, 2)
+				# multiply by mask
+				x[:-1] *= m
+				y *= m
 				# Convert the image to raw bytes.
 				x_bytes = x.tostring()
 				y_bytes = y.tostring()
-				m_bytes = m.tostring()
 				# Create a dict with the data we want to save in the
 				# TFRecords file. You can add more relevant data here.
 				data = {
 						'input': self._wrap_bytes(x_bytes),
-						'output': self._wrap_bytes(y_bytes),
-						'mask': self._wrap_bytes(m_bytes)
+						'output': self._wrap_bytes(y_bytes)
 					   }
 				# Wrap the data as TensorFlow Features -> Example
 				feature = tf.train.Features(feature=data)
@@ -110,9 +113,6 @@ class TFRecordsConverter():
 
 	def _wrap_int64(self, value):
 		return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
-
-	def _get_tfrecords_filepaths(self, tfrecords_dirpath):
-		return [f.path for f in os.scandir(tfrecords_dirpath)]
 
 
 
