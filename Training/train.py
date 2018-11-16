@@ -7,57 +7,54 @@ import numpy as np
 import tensorflow as tf
 
 from Settings.arguments import arguments
-from Training.tf_data import create_input_fn
+from Training.tf_data import create_iterator
 from Nn.value_nn import ValueNn
 
 class Train(ValueNn):
-	def __init__(self, train_dir, test_dir=None):
+	def __init__(self, data_dir):
 		'''
-		@param: tf records training dir
-		@param: tf records test dir
+		@param: tf records training set dir
+		@param: tf records validation set dir
 		'''
 		# set up estimator from ValueNn
 		super().__init__()
-		# data dirs
-		self.path_tfrecords_train = train_dir
-		self.path_tfrecords_test = test_dir
+		# set up read paths for train/valid datasets
+		self.tfrecords_path = data_dir
+		self.create_keras_callback()
 
 
-	def train(self, steps):
-		print('Training model...')
-		# list of file paths
-		filenames = [f.path for f in os.scandir(self.path_tfrecords_train)]
-		# input function for estimator
-		input_fn = create_input_fn( input_name=self.input_layer_name,
-									output_name=self.output_layer_name,
-									x_shape=self.x_shape, y_shape=self.y_shape,
-									filenames=filenames, train=True )
-
-		# input_fn = tf.estimator.inputs.numpy_input_fn(
-		# 				    x={'input': np.random.rand(100,73)},
-		# 				    y={'zero_sum_output': np.random.rand(100,72)},
-		# 				    num_epochs=None, shuffle=True )
-
-		# adding profiler
-		# profiler_path = 'D:\\Datasets\\Pystack\\ProfileTest\\profiler'
-		# with tf.contrib.tfprof.ProfileContext(profiler_path) as pctx:
-
+	def train(self, num_epochs, batch_size=32, buffer_size=2048, verbose=1, validation_size=0.2):
+		# get list of train and validation set filenames
+		all_filenames = [f.path for f in os.scandir(self.tfrecords_path)]
+		num_valid_files = int(len(all_filenames)*validation_size)
+		train_filenames = all_filenames[ num_valid_files: ]
+		valid_filenames = all_filenames[ :num_valid_files ]
+		# create tf.data iterators
+		train_iterator = create_iterator( filenames=train_filenames, train=True,
+										  batch_size=batch_size, buffer_size=buffer_size,
+		 								  x_shape=self.x_shape, y_shape=self.y_shape )
+		valid_iterator = create_iterator( filenames=valid_filenames, train=False,
+										  batch_size=batch_size, buffer_size=buffer_size,
+		 								  x_shape=self.x_shape, y_shape=self.y_shape )
+		# count num of elements in both sets
+		num_train_elements = len(train_filenames)*arguments.tfrecords_batch_size
+		num_valid_elements = len(valid_filenames)*arguments.tfrecords_batch_size
 		# train model
-		self.estimator.train(input_fn=input_fn, steps=steps)
-		print('Done!')
+		self.keras_model.fit( train_iterator,
+							  validation_data = valid_iterator,
+		 					  steps_per_epoch = num_train_elements // batch_size,
+						      validation_steps = num_valid_elements // batch_size,
+						      epochs = num_epochs, verbose = verbose,
+							  callbacks=self.callbacks )
 
 
-	def eval(self):
-		if self.path_tfrecords_test is None: raise(Exception('test set directory path is not defined'))
-		print('Evaluating model...')
-		filenames = [f.path for f in os.scandir(self.path_tfrecords_test)] # list of file paths
-		input_fn = create_input_fn( input_name=self.input_layer_name,
-									output_name=self.output_layer_name,
-									x_shape=self.x_shape, y_shape=self.y_shape,
-									filenames=filenames, train=False )
-		result = model.evaluate(input_fn=input_fn)
-		print('Results:')
-		print(result)
+	def create_keras_callback(self):
+		# tensorboard callback
+		tb_logdir = os.path.join( arguments.model_path, 'tensorboard' )
+		tb = tf.keras.callbacks.TensorBoard( log_dir=tb_logdir,
+											 histogram_freq=0, write_grads=True )
+		# set keras callback for training
+		self.callbacks = [tb]
 
 
 

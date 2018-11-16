@@ -20,12 +20,11 @@ class ValueNn():
 		self.model_dir = arguments.model_path
 		self.profiler_dir = arguments.profiler_path
 		# load keras model
-		keras_model, self.x_shape, self.y_shape = nnBuilder.build_net()
+		self.keras_model, self.x_shape, self.y_shape = nnBuilder.build_net()
 		print('NN architecture:')
-		keras_model.summary()
+		self.keras_model.summary()
 		# compile model
-		self.compile_keras_model(keras_model)
-		self.create_estimator(keras_model)
+		self.compile_keras_model(self.keras_model)
 
 
 	def compile_keras_model(self, keras_model):
@@ -33,24 +32,6 @@ class ValueNn():
 		loss = BasicHuberLoss(delta=1.0)
 		optimizer = keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, decay=0.0)
 		keras_model.compile(loss=loss, optimizer=optimizer)
-
-
-	def create_estimator(self, keras_model):
-		''' Creates estimator from keras_model
-		@param: keras model object
-		'''
-		print('Creating Estimator...')
-		config = tf.estimator.RunConfig(
-			save_checkpoints_secs = 10*60, # save every 10 mins
-			# save_checkpoints_steps = 100, # save every n steps
-			keep_checkpoint_max = 10, # retain 10 recent checkpoints
-			save_summary_steps = 100, # save summaries every n steps
-		)
-		self.estimator = tf.keras.estimator.model_to_estimator(
-				keras_model = keras_model,
-				keras_model_path = None,
-				model_dir = self.model_dir,
-				config = config )
 
 
 	def get_value(self, inputs, output):

@@ -51,7 +51,9 @@ class Parameters():
 		self.gen_data_count = 100
 		# how many files to create
 		# total situations = data_count x num_files
-		self.gen_num_files = 1
+		self.gen_num_files = 30
+		# tf records file information
+		self.tfrecords_batch_size = 8192
 
 
 
