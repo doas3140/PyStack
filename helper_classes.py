@@ -20,6 +20,7 @@ class Actions():
 	def __init__(self):
 		self.fold = 0
 		self.ccall = 0
+		self.raise_ = 0
 
 class ACPCActions():
 	def __init__(self):

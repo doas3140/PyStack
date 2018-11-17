@@ -12,7 +12,7 @@ class Constants():
 		# the number of players in the game
 		self.players_count = 2
 		# the number of betting rounds in the game
-		self.streets_count = 2
+		self.streets_count = 4
 
 		# IDs for each player and chance
 		self.players = Players()
@@ -33,6 +33,7 @@ class Constants():
 		self.actions = Actions()
 		self.actions.fold = -2 #
 		self.actions.ccall = -1 # (check/call)
+		self.actions.raise_ = -3
 
 		# String representations for actions in the ACPC protocol
 		self.acpc_actions = ACPCActions()
