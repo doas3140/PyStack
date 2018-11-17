@@ -37,6 +37,7 @@ class Node():
 		self.board_string = None # str
 		self.current_player = None # int
 		self.bets = None # np.array (num_players,)
+		self.num_bets = None
 		self.pot = None # int
 		self.children = [] # list
 		self.terminal = None # boolean

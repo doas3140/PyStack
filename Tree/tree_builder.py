@@ -26,22 +26,6 @@ class PokerTreeBuilder():
 		pass
 
 
-	def _get_children_nodes_transition_call(self, parent_node):
-		''' Creates the child node after a call which transitions between
-			betting rounds.
-		@param: parent_node the node at which the transition call happens
-		@return a list containing the child node
-		'''
-		chance_node = Node()
-		chance_node.node_type = constants.node_types.chance_node
-		chance_node.street = parent_node.street
-		chance_node.board = parent_node.board.copy()
-		chance_node.board_string = parent_node.board_string
-		chance_node.current_player = constants.players.chance
-		chance_node.bets = parent_node.bets.copy()
-		return [chance_node]
-
-
 	def _get_children_nodes_chance_node(self, parent_node):
 		''' Creates the children nodes after a chance node.
 		@param: parent_node the chance node
@@ -50,12 +34,12 @@ class PokerTreeBuilder():
 		assert(parent_node.current_player == constants.players.chance)
 		if self.limit_to_street:
 			return []
-		next_boards = card_tools.get_second_round_boards() # (N,K), K = 1
-		subtree_height = -1 # ?
+		next_boards = card_tools.get_second_round_boards()
+		subtree_height = -1
 		children = []
 		# 1.0 iterate over the next possible boards to build the corresponding subtrees
 		for i in range(next_boards.shape[0]):
-			next_board = next_boards[i] # ex: [4]
+			next_board = next_boards[i]
 			next_board_string = card_to_string.cards_to_string(next_board)
 			child = Node()
 			child.node_type = constants.node_types.inner_node
@@ -82,7 +66,6 @@ class PokerTreeBuilder():
 		@param: parent_node the chance node
 		@return a list of children nodes
 		'''
-		# assert (if parent != chance)
 		assert(parent_node.current_player != constants.players.chance)
 		children = []
 		# 1.0 fold action
@@ -96,8 +79,22 @@ class PokerTreeBuilder():
 		fold_node.bets = parent_node.bets.copy()
 		children.append(fold_node)
 		# 2.0 check action
-		if (parent_node.current_player == constants.players.P1)\
-		and (parent_node.bets[0] == parent_node.bets[1]):
+		a1 = parent_node.street == 1
+		a2 = parent_node.current_player == constants.players.P1
+		a3 = parent_node.num_bets == 1
+		a4 = game_settings.limit_bet_cap > 1 or game_settings.nl
+		a5 = parent_node.street != 1 or constants.streets_count == 1
+		a6 = parent_node.current_player == constants.players.P2
+		a7 = parent_node.bets[0] == parent_node.bets[1]
+		b1 = parent_node.street != constants.streets_count
+		b2 = parent_node.bets[0] == parent_node.bets[1]
+		b3 = parent_node.street == 1
+		b4 = parent_node.current_player == constants.players.P2
+		b5 = parent_node.street != 1
+		b6 = parent_node.current_player == constants.players.P1
+		b7 = parent_node.bets[0] != parent_node.bets[1]
+		b8 = parent_node.bets.max() < arguments.stack
+		if (a1 and a2 and a3 and a4) or (a5 and a6 and a7):
 			check_node = Node()
 			check_node.type = constants.node_types.check
 			check_node.terminal = False
@@ -105,21 +102,19 @@ class PokerTreeBuilder():
 			check_node.street = parent_node.street
 			check_node.board = parent_node.board
 			check_node.board_string = parent_node.board_string
-			check_node.bets = parent_node.bets.copy()
+			check_node.bets = np.full_like(parent_node.bets, parent_node.bets.max())
+			check_node.num_bets = parent_node.num_bets
 			children.append(check_node)
-		elif (parent_node.street == 1)\
-		and ( (parent_node.current_player == constants.players.P2 \
-			and parent_node.bets[0] == parent_node.bets[1])       \
-			or (parent_node.bets[0] != parent_node.bets[1]        \
-				and parent_node.bets.max() < arguments.stack) ):
+		# transition check/call
+		elif b1 and ( (b2 and ((b3 and b4) or (b5 and b6))) or (b7 and b8) ):
 			chance_node = Node()
 			chance_node.node_type = constants.node_types.chance_node
 			chance_node.street = parent_node.street
 			chance_node.board = parent_node.board
 			chance_node.board_string = parent_node.board_string
 			chance_node.current_player = constants.players.chance
-			chance_node.bets = parent_node.bets.copy()
-			chance_node.bets.fill(parent_node.bets.max())
+			chance_node.bets = np.full_like(parent_node.bets.copy(), parent_node.bets.max())
+			chance_node.num_bets = 0
 			children.append(chance_node)
 		# 2.0 terminal call - either last street or allin
 		else:
@@ -134,19 +129,37 @@ class PokerTreeBuilder():
 			terminal_call_node.bets.fill(parent_node.bets.max())
 			children.append(terminal_call_node)
 		# 3.0 bet actions
-		possible_bets = self.bet_sizing.get_possible_bets(parent_node) # (N,P), P=2
-		if possible_bets.ndim != 0:
-			assert (possible_bets.shape[1] == 2)
-			for i in range(possible_bets.shape[0]):
+		if not game_settings.nl:
+			if parent_node.num_bets < game_settings.limit_bet_cap:
 				child = Node()
-				child.node_type = constants.node_types.inner_node # ? - nebuvo ju implementacijoj
+				# child.node_type = constants.node_types.inner_node # ? prideta papildomai
 				child.parent = parent_node
 				child.current_player = 1 - parent_node.current_player
 				child.street = parent_node.street
 				child.board = parent_node.board
 				child.board_string = parent_node.board_string
-				child.bets = possible_bets[i]
+				child.bets = parent_node.bets.copy()
+				betsize = game_settings.limit_bet_sizes[parent_node.street]
+				if parent_node.current_player == constants.players.P1:
+					child.bets[0] = child.bets[1] + betsize
+				else:
+					child.bets[1] = child.bets[0] + betsize
+				child.num_bets = parent_node.num_bets + 1
 				children.append(child)
+		else:
+			possible_bets = self.bet_sizing.get_possible_bets(parent_node) # (N,P), P=2
+			if possible_bets.ndim != 0:
+				assert (possible_bets.shape[1] == 2)
+				for i in range(possible_bets.shape[0]):
+					child = Node()
+					# child.node_type = constants.node_types.inner_node # ? prideta papildomai
+					child.parent = parent_node
+					child.current_player = 1 - parent_node.current_player
+					child.street = parent_node.street
+					child.board = parent_node.board
+					child.board_string = parent_node.board_string
+					child.bets = possible_bets[i]
+					children.append(child)
 		return children
 
 
@@ -155,10 +168,6 @@ class PokerTreeBuilder():
 		@param: parent_node the node to create children for
 		@return a list of children nodes
 		'''
-		# is this a transition call node (leading to a chance node)?
-		call_is_transit = parent_node.current_player == constants.players.P2\
-						  and parent_node.bets[0] == parent_node.bets[1]\
-						  and parent_node.street < constants.streets_count
 		chance_node = parent_node.current_player == constants.players.chance
 		# transition call -> create a chance node
 		if parent_node.terminal:
@@ -191,7 +200,11 @@ class PokerTreeBuilder():
 			elif i == 1:
 				current_node.actions[i] = constants.actions.ccall
 			else:
-				current_node.actions[i] = children[i].bets.max()
+				if not game_settings.nl:
+					assert(i==2) # wtf child
+			        current_node.actions[i] = constants.actions.raise_
+				else:
+					current_node.actions[i] = children[i].bets.max()
 		current_node.depth = depth + 1
 		return current_node
 
@@ -205,6 +218,7 @@ class PokerTreeBuilder():
 		# copy necessary stuff from the root_node not to touch the input
 		root.street = params.root_node.street
 		root.bets = params.root_node.bets.copy()
+		root.num_bets = params.root_node.num_bets
 		root.current_player = params.root_node.current_player
 		root.board = params.root_node.board.copy()
 		self.bet_sizing = params.bet_sizing or BetSizing(arguments.bet_sizing)
