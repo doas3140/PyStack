@@ -23,7 +23,7 @@ class CFRDGadget():
 		self.play_current_regret = None
 		self.terminate_current_regret = None
 		self.regret_sum = None
-		assert(board)
+		assert(board is not None)
 		self.input_opponent_range = player_range.copy()
 		self.input_opponent_value = opponent_cfvs.copy()
 		self.curent_opponent_values = np.zeros([CC], dtype=arguments.dtype)

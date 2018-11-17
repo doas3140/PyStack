@@ -6,10 +6,9 @@ import tensorflow as tf
 
 from Settings.arguments import arguments
 from Nn.net_builder import nnBuilder
-from Nn.basic_huber_loss import BasicHuberLoss
 
 class ValueNn():
-	def __init__(self):
+	def __init__(self, pretrained_weights=False, verbose=1):
 		''' Loads the neural net from disk.
 		'''
 		# set input and output layer names
@@ -21,17 +20,13 @@ class ValueNn():
 		self.profiler_dir = arguments.profiler_path
 		# load keras model
 		self.keras_model, self.x_shape, self.y_shape = nnBuilder.build_net()
-		print('NN architecture:')
-		self.keras_model.summary()
-		# compile model
-		self.compile_keras_model(self.keras_model)
-
-
-	def compile_keras_model(self, keras_model):
-		print('Compiling model...')
-		loss = BasicHuberLoss(delta=1.0)
-		optimizer = keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, decay=0.0)
-		keras_model.compile(loss=loss, optimizer=optimizer)
+		if verbose > 0:
+			print('NN architecture:')
+			self.keras_model.summary()
+		if pretrained_weights:
+			# load model weights
+			# self.keras_model = tf.keras.models.load_model(arguments.final_model_path) # doesnt need building (can be faster)
+			self.keras_model.load_weights(arguments.final_model_path)
 
 
 	def get_value(self, inputs, output):
@@ -41,14 +36,7 @@ class ValueNn():
 		@param: output An (N,O) tensor in which to store N sets of
 				neural net outputs. See @{net_builder} for details of each output.
 		'''
-		# create input function
-		in_fn = tf.estimator.inputs.numpy_input_fn
-		input_fn = in_fn( x={self.input_layer_name:some_x}, num_epochs=1, shuffle=False )
-		# predict
-		predictions = self.estimator.predict(input_fn=input_fn)
-		# return predictions
-		pred = [ p[self.output_layer_name] for p in predictions ]
-		output[:,:] = np.array(pred)
+		output[:,:] = self.keras_model.predict(inputs)
 
 
 

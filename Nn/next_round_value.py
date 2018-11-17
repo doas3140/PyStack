@@ -10,13 +10,13 @@ from Settings.game_settings import game_settings
 from Settings.constants import constants
 
 class NextRoundValue():
-	def __init__(self, nn):
+	def __init__(self, value_nn):
 		''' Creates a tensor that can translate hand ranges to bucket ranges
 			on any board.
-		@param: nn the neural network
+		@param: Nn.ValueNn object
 		'''
 		self._values_are_prepared = False
-		self.nn = nn
+		self.nn = value_nn
 		self._init_bucketing()
 
 
@@ -189,7 +189,7 @@ class NextRoundValue():
 		# eliminating division by zero
 		self.range_normalization_memory[ self.range_normalization_memory == 0 ] = 1
 		serialized_memory_view = self.counterfactual_value_memory.reshape([-1,bC])
-		serialized_memory_view /= self.range_normalization_memory * np.ones_like(serialized_memory_view)
+		serialized_memory_view[:,:] /= self.range_normalization_memory * np.ones_like(serialized_memory_view)
 		self._values_are_prepared = True
 
 

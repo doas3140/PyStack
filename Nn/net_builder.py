@@ -25,7 +25,6 @@ class NetBuilder():
 		@return input shape (ex: [224,224,3] if img)
 		@return output shape (ex: [10] if 10 classes)
 		'''
-		print('Building model...')
 		# input and output parameters
 		bucketer = Bucketer()
 		bucket_count = bucketer.get_bucket_count()
@@ -46,14 +45,14 @@ class NetBuilder():
 			ff = keras.layers.PReLU(name=names[1])(ff)
 		ff = keras.layers.Dense(num_output, name='feed_forward_output')(ff)
 		# dot product of both (feed forward and player ranges)
-		d = keras.layers.dot([ff,sp], axes=1, name='dot_product_of_ranges_and_ff_output')
+		d = keras.layers.dot([ff,sp], axes=1, name='dot_product')
 		# repeat this number from shape [1] -> [2000]
-		d = keras.layers.RepeatVector(num_output, name='repeat_dot_product_scalar')(d)
-		d = keras.layers.Flatten(name='flatten_repeat_vector')(d)
+		d = keras.layers.RepeatVector(num_output, name='repeat_scalar')(d)
+		d = keras.layers.Flatten(name='flatten')(d)
 		# divide it by 2
 		d = keras.layers.Lambda(lambda x: x/2, name='divide_by_2')(d)
 		# subtract input (without pot) and last layer
-		m_output = keras.layers.subtract([sp,d], name='zero_sum_output')
+		m_output = keras.layers.subtract([ff,d], name='zero_sum_output')
 		model = keras.models.Model(m_input, m_output)
 		return model, input_shape, output_shape
 

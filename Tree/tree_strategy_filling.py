@@ -221,7 +221,7 @@ class TreeStrategyFilling():
 		resolving = params.resolving
 		node = params.node
 		player = params.player
-		range = params.range
+		range_ = params.range
 		cf_values = params.cf_values
 		our_last_action = params.our_last_action
 		assert(resolving)
@@ -235,7 +235,7 @@ class TreeStrategyFilling():
 			# computing cf_values for the child node
 			child_cf_values = resolving.get_chance_action_cfv(our_last_action, child_node.board)
 			# we need to remove impossible hands from the range and then renormalize it
-			child_range = range.copy()
+			child_range = range_.copy()
 			mask = card_tools.get_possible_hand_indexes(child_node.board)
 			child_range *= mask
 			range_weight = np.sum(child_range, axis=0, keepdims=True)[0] # weight should be single number

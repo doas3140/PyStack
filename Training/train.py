@@ -9,6 +9,7 @@ import tensorflow as tf
 from Settings.arguments import arguments
 from Training.tf_data import create_iterator
 from Nn.value_nn import ValueNn
+from Nn.basic_huber_loss import BasicHuberLoss
 
 class Train(ValueNn):
 	def __init__(self, data_dir):
@@ -18,12 +19,21 @@ class Train(ValueNn):
 		'''
 		# set up estimator from ValueNn
 		super().__init__()
+		# compile model
+		self.compile_keras_model(self.keras_model)
 		# set up read paths for train/valid datasets
 		self.tfrecords_path = data_dir
 		self.create_keras_callback()
 
 
-	def train(self, num_epochs, batch_size=32, buffer_size=2048, verbose=1, validation_size=0.2):
+	def compile_keras_model(self, keras_model):
+		print('Compiling model...')
+		loss = BasicHuberLoss(delta=1.0)
+		optimizer = tf.keras.optimizers.Adam(lr=arguments.learning_rate, beta_1=0.9, beta_2=0.999, decay=0.0)
+		keras_model.compile(loss=loss, optimizer=optimizer)
+
+
+	def train(self, num_epochs, batch_size=512, buffer_size=8192, verbose=1, validation_size=0.3):
 		# get list of train and validation set filenames
 		all_filenames = [f.path for f in os.scandir(self.tfrecords_path)]
 		num_valid_files = int(len(all_filenames)*validation_size)
@@ -32,29 +42,75 @@ class Train(ValueNn):
 		# create tf.data iterators
 		train_iterator = create_iterator( filenames=train_filenames, train=True,
 										  batch_size=batch_size, buffer_size=buffer_size,
-		 								  x_shape=self.x_shape, y_shape=self.y_shape )
+										   x_shape=self.x_shape, y_shape=self.y_shape )
 		valid_iterator = create_iterator( filenames=valid_filenames, train=False,
 										  batch_size=batch_size, buffer_size=buffer_size,
-		 								  x_shape=self.x_shape, y_shape=self.y_shape )
+										   x_shape=self.x_shape, y_shape=self.y_shape )
 		# count num of elements in both sets
-		num_train_elements = len(train_filenames)*arguments.tfrecords_batch_size
-		num_valid_elements = len(valid_filenames)*arguments.tfrecords_batch_size
+		num_train_elements = len(train_filenames) * arguments.tfrecords_batch_size
+		num_valid_elements = len(valid_filenames) * arguments.tfrecords_batch_size
 		# train model
-		self.keras_model.fit( train_iterator,
-							  validation_data = valid_iterator,
-		 					  steps_per_epoch = num_train_elements // batch_size,
-						      validation_steps = num_valid_elements // batch_size,
-						      epochs = num_epochs, verbose = verbose,
-							  callbacks=self.callbacks )
+		print('Training model...')
+		h = self.keras_model.fit( train_iterator,
+								  validation_data = valid_iterator,
+								  steps_per_epoch = num_train_elements // batch_size,
+								  validation_steps = num_valid_elements // batch_size,
+								  epochs = num_epochs, verbose = verbose,
+								  callbacks = self.callbacks )
 
 
 	def create_keras_callback(self):
+		# imports
+		from tensorflow.keras.callbacks import ReduceLROnPlateau, ModelCheckpoint, \
+									   		   LearningRateScheduler, EarlyStopping
 		# tensorboard callback
 		tb_logdir = os.path.join( arguments.model_path, 'tensorboard' )
-		tb = tf.keras.callbacks.TensorBoard( log_dir=tb_logdir,
-											 histogram_freq=0, write_grads=True )
+		tb = KerasTensorBoard( log_dir=tb_logdir, histogram_freq=1, write_grads=True )
+		# Early sopping callback
+		es = EarlyStopping(monitor='val_loss', patience=20, verbose=0, mode='min')
+		# Save model callback
+		mc = ModelCheckpoint(arguments.final_model_path, save_best_only=True, monitor='val_loss', mode='min')
+		# LR scheduler
+		lrs = LearningRateScheduler(lambda epoch: 1e-4 if epoch > 10 else arguments.learning_rate)
+		# Reducting LR callback
+		lrp = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=7, verbose=1, min_delta=1e-4, mode='min')
 		# set keras callback for training
-		self.callbacks = [tb]
+		self.callbacks = [tb, mc]
+
+
+class KerasTensorBoard(tf.keras.callbacks.TensorBoard):
+	def __init__(self, log_dir, **kwargs):
+		# Make the original `TensorBoard` log to a subdirectory 'training'
+		training_log_dir = os.path.join(log_dir, 'training')
+		super(KerasTensorBoard, self).__init__(training_log_dir, **kwargs)
+		# Log the validation metrics to a separate subdirectory
+		self.val_log_dir = os.path.join(log_dir, 'validation')
+
+	def set_model(self, model):
+		# Setup writer for validation metrics
+		self.val_writer = tf.summary.FileWriter(self.val_log_dir)
+		super(KerasTensorBoard, self).set_model(model)
+
+	def on_epoch_end(self, epoch, logs=None):
+		# Pop the validation logs and handle them separately with
+		# `self.val_writer`. Also rename the keys so that they can
+		# be plotted on the same figure with the training metrics
+		logs = logs or {}
+		val_logs = {k.replace('val_', 'epoch_'): v for k, v in logs.items() if k.startswith('val_')}
+		for name, value in val_logs.items():
+			summary = tf.Summary()
+			summary_value = summary.value.add()
+			summary_value.simple_value = value.item()
+			summary_value.tag = name
+			self.val_writer.add_summary(summary, epoch)
+		self.val_writer.flush()
+		# Pass the remaining logs to `TensorBoard.on_epoch_end`
+		logs = {k: v for k, v in logs.items() if not k.startswith('val_')}
+		super(KerasTensorBoard, self).on_epoch_end(epoch, logs)
+
+	def on_train_end(self, logs=None):
+		super(KerasTensorBoard, self).on_train_end(logs)
+		self.val_writer.close()
 
 
 

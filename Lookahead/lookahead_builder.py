@@ -25,7 +25,7 @@ class LookaheadBuilder():
 		if self.lookahead.tree.street == 2:
 			return
 		# load neural net if not already loaded
-		neural_net = ValueNn()
+		neural_net = ValueNn(pretrained_weights=True, verbose=0)
 		self.lookahead.next_street_boxes = {}
 		for d in range(2, self.lookahead.depth+1):
 			self.lookahead.next_street_boxes[d] = NextRoundValue(neural_net)
@@ -72,12 +72,17 @@ class LookaheadBuilder():
 		self.lookahead.allin_nodes_count[2] = 1
 		self.lookahead.inner_nodes_count[1] = 1
 		self.lookahead.inner_nodes_count[2] = 1
+		# neural network input and output boxes
+		self.lookahead.next_street_boxes_inputs = {}
+		self.lookahead.next_street_boxes_outputs = {}
 		for d in range(2, self.lookahead.depth+1):
 			self.lookahead.all_nodes_count[d+1] = self.lookahead.nonterminal_nonallin_nodes_count[d-1] * self.lookahead.bets_count[d-1] * self.lookahead.actions_count[d]
 			self.lookahead.allin_nodes_count[d+1] = self.lookahead.nonterminal_nonallin_nodes_count[d-1] * self.lookahead.bets_count[d-1] * 1
 			self.lookahead.nonterminal_nodes_count[d+1] = self.lookahead.nonterminal_nonallin_nodes_count[d-1] * self.lookahead.nonallinbets_count[d-1] * self.lookahead.bets_count[d]
 			self.lookahead.nonterminal_nonallin_nodes_count[d+1] = self.lookahead.nonterminal_nonallin_nodes_count[d-1] * self.lookahead.nonallinbets_count[d-1] * self.lookahead.nonallinbets_count[d]
 			self.lookahead.terminal_nodes_count[d+1] = self.lookahead.nonterminal_nonallin_nodes_count[d-1] * self.lookahead.bets_count[d-1] * self.lookahead.terminal_actions_count[d]
+			self.lookahead.next_street_boxes_inputs[d] = None
+			self.lookahead.next_street_boxes_outputs[d] = None
 
 
 	def construct_data_structures(self):

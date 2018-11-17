@@ -2,18 +2,24 @@
 	Implements depth-limited re-solving at a node of the game tree.
 	Internally uses @{cfrd_gadget|CFRDGadget} TODO SOLVER
 '''
+import numpy as np
 
 from Lookahead.lookahead import Lookahead
 from Lookahead.cfrd_gadget import CFRDGadget
 from Tree.tree_builder import PokerTreeBuilder
 from Settings.arguments import arguments
 from Settings.constants import constants
+from Settings.game_settings import game_settings
 from Game.card_tools import card_tools
 from helper_classes import TreeParams
+from Tree.tree_values import TreeValues
+from Tree.tree_cfr import TreeCFR
+
 
 class Resolving():
-	def __init__(self):
+	def __init__(self, verbose=0):
 		self.tree_builder = PokerTreeBuilder()
+		self.verbose = verbose
 
 
 	def _create_lookahead_tree(self, node):
@@ -40,6 +46,23 @@ class Resolving():
 		self.lookahead.build_lookahead(self.lookahead_tree)
 		self.lookahead.resolve_first_node(player_range, opponent_range)
 		self.resolve_results = self.lookahead.get_results()
+		if self.verbose > 0:
+			PC, CC = constants.players_count, game_settings.card_count
+			starting_ranges = np.zeros([PC,CC], dtype=arguments.dtype)
+			starting_ranges[0] = player_range
+			starting_ranges[1] = opponent_range
+			tree_cfr = TreeCFR()
+			tree_cfr.run_cfr(self.lookahead_tree, starting_ranges)
+			tree_values = TreeValues()
+			tree_values.compute_values(self.lookahead_tree, starting_ranges)
+			print('Exploitability: ' + str(self.lookahead_tree.exploitability) + ' [chips]')
+			# debugging
+			# print(np.array2string(self.lookahead_tree.cf_values[self.lookahead_tree.current_player].reshape([-1,2]), suppress_small=True, precision=2))
+			# print()
+			# print(np.array2string(self.resolve_results.root_cfvs.reshape([-1,2]), suppress_small=True, precision=2))
+			# print(np.array2string(self.lookahead_tree.strategy.reshape([-1,6]), suppress_small=True, precision=2))
+			# print()
+			# print(np.array2string(self.resolve_results.strategy.reshape([-1,6]), suppress_small=True, precision=2))
 		return self.resolve_results
 
 

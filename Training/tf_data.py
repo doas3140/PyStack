@@ -13,9 +13,6 @@ def create_parse_fn(x_shape, y_shape):
     def parse_fn(serialized):
         # Define a dict with the data-names and types we expect to
         # find in the TFRecords file.
-        # It is a bit awkward that this needs to be specified again,
-        # because it could have been written in the header of the
-        # TFRecords file instead.
         features = {
                     'input': tf.FixedLenFeature([], tf.string),
                     'output': tf.FixedLenFeature([], tf.string),
@@ -63,11 +60,10 @@ def create_iterator( filenames, train, x_shape, y_shape, batch_size, buffer_size
     dataset = dataset.map( create_parse_fn(x_shape,y_shape) )
     if train: # If training then read a buffer of the given size and randomly shuffle it.
         dataset = dataset.shuffle(buffer_size=buffer_size)
-        dataset = dataset.repeat(None) # Allow infinite reading of the data.
-    else: # If testing then don't shuffle the data.
-        dataset = dataset.repeat(1) # Only go through the data once.
     # Get a batch of data with the given size.
     dataset = dataset.batch(batch_size)
+    dataset = dataset.repeat()
+    dataset = dataset.prefetch(tf.contrib.data.AUTOTUNE)
     # Create an iterator for the dataset and the above modifications.
     iterator = dataset.make_one_shot_iterator()
     return iterator

@@ -14,8 +14,6 @@ from helper_classes import LookaheadResults
 
 class Lookahead():
 	def __init__(self):
-		self.next_street_boxes_inputs = {}
-		self.next_street_boxes_outputs = {}
 		self.reconstruction_opponent_cfvs = None
 		self.builder = LookaheadBuilder(self)
 
@@ -170,7 +168,7 @@ class Lookahead():
 				if self.next_street_boxes_outputs[d] is None:
 					self.next_street_boxes_outputs[d] = self.next_street_boxes_inputs[d].copy()
 				# now the neural net accepts the input for P1 and P2 respectively, so we need to swap the ranges if necessary
-				self.next_street_boxes_outputs[d] = self.ranges_data[d][ 1, : , : , : , : ].copy()
+				self.next_street_boxes_outputs[d] = self.ranges_data[d][ 1, : , : , : , : ].reshape(self.next_street_boxes_outputs[d].shape).copy()
 				if self.tree.current_player == constants.players.P1: # ? - buvo == 1
 					self.next_street_boxes_inputs[d] = self.next_street_boxes_outputs[d].copy()
 				else:
@@ -182,7 +180,7 @@ class Lookahead():
 					self.next_street_boxes_inputs[d] = self.next_street_boxes_outputs[d].copy()
 					self.next_street_boxes_outputs[d][ : , 0, : ] = self.next_street_boxes_inputs[d][ : , 1, : ].copy()
 					self.next_street_boxes_outputs[d][ : , 1, : ] = self.next_street_boxes_inputs[d][ : , 0, : ].copy()
-				self.cfvs_data[d][ 1, : , : , : , : ] = self.next_street_boxes_outputs[d].copy()
+				self.cfvs_data[d][ 1, : , : , : , : ] = self.next_street_boxes_outputs[d].reshape(self.cfvs_data[d][ 1, : , : , : , : ].shape).copy()
 
 
 	def get_chance_action_cfv(self, action_index, board):
@@ -202,18 +200,18 @@ class Lookahead():
 		if action_index == 2 and self.first_call_transition:
 			box_outputs = np.zeros_like(self.next_street_boxes_inputs[2])
 			assert(box_outputs.shape[0] == 1)
-			batch_index = 1
+			batch_index = 0
 			next_street_box = self.next_street_boxes[2]
-			pot_mult = self.pot_size[2][2]
+			pot_mult = self.pot_size[2][1]
 		else:
 			batch_index = action_index - 1 # remove fold
 			if self.first_call_transition:
 				batch_index = batch_index - 1
 			box_outputs = np.zeros_like(self.next_street_boxes_inputs[3])
 			next_street_box = self.next_street_boxes[3]
-			pot_mult = self.pot_size[3][2]
+			pot_mult = self.pot_size[3][1]
 		next_street_box.get_value_on_board(board, box_outputs)
-		box_outputs *= pot_mult
+		box_outputs *= pot_mult.reshape(box_outputs.shape)
 		out = box_outputs[batch_index][1-self.tree.current_player]
 		return out
 
