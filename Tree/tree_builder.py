@@ -35,7 +35,7 @@ class PokerTreeBuilder():
 		chance_node = Node()
 		chance_node.node_type = constants.node_types.chance_node
 		chance_node.street = parent_node.street
-		chance_node.board = parent_node.board # .copy?
+		chance_node.board = parent_node.board.copy()
 		chance_node.board_string = parent_node.board_string
 		chance_node.current_player = constants.players.chance
 		chance_node.bets = parent_node.bets.copy()

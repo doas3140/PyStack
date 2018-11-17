@@ -1,6 +1,7 @@
 '''
 	Parameters for DeepStack.
 '''
+import os
 import numpy as np
 
 class Parameters():
@@ -38,22 +39,25 @@ class Parameters():
 		self.data_path = './Data/TrainSamples/PotBet/'
 		# path to the neural net model
 		self.model_path = './Data/Models/PotBet/'
+		# self.final_model_path = os.path.join(self.model_path, 'weights.{epoch:02d}-{val_loss:.2f}.hdf5')
+		self.final_model_path = os.path.join(self.model_path, 'weights.final.hdf5')
 		# path where to save tf.profiler information
 		self.profiler_path = './Data/Models/PotBet/profiler'
 		# the neural net architecture
 		self.num_layers = 2 # (excluding output layer)
 		self.num_neurons = 50
+		self.learning_rate = 1e-2
 		# how often to save the model during training
 		self.save_epoch = 2
 		# how many epochs to train for
 		self.epoch_count = 10
 		# how many solved poker situations are generated
-		self.gen_data_count = 100
+		self.gen_data_count = 3000
 		# how many files to create
 		# total situations = data_count x num_files
-		self.gen_num_files = 30
+		self.gen_num_files = 1 # problem with range_generator, needs to be 1
 		# tf records file information
-		self.tfrecords_batch_size = 8192
+		self.tfrecords_batch_size = 512
 
 
 

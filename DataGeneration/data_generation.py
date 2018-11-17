@@ -69,6 +69,9 @@ class DataGeneration():
 			ranges = np.zeros([PC, BS, CC], dtype=arguments.dtype)
 			for player in range(PC):
 				range_generator.generate_range(ranges[player])
+				# just simple random card generator below
+				# prob = np.random.rand(BS,CC)
+				# ranges[player] = prob / np.sum(prob, axis=1).reshape([BS,1])
 			# generating pot sizes between ante and stack - 0.1
 			min_pot = arguments.ante
 			max_pot = arguments.stack - 0.1

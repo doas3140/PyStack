@@ -70,7 +70,7 @@ class RangeGenerator():
 		order = np.argsort(non_coliding_strengths)
 		self.reverse_order = np.argsort(order)
 		self.reverse_order = self.reverse_order.reshape([1,-1]) # (1,PH) # ? - :long()
-		# self.reordered_range = np.zeros([]) # ? - ar reikia?
+		# self.reordered_range = np.zeros([]) # ?
 		# self.sorted_range = np.zeros([])
 
 
@@ -88,7 +88,7 @@ class RangeGenerator():
 		self.sorted_range = np.zeros([BS,PH], dtype=arguments.dtype)
 		self._generate_sorted_range(self.sorted_range)
 		# we have to reorder the the range back to undo the sort by strength
-		index = self.reverse_order * np.ones(self.sorted_range.shape, dtype=arguments.int_dtype)
+		index = self.reverse_order * np.ones_like(self.sorted_range, dtype=arguments.int_dtype)
 		self.reordered_range = np_gather(self.sorted_range, 1, index)
 		mask = self.possible_hands_mask * np.ones_like(ranges, dtype=bool)
 		ranges.fill(0)
