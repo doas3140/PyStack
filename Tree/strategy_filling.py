@@ -31,12 +31,15 @@ class StrategyFilling():
 		''' Fills a chance node with the probability of each outcome.
 		@param: node the chance node
 		'''
-		CC = game_settings.card_count
+		CC, HCC = game_settings.card_count, game_settings.hand_card_count
+		BCC, PC = game_settings.board_card_count, constants.players_count
+		HC = game_settings.hand_count
 		assert (not node.terminal)
 		# filling strategy
 		# we will fill strategy with an uniform probability, but it has to be
 		# zero for hands that are not possible on corresponding board
-		node.strategy = np.zeros([len(node.children), CC], dtype=arguments.dtype)
+		num_boards = tools.choose(CC - HCC * PC, BCC[node.street+1] - BCC[node.street])
+		node.strategy = np.zeros([len(node.children), HC], dtype=arguments.dtype)
 		# setting probability of impossible hands to 0
 		for i in range(len(node.children)):
 			child_node = node.children[i]
@@ -49,13 +52,12 @@ class StrategyFilling():
 		''' Fills a player node with a uniform strategy.
 		@param: node the player node
 		'''
-		CC = game_settings.card_count
-		assert (node.current_player == constants.players.P1\
-				or node.current_player == constants.players.P2)
+		HC = game_settings.hand_count
+		assert (node.current_player == constants.players.P1 or node.current_player == constants.players.P2)
 		if node.terminal:
 			return
 		value = 1.0 / len(node.children)
-		node.strategy = np.full([len(node.children), CC], value, dtype=arguments.dtype)
+		node.strategy = np.full([len(node.children), HC], value, dtype=arguments.dtype)
 
 
 	def _fill_uniform_dfs(self, node):
