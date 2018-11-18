@@ -202,7 +202,7 @@ class PokerTreeBuilder():
 			else:
 				if not game_settings.nl:
 					assert(i==2) # wtf child
-			        current_node.actions[i] = constants.actions.raise_
+					current_node.actions[i] = constants.actions.raise_
 				else:
 					current_node.actions[i] = children[i].bets.max()
 		current_node.depth = depth + 1
