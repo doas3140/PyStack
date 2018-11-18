@@ -18,7 +18,8 @@ from Settings.arguments import arguments
 
 class Evaluator():
 	def __init__(self):
-		pass
+		self._texas_lookup = np.load('Game/Evaluation/texas_lookup.npy')
+
 
 	def evaluate_two_card_hand(self, hand_ranks):
 		''' Gives a strength representation for a hand containing two cards.
@@ -55,30 +56,57 @@ class Evaluator():
 		return hand_value
 
 
+	def evaluate_seven_card_hand(self, hand):
+		''' Gives a strength representation for a texas hold'em hand containing seven cards.
+		@param: vector of all cards in the hand
+		@return the strength value of the hand
+		'''
+		rank = self._texas_lookup[54 + (hand[0] - 1) + 1]
+		for c in range(1, hand.shape[0]):
+			rank = self._texas_lookup[1 + rank + (hand[c] - 1) + 1]
+		return -rank
+
+
 	def evaluate(self, hand, impossible_hand_value=None):
 		''' Gives a strength representation for a two or three card hand.
-		@param: hand a vector of two or three cards
+		@param: hand a vector of cards
 		@param: [opt] impossible_hand_value the value to return
 				if the hand is invalid
 		@return the strength value of the hand, or `impossible_hand_value`
 				if the hand is invalid
 		'''
 		CC = game_settings.card_count
-		assert(hand.max() <= CC and hand.min() > 0, 'hand does not correspond to any cards' )
+		assert(hand.max() <= CC and hand.min() > 0) # hand does not correspond to any cards
 		impossible_hand_value = impossible_hand_value or -1
 		if not card_tools.hand_is_possible(hand):
 			return impossible_hand_value
 		# we are not interested in the hand suit -
 		# we will use ranks instead of cards
-		hand_ranks = hand.copy()
-		for i in range(hand_ranks.shape[0]):
-			hand_ranks[i] = card_to_string.card_to_rank(hand_ranks[i])
-		hand_ranks = np.sort(hand_ranks)
 		if hand.shape[0] == 2:
+			hand_ranks = hand.copy()
+			for i in range(hand_ranks.shape[0]):
+				hand_ranks[i] = card_to_string.card_to_rank(hand_ranks[i])
+			hand_ranks = np.sort(hand_ranks)
 			return self.evaluate_two_card_hand(hand_ranks)
 		elif hand.shape[0] == 3:
+			hand_ranks = hand.copy()
+			for i in range(hand_ranks.shape[0]):
+				hand_ranks[i] = card_to_string.card_to_rank(hand_ranks[i])
+			hand_ranks = np.sort(hand_ranks)
 			return self.evaluate_three_card_hand(hand_ranks)
-		assert(False, 'unsupported size of hand!')
+		elif hand.shape[0] == 7:
+			return self.evaluate_seven_card_hand(hand)
+		else:
+			assert(False) # unsupported size of hand!
+
+
+	def evaluate_fast(hands):
+		ret = self._texas_lookup[ hands[ : , 0 ] + 54 ]
+		for c in range(1, hands.shape[1]):
+			ret = self._texas_lookup[ hands[ : , c ] + ret + 1 ]
+		ret *= card_tools.get_possible_hands_mask(hands)
+		ret *= -1
+		return ret
 
 
 	def batch_eval(self, board, impossible_hand_value=None):
@@ -90,21 +118,52 @@ class Evaluator():
 		@return a vector containing a strength value or
 				`impossible_hand_value` for every private hand
 		'''
-		CC = game_settings.card_count
-		SC = game_settings.suit_count
-		hand_values = np.full([CC], -1, dtype=arguments.int_dtype)
-		if board.ndim == 0:
+		HC, CC = game_settings.hand_count, game_settings.card_count
+		SC, HCC = game_settings.suit_count, game_settings.hand_card_count
+
+		hand_values = np.full([HC], -1, dtype=arguments.dtype)
+		if board.ndim == 0: # kuhn poker
 			for hand in range(CC):
-				hand_values[hand] = np.floor(hand / SC) + 1
+				hand_values[hand] = np.floor(hand / SC)
 		else:
-			assert(board.shape[0] == 1 or board.shape[0] == 2, 'Incorrect board size for Leduc')
-			whole_hand = np.zeros([board.shape[0] + 1], dtype=arguments.int_dtype)
-			whole_hand[ :-1] = board.copy()
-			for card in range(CC):
-				whole_hand[-1] = card
-				hand_values[card] = self.evaluate(whole_hand, impossible_hand_value)
+			board_size = board.shape[0]
+			assert(board_size == 1 or board_size == 2 or board_size == 5) # Incorrect board size for Leduc
+			whole_hand = np.zeros([board_size + HCC], dtype=arguments.dtype)
+			whole_hand[  :-HCC ] = board.copy()
+			if HCC == 1:
+				for card in range(CC):
+					whole_hand[-1] = card
+					hand_values[card] = self.evaluate(whole_hand, impossible_hand_value)
+			elif HCC == 2:
+				for card1 in range(CC):
+					for card2 in range(card1+1, CC):
+						whole_hand[-2] = card1
+						whole_hand[-1] = card2
+						idx = card_tools.get_hole_index( [card1,card2] )
+						hand_values[idx] = self.evaluate(whole_hand, impossible_hand_value)
+			else:
+				assert(False) # unsupported hand_card_count
 		return hand_values
 
+
+	def batch_eval_fast(self, board):
+		HC, CC = game_settings.hand_count, game_settings.card_count
+		SC, HCC = game_settings.suit_count, game_settings.hand_card_count
+		if board.ndim == 0: # kuhn poker
+			return None
+		elif board.ndim == 2:
+			batch_size = board.shape[0]
+			hands = np.zeros([batch_size, HC, board.shape[1] + HCC], dtype=arguments.dtype) # ? - long
+			hands[ : , : ,  :board.shape[1] ] = board.reshape([batch_size, 1, board.shape[1]]) * np.ones([batch_size, HC, board.shape[1]], dtype=board.dtype)
+			hands[ : , : , -2: ] = self._idx_to_cards.reshape([1, HC, HCC]) * np.ones([batch_size, HC, HCC], dtype=self._idx_to_cards.dtype)
+			return self.evaluate_fast(hands.reshape([-1, board.shape[1] + HCC])).reshape([batch_size, HC])
+		elif board.ndim == 1:
+			hands = np.zeros([HC, board.shape[0] + HCC], dtype=arguments.dtype) # ? - long
+			hands[ : ,  :board.shape[0] ] = board.reshape([1,board.shape[0]]) * np.ones([HC,board.shape[0]])
+			hands[ : , -2: ] = self._idx_to_cards.copy()
+			return self.evaluate_fast(hands)
+		else:
+			assert(False) # weird board dim
 
 
 

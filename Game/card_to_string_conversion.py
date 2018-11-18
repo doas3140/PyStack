@@ -9,8 +9,8 @@ from Settings.game_settings import game_settings
 class CardToStringConversion():
 	def __init__(self):
 		CC = game_settings.card_count
-		self.suit_table = ['s', 'h', 'c', 'd']
-		self.rank_table = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2']
+		self.suit_table = ['c', 'd', 'h', 's']
+		self.rank_table = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A']
 		# card -> string table
 		table = {}
 		for card in range(CC):
@@ -83,7 +83,11 @@ class CardToStringConversion():
 		if card_string == '':
 			return np.zeros([], dtype=arguments.int_dtype)
 		else:
-			return np.array([self.string_to_card(card_string)], dtype=arguments.int_dtype)
+			num_cards = len(card_string) // 2
+			board = np.zeros([num_cards], dtype=arguments.int_dtype)
+			for i in range(1, num_cards+1):
+				board[i-1] = self.string_to_card(card_string[ (i-1)*2:i*2 ])
+			return board
 
 
 

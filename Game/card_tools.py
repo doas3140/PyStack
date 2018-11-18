@@ -10,6 +10,7 @@ import numpy as np
 from Settings.game_settings import game_settings
 from Settings.arguments import arguments
 from Settings.constants import constants
+from tools import tools
 
 class CardTools():
 	def __init__(self):
@@ -27,6 +28,17 @@ class CardTools():
 		for i in range(hand.shape[0]):
 			used_cards[ hand[i] ] += 1
 		return used_cards.max() < 2
+
+
+	# def get_possible_hands_mask(hands):
+	# 	used_cards = arguments.Tensor(hands:size(1), game_settings.card_count):fill(0)
+	# 	used_cards:scatterAdd(2,hands,arguments.Tensor(hands:size(1), 7):fill(1))
+	# 	local ret = torch.le(torch.max(used_cards, 2), 1):long()
+	# 	if arguments.gpu then
+	# 	ret = ret:cudaLong()
+	# 	end
+	#
+	# 	return ret
 
 
 	def get_possible_hand_indexes(self, board):
@@ -206,6 +218,17 @@ class CardTools():
 			index = index[ board[i] ] # ? - t[board] = tas pats?
 		assert(index > 0, index)
 		return index
+
+
+	def get_hole_index(self, hand):
+		''' Gives a numerical index for a set of hole cards.
+		@param: hand a non-empty vector of hole cards, sorted
+		@return the numerical index for the hand
+		'''
+		index = 1
+		for i in range(len(hand)):
+			index = index + tools.choose((hand[i]+1) - 1, i+1)
+		return index - 1
 
 
 	def normalize_range(self, board, range):
