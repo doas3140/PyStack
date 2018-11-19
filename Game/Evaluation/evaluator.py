@@ -18,7 +18,14 @@ from Settings.arguments import arguments
 
 class Evaluator():
 	def __init__(self):
+		HC, HCC, CC = game_settings.hand_count, game_settings.hand_card_count, game_settings.card_count
 		self._texas_lookup = np.load('Game/Evaluation/texas_lookup.npy')
+		self._idx_to_cards = np.zeros([HC,HCC], dtype=arguments.dtype)
+		for card1 in range(CC):
+			for card2 in range(card1+1,CC):
+				idx = card_tools.get_hole_index([card1,card2])
+				self._idx_to_cards[idx][0] = card1
+				self._idx_to_cards[idx][1] = card2
 
 
 	def evaluate_two_card_hand(self, hand_ranks):
@@ -100,7 +107,7 @@ class Evaluator():
 			assert(False) # unsupported size of hand!
 
 
-	def evaluate_fast(hands):
+	def evaluate_fast(self, hands):
 		ret = self._texas_lookup[ hands[ : , 0 ] + 54 ]
 		for c in range(1, hands.shape[1]):
 			ret = self._texas_lookup[ hands[ : , c ] + ret + 1 ]
@@ -153,12 +160,12 @@ class Evaluator():
 			return None
 		elif board.ndim == 2:
 			batch_size = board.shape[0]
-			hands = np.zeros([batch_size, HC, board.shape[1] + HCC], dtype=arguments.dtype) # ? - long
+			hands = np.zeros([batch_size, HC, board.shape[1] + HCC], dtype=arguments.int_dtype) # ? - long
 			hands[ : , : ,  :board.shape[1] ] = board.reshape([batch_size, 1, board.shape[1]]) * np.ones([batch_size, HC, board.shape[1]], dtype=board.dtype)
 			hands[ : , : , -2: ] = self._idx_to_cards.reshape([1, HC, HCC]) * np.ones([batch_size, HC, HCC], dtype=self._idx_to_cards.dtype)
 			return self.evaluate_fast(hands.reshape([-1, board.shape[1] + HCC])).reshape([batch_size, HC])
 		elif board.ndim == 1:
-			hands = np.zeros([HC, board.shape[0] + HCC], dtype=arguments.dtype) # ? - long
+			hands = np.zeros([HC, board.shape[0] + HCC], dtype=arguments.int_dtype) # ? - long
 			hands[ : ,  :board.shape[0] ] = board.reshape([1,board.shape[0]]) * np.ones([HC,board.shape[0]])
 			hands[ : , -2: ] = self._idx_to_cards.copy()
 			return self.evaluate_fast(hands)

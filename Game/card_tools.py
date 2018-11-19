@@ -30,15 +30,16 @@ class CardTools():
 		return used_cards.max() < 2
 
 
-	# def get_possible_hands_mask(hands):
-	# 	used_cards = arguments.Tensor(hands:size(1), game_settings.card_count):fill(0)
-	# 	used_cards:scatterAdd(2,hands,arguments.Tensor(hands:size(1), 7):fill(1))
-	# 	local ret = torch.le(torch.max(used_cards, 2), 1):long()
-	# 	if arguments.gpu then
-	# 	ret = ret:cudaLong()
-	# 	end
-	#
-	# 	return ret
+	def get_possible_hands_mask(self, hands):
+		'''
+		@param: (HC,BCC+HCC)
+		@return (HC,)
+		'''
+		num_hands, CC = hands.shape[0], game_settings.card_count
+		used_cards = np.zeros([num_hands,CC], dtype=arguments.dtype)
+		np_scatter_add(index=hands, src=np.ones([num_hands,7]), out=used_cards)
+		ret = np.max(used_cards, axis=1) <= 1 # < 2 or == 1
+		return ret
 
 
 	def get_possible_hand_indexes(self, board):
@@ -238,6 +239,24 @@ class CardTools():
 		@return a modified version of `range` where each invalid hand is given 0 probability and the vector is normalized
 		'''
 		pass
+
+
+
+
+def np_scatter_add(index, src, out):
+	''' Performs scatter add operation across 1 axis. More info: https://rusty1s.github.io/pytorch_scatter/build/html/functions/add.html
+	@param: index array
+	@param: src array
+	@param: output of scatter add operation
+	'''
+	# doesnt work for some cases
+	# for i in range(index.shape[0]):
+	# 	np.add.at(out[i], index[i], src[i])
+	# not vectorized implementation:
+	for i in range(index.shape[0]):
+		for j in range(index.shape[1]):
+			out[ i, index[i,j] ] = src[i,j]
+
 
 
 
