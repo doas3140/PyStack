@@ -23,7 +23,7 @@ class CardTools():
 		@return `true` if the tensor contains valid cards and no card is repeated
 		''' # viska galima pakeisti i np funkcija ?
 		CC = game_settings.card_count
-		assert (hand.min() > 0 and hand.max() <= CC, 'Illegal cards in hand' )
+		assert (hand.min() > 0 and hand.max() <= CC) # Illegal cards in hand
 		used_cards = np.zeros([CC], dtype=arguments.int_dtype)
 		for i in range(hand.shape[0]):
 			used_cards[ hand[i] ] += 1
@@ -50,18 +50,21 @@ class CardTools():
 				with the board and `0` otherwise
 				! pakeista: 0 -> False, 1 -> True !
 		'''
-		CC = game_settings.card_count
-		out = np.zeros([CC], dtype=bool)
+		HC, CC = game_settings.hand_count, game_settings.card_count
+		out = np.zeros([HC], dtype=bool)
 		if board.ndim == 0:
 			out.fill(1)
 			return out
-		whole_hand = np.zeros([board.shape[0] + 1], dtype=arguments.int_dtype)
-		# priskiria boardus -> whole_hand, isskyrus pask. el.
-		whole_hand[ :-1] = board.copy()
-		for card in range(CC):
-			whole_hand[-1] = card
-			if self.hand_is_possible(whole_hand):
-				out[card] = 1
+
+		used = {}
+		for i in range(board.shape[0]):
+			used[ board[i] ] = 1
+
+		for card1 in range(CC):
+			for card2 in range(card1+1,CC):
+				if not used[card2]:
+					out[ self.get_hole_index( [card1,card2] ) ]
+
 		return out
 
 
@@ -120,10 +123,100 @@ class CardTools():
 		@param: board a possibly empty vector of board cards
 		@return () int of the current betting round
 		'''
+		BCC, SC = game_settings.board_card_count, constants.streets_count
 		if board.ndim == 0:
 			return 1
 		else:
-			return 2
+			for i in range(SC):
+				if board.shape[0] == BCC[i]:
+					return i+1
+
+
+	def _build_boards(self, boards, boards_index, cur_board, out, card_index, last_index, base_index):
+		print(card_index, last_index, base_index)
+		CC = game_settings.card_count
+		if card_index == last_index + 1:
+			for i in range(1, last_index+1):
+				boards[boards_index][i-1] = cur_board[i-1]
+			out[boards_index] = cur_board.copy()
+			boards_index = boards_index + 1
+		else:
+			startindex = 1
+			if card_index > base_index:
+				startindex = int(cur_board[card_index-1-1] + 1)
+			for i in range(startindex, CC+1):
+				good = True
+				for j in range(1, card_index - 1 + 1):
+					if cur_board[j-1] == i:
+						good = False
+				if good:
+					cur_board[card_index-1] = i
+					self._build_boards(boards, boards_index, cur_board, out, card_index+1, last_index, base_index)
+
+
+	def get_next_round_boards(self, board):
+		''' Gives all possible sets of board cards for the game.
+		@return an NxK tensor, where N is the number of possible boards, and K is
+				the number of cards on each board
+		'''
+		BCC = game_settings.board_card_count
+		street = self.board_to_street(board)
+		boards_count = self.get_next_boards_count(street)
+		out = np.zeros([ boards_count, BCC[street] ], dtype=arguments.dtype)
+		boards, boards_index = out, 1
+		cur_board = np.zeros([ BCC[street] ], dtype=arguments.dtype)
+		if board.ndim > 0:
+			for i in range(board.shape[0]):
+				cur_board[i] = board[i]
+		#
+		self._build_boards(boards, boards_index, cur_board, out, BCC[street-1] + 1, BCC[street], BCC[street-1] + 1)
+		#
+		if self.flop_board_idx is None and board.ndim == 0:
+			self.flop_board_idx = np.zeros([CC,CC,CC], dtype=arguments.dtype)
+			for i in range(boards_count):
+				card1, card2, card3 = out[i][0], out[i][1], out[i][2]
+				self.flop_board_idx[card1][card2][card3] = i
+				self.flop_board_idx[card1][card3][card2] = i
+				self.flop_board_idx[card2][card1][card3] = i
+				self.flop_board_idx[card2][card3][card1] = i
+				self.flop_board_idx[card3][card1][card2] = i
+				self.flop_board_idx[card3][card2][card1] = i
+		return out
+
+
+	def get_last_round_boards(self, board):
+		BCC, SC = game_settings.board_card_count, constants.streets_count
+		street = self.board_to_street(board)
+		boards_count = self.get_last_boards_count(street)
+		out = np.zeros([ boards_count, BCC[SC-1] ], dtype=arguments.dtype)
+		print(out.shape)
+		boards, boards_index = out, 1
+		cur_board = np.zeros([ BCC[SC-1] ], dtype=arguments.dtype)
+		if board.ndim > 0:
+			for i in range(board.shape[0]):
+				cur_board[i] = board[i]
+		self._build_boards(boards, boards_index, cur_board, out, BCC[street-1] + 1, BCC[SC-1], BCC[street-1] + 1)
+		return out
+
+
+	def get_next_boards_count(self, street):
+		''' Gives the number of possible boards.
+		@return: the number of possible boards
+		'''
+		BCC, CC = game_settings.board_card_count, game_settings.card_count
+		used_cards = BCC[street-1] # street-1 = current_street
+		new_cards = BCC[street] - BCC[street-1]
+		return tools.choose(CC - used_cards, new_cards)
+
+
+	def get_last_boards_count(self, street):
+		''' Gives the number of possible boards.
+		@return the number of possible boards
+		'''
+		BCC, SC, CC = game_settings.board_card_count, constants.streets_count, game_settings.card_count
+		used_cards = BCC[street-1]
+		new_cards = BCC[SC-1] - BCC[street-1]
+		return tools.choose(CC - used_cards, new_cards)
 
 
 	def get_second_round_boards(self):

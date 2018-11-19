@@ -10,12 +10,12 @@ from Game.card_tools import card_tools
 
 class TerminalEquity():
 	def __init__(self):
-		self._block_matrix = np.load('te_block_matrix.npy')
-		self._pf_equity = np.load('te_pf_equity')
+		self._block_matrix = np.load('block_matrix.npy')
+		self._pf_equity = np.load('pf_equity')
 		self.equity_matrix = None # (CC,CC), can be named as call matrix
 		self.fold_matrix = None # (CC,CC)
 		self.matrix_mem = None #
-		self.set_board(np.zeros([]))
+		self.batch_size = 10
 
 
 	def get_last_round_call_matrix(self, board_cards, call_matrix):
@@ -28,7 +28,7 @@ class TerminalEquity():
 		HC = game_settings.hand_count
 		if board_cards.ndim != 0:
 			assert(board_cards.shape[0] == 1 or board_cards.shape[0] == 2 or board_cards.shape[0] == 5) # Only Leduc, extended Leduc, and Texas Holdem are supported
-		strength = evaluator.batch_eval(board_cards)
+		strength = evaluator.batch_eval_fast(board_cards)
 		# handling hand stregths (winning probs)
 		strength_view_1 = strength.reshape([HC,1]) * np.ones_like(call_matrix) # ? galima broadcastint
 		strength_view_2 = strength.reshape([1,HC]) * np.ones_like(call_matrix)
@@ -45,11 +45,10 @@ class TerminalEquity():
 		@param board_cards a non-empty vector of board cards
 		@param call_matrix a tensor where the computed matrix is stored
 		'''
-		HC = game_settings.hand_count
+		HC, num_boards = game_settings.hand_count, board_cards.shape[0]
 		if board_cards.ndim != 0:
 			assert(board_cards.shape[0] == 1 or board_cards.shape[0] == 2 or board_cards.shape[0] == 5) # Only Leduc, extended Leduc, and Texas Holdem are supported
 		strength = evaluator.batch_eval(board_cards)
-		num_boards = board_cards.shape[0]
 		# handling hand stregths (winning probs)
 		strength_view_1 = strength.reshape([num_boards,HC,1]) * np.ones([num_boards, HC, HC], dtype=strength.dtype) # ? galima broadcastint
 		strength_view_2 = strength.reshape([num_boards,1,HC]) * np.ones_like(strength_view_1)
