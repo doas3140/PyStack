@@ -42,14 +42,20 @@ class BetSizing():
 			return out # (N,P)
 		else:
 			# iterate through all bets and check if they are possible
-			max_possible_bets_count = self.pot_fractions.shape[0] + 1 # we can always go allin
+			if node.num_bets == 0:
+				fractions = self.pot_fractions[0]
+			elif node.num_bets == 1:
+				fractions = self.pot_fractions[1]
+			else:
+				fractions = self.pot_fractions[2]
+			max_possible_bets_count = len(fractions) + 1 # we can always go allin
 			out = np.full([max_possible_bets_count,2], opponent_bet, dtype=arguments.int_dtype)
 			# take pot size after opponent bet is called
 			pot = opponent_bet * 2
 			used_bets_count = 0
 			# try all pot fractions bet and see if we can use them
-			for i in range(self.pot_fractions.shape[0]):
-				raise_size = pot * self.pot_fractions[i]
+			for i in range(len(fractions)):
+				raise_size = pot * fractions[i]
 				if raise_size >= min_raise_size and raise_size < max_raise_size:
 					out[used_bets_count, current_player] = opponent_bet + raise_size
 					used_bets_count += 1
