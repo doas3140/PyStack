@@ -52,19 +52,21 @@ class CardTools():
 				! pakeista: 0 -> False, 1 -> True !
 		'''
 		HC, CC = game_settings.hand_count, game_settings.card_count
-		out = np.zeros([HC], dtype=bool)
+		out = np.zeros([HC], dtype=arguments.int_dtype)
 		if board.ndim == 0:
 			out.fill(1)
 			return out
 
-		used = {}
+		used = np.zeros([CC], dtype=bool)
+
 		for i in range(board.shape[0]):
 			used[ board[i] ] = 1
 
 		for card1 in range(CC):
-			for card2 in range(card1+1,CC):
-				if not used[card2]:
-					out[ self.get_hole_index( [card1,card2] ) ]
+			if not used[card1]:
+				for card2 in range(card1+1,CC):
+					if not used[card2]:
+						out[ self.get_hole_index( [card1,card2] ) ] = 1
 
 		return out
 

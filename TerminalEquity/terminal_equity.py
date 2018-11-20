@@ -6,12 +6,13 @@ import numpy as np
 from Game.Evaluation.evaluator import evaluator
 from Settings.game_settings import game_settings
 from Settings.arguments import arguments
+from Settings.constants import constants
 from Game.card_tools import card_tools
 
 class TerminalEquity():
 	def __init__(self):
-		self._block_matrix = np.load('block_matrix.npy')
-		self._pf_equity = np.load('pf_equity')
+		self._block_matrix = np.load('TerminalEquity/block_matrix.npy')
+		self._pf_equity = np.load('TerminalEquity/pf_equity.npy')
 		self.equity_matrix = None # (CC,CC), can be named as call matrix
 		self.fold_matrix = None # (CC,CC)
 		self.matrix_mem = None #
@@ -117,7 +118,7 @@ class TerminalEquity():
 		CC = game_settings.card_count
 		street = card_tools.board_to_street(board)
 		self.equity_matrix = np.zeros([HC,HC], dtype=arguments.dtype)
-		if street == 1:
+		if street == SC:
 			# for last round we just return the matrix
 			self.get_last_round_call_matrix(board, self.equity_matrix)
 		elif street == 3 or street == 2:
@@ -133,7 +134,7 @@ class TerminalEquity():
 			den = tools.choose(cards_left, cards_to_come)
 			self.equity_matrix *= 1/den
 		elif street == 1:
-    		self.equity_matrix = self._pf_equity.copy()
+			self.equity_matrix = self._pf_equity.copy()
 		else:
 			assert(False) # impossible street
 

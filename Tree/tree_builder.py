@@ -14,6 +14,7 @@ import numpy as np
 
 from Settings.arguments import arguments
 from Settings.constants import constants
+from Settings.game_settings import game_settings
 from Game.card_tools import card_tools
 from Game.card_to_string_conversion import card_to_string
 from Tree.strategy_filling import StrategyFilling
@@ -26,7 +27,7 @@ class PokerTreeBuilder():
 		pass
 
 
-	def _get_children_nodes_chance_node(self, parent_node):
+	def _get_children_nodes_chance_node(self, parent_node): # wtf
 		''' Creates the children nodes after a chance node.
 		@param: parent_node the chance node
 		@return a list of children nodes
@@ -34,7 +35,7 @@ class PokerTreeBuilder():
 		assert(parent_node.current_player == constants.players.chance)
 		if self.limit_to_street:
 			return []
-		next_boards = card_tools.get_second_round_boards()
+		next_boards = card_tools.get_boards(parent_node.street+1)
 		subtree_height = -1
 		children = []
 		# 1.0 iterate over the next possible boards to build the corresponding subtrees
@@ -106,7 +107,7 @@ class PokerTreeBuilder():
 			check_node.num_bets = parent_node.num_bets
 			children.append(check_node)
 		# transition check/call
-		elif b1 and ( (b2 and ((b3 and b4) or (b5 and b6))) or (b7 and b8) ):
+		elif b1 and ( ( b2 and ((b3 and b4) or (b5 and b6)) ) or (b7 and b8) ):
 			chance_node = Node()
 			chance_node.node_type = constants.node_types.chance_node
 			chance_node.street = parent_node.street
@@ -125,8 +126,7 @@ class PokerTreeBuilder():
 			terminal_call_node.street = parent_node.street
 			terminal_call_node.board = parent_node.board
 			terminal_call_node.board_string = parent_node.board_string
-			terminal_call_node.bets = parent_node.bets.copy()
-			terminal_call_node.bets.fill(parent_node.bets.max())
+			terminal_call_node.bets = np.full_like(parent_node.bets.copy(), parent_node.bets.max())
 			children.append(terminal_call_node)
 		# 3.0 bet actions
 		if not game_settings.nl:
@@ -139,7 +139,7 @@ class PokerTreeBuilder():
 				child.board = parent_node.board
 				child.board_string = parent_node.board_string
 				child.bets = parent_node.bets.copy()
-				betsize = game_settings.limit_bet_sizes[parent_node.street]
+				betsize = game_settings.limit_bet_sizes[parent_node.street-1]
 				if parent_node.current_player == constants.players.P1:
 					child.bets[0] = child.bets[1] + betsize
 				else:

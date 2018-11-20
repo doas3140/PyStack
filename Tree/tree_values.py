@@ -25,7 +25,7 @@ class TreeValues():
 				player reaching the current node with each private hand
 		'''
 		actions_count = len(node.children)
-		CC, PC, AC = game_settings.card_count, constants.players_count, actions_count
+		HC, PC, AC = game_settings.hand_count, constants.players_count, actions_count
 		node.ranges_absolute = ranges_absolute.copy()
 		if node.terminal:
 			return
@@ -43,9 +43,9 @@ class TreeValues():
 		# check if the range consists only of cards that don't overlap with the board
 		hands_mask = card_tools.get_possible_hand_indexes(node.board)
 		impossible_hands_mask = np.ones_like(hands_mask,dtype=arguments.int_dtype) - hands_mask
-		impossible_range_sum = (node.ranges_absolute.copy() * impossible_hands_mask.reshape([1,CC])).sum() # ? delete .copy()
+		impossible_range_sum = (node.ranges_absolute.copy() * impossible_hands_mask.reshape([1,HC])).sum() # ? delete .copy()
 		assert(impossible_range_sum == 0, impossible_range_sum)
-		children_ranges_absolute = np.zeros([len(node.children), PC, CC], dtype=arguments.dtype)
+		children_ranges_absolute = np.zeros([len(node.children), PC, HC], dtype=arguments.dtype)
 		# chance player
 		if node.current_player == constants.players.chance:
 			# multiply ranges of both players by the chance prob
@@ -145,9 +145,9 @@ class TreeValues():
 		@param: [opt] starting_ranges probability vectors over player private hands
 				at the root node (default uniform)
 		'''
-		PC, CC = constants.players_count, game_settings.card_count
+		PC, HC = constants.players_count, game_settings.hand_count
 		# 1.0 set the starting range (uniform if ranges=None)
-		if starting_ranges is None: starting_ranges = np.full([PC,CC], 1/CC, dtype=arguments.dtype)
+		if starting_ranges is None: starting_ranges = np.full([PC,HC], 1/HC, dtype=arguments.dtype)
 		# 2.0 check the starting ranges
 		checksum = starting_ranges.sum(axis=1)
 		assert(abs(checksum[0] - 1) < 0.0001, 'starting range does not sum to 1')

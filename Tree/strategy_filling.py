@@ -21,6 +21,7 @@ from Settings.arguments import arguments
 from Settings.constants import constants
 from Settings.game_settings import game_settings
 from Game.card_tools import card_tools
+from tools import tools
 
 class StrategyFilling():
 	def __init__(self):
