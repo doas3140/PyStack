@@ -18,7 +18,7 @@ class CFRDGadget():
 		@param: player_range an initial range vector for the opponent
 		@param: opponent_cfvs the opponent counterfactual values vector used for re-solving
 		'''
-		CC = game_settings.card_count
+		HC = game_settings.hand_count
 		self.total_values_p2 = None
 		self.play_current_regret = None
 		self.terminate_current_regret = None
@@ -26,16 +26,14 @@ class CFRDGadget():
 		assert(board is not None)
 		self.input_opponent_range = player_range.copy()
 		self.input_opponent_value = opponent_cfvs.copy()
-		self.curent_opponent_values = np.zeros([CC], dtype=arguments.dtype)
+		self.curent_opponent_values = np.zeros([HC], dtype=arguments.dtype)
 		self.regret_epsilon = 1.0/100000000
-		# 2 stands for 2 actions: play/terminate
-		self.opponent_reconstruction_regret = np.zeros([2,CC], dtype=arguments.dtype)
-		self.play_current_strategy = np.zeros([CC], dtype=arguments.dtype)
-		self.terminate_current_strategy = np.ones([CC], dtype=arguments.dtype)
+		self.play_current_strategy = np.zeros([HC], dtype=arguments.dtype)
+		self.terminate_current_strategy = np.ones([HC], dtype=arguments.dtype)
 		# holds achieved CFVs at each iteration so that we can compute regret
-		self.total_values = np.zeros([CC], dtype=arguments.dtype)
-		self.terminate_regrets = np.zeros([CC], dtype=arguments.dtype)
-		self.play_regrets = np.zeros([CC], dtype=arguments.dtype)
+		self.total_values = np.zeros([HC], dtype=arguments.dtype)
+		self.terminate_regrets = np.zeros([HC], dtype=arguments.dtype)
+		self.play_regrets = np.zeros([HC], dtype=arguments.dtype)
 		# init range mask for masking out impossible hands
 		self.range_mask = card_tools.get_possible_hand_indexes(board)
 
@@ -48,9 +46,9 @@ class CFRDGadget():
 		@param: iteration the current iteration number of re-solving
 		@return the opponent range vector for this iteration
 		'''
-		CC = game_settings.card_count
-		play_values = current_opponent_cfvs.reshape([CC])
-		terminate_values = self.input_opponent_value.reshape([CC])
+		HC = game_settings.hand_count
+		play_values = current_opponent_cfvs.reshape([HC])
+		terminate_values = self.input_opponent_value.reshape([HC])
 		# 1.0 compute current regrets
 		self.total_values = self.play_current_strategy * play_values
 		if self.total_values_p2 is None:
