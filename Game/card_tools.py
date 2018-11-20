@@ -10,11 +10,12 @@ import numpy as np
 from Settings.game_settings import game_settings
 from Settings.arguments import arguments
 from Settings.constants import constants
+from Game.card_to_string_conversion import card_to_string
 from tools import tools
 
 class CardTools():
 	def __init__(self):
-		self._init_board_index_table()
+		self.flop_board_idx = None # ? = - 1
 
 
 	def hand_is_possible(self, hand):
@@ -132,14 +133,13 @@ class CardTools():
 					return i+1
 
 
-	def _build_boards(self, boards, boards_index, cur_board, out, card_index, last_index, base_index):
-		print(card_index, last_index, base_index)
+	def _build_boards(self, boards, cur_board, out, card_index, last_index, base_index): # verified
 		CC = game_settings.card_count
 		if card_index == last_index + 1:
 			for i in range(1, last_index+1):
-				boards[boards_index][i-1] = cur_board[i-1]
-			out[boards_index] = cur_board.copy()
-			boards_index = boards_index + 1
+				boards[0][boards[1]-1][i-1] = cur_board[i-1] # (boards[0] - boards, boards[1] - index)
+			out[boards[1]-1] = cur_board.copy()
+			boards[1] += 1
 		else:
 			startindex = 1
 			if card_index > base_index:
@@ -151,30 +151,30 @@ class CardTools():
 						good = False
 				if good:
 					cur_board[card_index-1] = i
-					self._build_boards(boards, boards_index, cur_board, out, card_index+1, last_index, base_index)
+					self._build_boards(boards, cur_board, out, card_index+1, last_index, base_index)
 
 
-	def get_next_round_boards(self, board):
+	def get_next_round_boards(self, board): # verified
 		''' Gives all possible sets of board cards for the game.
 		@return an NxK tensor, where N is the number of possible boards, and K is
 				the number of cards on each board
 		'''
-		BCC = game_settings.board_card_count
+		BCC, CC = game_settings.board_card_count, game_settings.card_count
 		street = self.board_to_street(board)
 		boards_count = self.get_next_boards_count(street)
 		out = np.zeros([ boards_count, BCC[street] ], dtype=arguments.dtype)
-		boards, boards_index = out, 1
+		boards = [out,1] # (boards, index)
 		cur_board = np.zeros([ BCC[street] ], dtype=arguments.dtype)
 		if board.ndim > 0:
 			for i in range(board.shape[0]):
 				cur_board[i] = board[i]
 		#
-		self._build_boards(boards, boards_index, cur_board, out, BCC[street-1] + 1, BCC[street], BCC[street-1] + 1)
-		#
+		self._build_boards(boards, cur_board, out, BCC[street-1] + 1, BCC[street], BCC[street-1] + 1)
+		out -= 1
 		if self.flop_board_idx is None and board.ndim == 0:
-			self.flop_board_idx = np.zeros([CC,CC,CC], dtype=arguments.dtype)
-			for i in range(boards_count):
-				card1, card2, card3 = out[i][0], out[i][1], out[i][2]
+			self.flop_board_idx = np.zeros([CC,CC,CC], dtype=arguments.int_dtype)
+			for i in range(boards_count): # + 1
+				card1, card2, card3 = int(out[i][0]), int(out[i][1]), int(out[i][2])
 				self.flop_board_idx[card1][card2][card3] = i
 				self.flop_board_idx[card1][card3][card2] = i
 				self.flop_board_idx[card2][card1][card3] = i
@@ -184,22 +184,22 @@ class CardTools():
 		return out
 
 
-	def get_last_round_boards(self, board):
+	def get_last_round_boards(self, board): # verified
 		BCC, SC = game_settings.board_card_count, constants.streets_count
 		street = self.board_to_street(board)
 		boards_count = self.get_last_boards_count(street)
 		out = np.zeros([ boards_count, BCC[SC-1] ], dtype=arguments.dtype)
-		print(out.shape)
-		boards, boards_index = out, 1
+		boards = [out,1] # (boards, index)
 		cur_board = np.zeros([ BCC[SC-1] ], dtype=arguments.dtype)
 		if board.ndim > 0:
 			for i in range(board.shape[0]):
 				cur_board[i] = board[i]
-		self._build_boards(boards, boards_index, cur_board, out, BCC[street-1] + 1, BCC[SC-1], BCC[street-1] + 1)
+		self._build_boards(boards, cur_board, out, BCC[street-1] + 1, BCC[SC-1], BCC[street-1] + 1)
+		out -= 1
 		return out
 
 
-	def get_next_boards_count(self, street):
+	def get_next_boards_count(self, street): # verified+
 		''' Gives the number of possible boards.
 		@return: the number of possible boards
 		'''
@@ -209,7 +209,7 @@ class CardTools():
 		return tools.choose(CC - used_cards, new_cards)
 
 
-	def get_last_boards_count(self, street):
+	def get_last_boards_count(self, street): # verified+
 		''' Gives the number of possible boards.
 		@return the number of possible boards
 		'''
@@ -219,102 +219,32 @@ class CardTools():
 		return tools.choose(CC - used_cards, new_cards)
 
 
-	def get_second_round_boards(self):
-		''' Gives all possible sets of board cards for the game.
-		@return (N,K) tensor, where N is the number of all possible boards,
-				and K is the number of cards on each board
-		@ex if BCC = 2:   [[0., 1.],
-						   [0., 2.],
-						   [0., 3.],
-						   [0., 4.],
-						   [0., 5.],
-						   [1., 2.],
-						   [1., 3.],
-						   [1., 4.],
-						   [1., 5.],
-						   [2., 3.],
-						   [2., 4.],
-						   [2., 5.],
-						   [3., 4.],
-						   [3., 5.],
-						   [4., 5.]]
-		'''
-		boards_count = self.get_boards_count()
-		BC = boards_count
-		CC = game_settings.card_count
-		BCC = game_settings.board_card_count
-		if BCC == 1:
-			out = np.zeros([BC, 1], dtype=arguments.int_dtype)
-			for card in range(CC): # TODO: -> np.arange
-				out[card, 0] = card
-			return out
-		elif BCC == 2:
-			out = np.zeros([BC, 2], dtype=arguments.int_dtype)
-			board_idx = 0
-			for card_1 in range(CC):
-				for card_2 in range(card_1+1, CC):
-					out[board_idx, 0] = card_1
-					out[board_idx, 1] = card_2
-					board_idx += 1
-			assert (board_idx == BC, 'wrong boards count!')
-			return out
-		else:
-			assert (False, 'unsupported board size')
-
-
-	def get_boards_count(self):
-		''' Gives the number of all possible boards.
-		@return () int of the number of all possible boards
-		'''
-		CC = game_settings.card_count
-		BCC = game_settings.board_card_count
-		if BCC == 1:
-			return CC
-		elif BCC == 2:
-			return (CC * (CC - 1)) / 2
-		else:
-			assert (False, 'unsupported board size')
-
-
-	def _init_board_index_table(self):
-		''' Initializes the board index table.
-		@return (CC,CC) matrix, where (i,j) == (j,i), because its the
-				same hand combo. matrix ex: if CC = 6:
-				[[-1,  0,  1,  2,  3,  4],
-		         [ 0, -1,  5,  6,  7,  8],
-		         [ 1,  5, -1,  9, 10, 11],
-		         [ 2,  6,  9, -1, 12, 13],
-		         [ 3,  7, 10, 12, -1, 14],
-		         [ 4,  8, 11, 13, 14, -1]]
-		'''
-		BCC, CC = game_settings.board_card_count, game_settings.card_count
-		if BCC == 1:
-			self._board_index_table = np.arange(CC, dtype=arguments.int_dtype) # uint?
-		elif BCC == 2:
-			self._board_index_table = np.full([CC,CC], -1, dtype=arguments.int_dtype) # int?
-			board_idx = 0
-			for card_1 in range(CC):
-				for card_2 in range(card_1+1, CC):
-					self._board_index_table[card_1][card_2] = board_idx
-					self._board_index_table[card_2][card_1] = board_idx
-					board_idx += 1
-		else:
-			assert(False, 'unsupported board size')
-
-
-	def get_board_index(self, board):
+	def get_board_index(self, board): # verfied
 		''' Gives a numerical index for a set of board cards.
 		@param: board a non-empty vector of board cards
-		@return () int of the numerical index for the board
+		@return the numerical index for the board
 		'''
-		index = self._board_index_table # ? - nereikia copy?
-		for i in range(board.shape[0]):
-			index = index[ board[i] ] # ? - t[board] = tas pats?
-		assert(index > 0, index)
-		return index
+		CC = game_settings.card_count
+		assert(board.shape[0] > 3)
+		used_cards = np.zeros([CC], dtype=arguments.dtype)
+		for i in range(board.shape[0] - 1):
+			used_cards[ board[i] ] = 1
+		ans = -1
+		for i in range(CC):
+			if used_cards[i] == 0:
+				ans += 1
+			if i == board[-1]:
+				return ans
+		return -1
 
 
-	def get_hole_index(self, hand):
+	def get_flop_board_index(self, board): # verified
+		if self.flop_board_idx is None:
+			self.get_next_round_boards(np.zeros([]))
+		return self.flop_board_idx[board[0]][board[1]][board[2]]
+
+
+	def get_hole_index(self, hand): # verified
 		''' Gives a numerical index for a set of hole cards.
 		@param: hand a non-empty vector of hole cards, sorted
 		@return the numerical index for the hand
@@ -322,6 +252,15 @@ class CardTools():
 		index = 1
 		for i in range(len(hand)):
 			index = index + tools.choose((hand[i]+1) - 1, i+1)
+		return index - 1
+
+
+	def string_to_hole_index(self, hand_string): # verified?
+		hole = card_to_string.string_to_board(hand_string)
+		hole = np.sort(hole)
+		index = 1
+		for i in range(hole.shape[0]):
+			index += tools.choose(hole[i], i+1)
 		return index - 1
 
 

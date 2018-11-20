@@ -72,7 +72,7 @@ class CardToStringConversion():
 		return card
 
 
-	def string_to_board(self, card_string):
+	def string_to_board(self, card_string): # verified
 		''' Converts a string representing zero or one board cards to a
 			vector of numeric representations.
 		@param: card_string either the empty string or a string representation
