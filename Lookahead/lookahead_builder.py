@@ -117,14 +117,6 @@ class LookaheadBuilder():
 		self.lookahead.acting_player[1] = 0
 		for d in range(2, self.lookahead.depth+2):
 			self.lookahead.acting_player[d] = 1 - self.lookahead.acting_player[d-1]
-		self.lookahead.bets_count[-1] = 1
-		self.lookahead.bets_count[0] = 1
-		self.lookahead.nonallinbets_count[-1] = 1
-		self.lookahead.nonallinbets_count[0] = 1
-		self.lookahead.terminal_actions_count[-1] = 0
-		self.lookahead.terminal_actions_count[0] = 0
-		self.lookahead.actions_count[-1] = 1
-		self.lookahead.actions_count[0] = 1
 		# init node vars
 		self.lookahead.nonterminal_nodes_count = {}
 		self.lookahead.nonterminal_nonallin_nodes_count = {}
@@ -135,7 +127,7 @@ class LookaheadBuilder():
 		# compute the node counts
 		self.lookahead.nonterminal_nodes_count[1] = 1
 		self.lookahead.nonterminal_nodes_count[2] = self.lookahead.bets_count[1]
-		self.lookahead.nonterminal_nonallin_nodes_count[0] = 1
+		# self.lookahead.nonterminal_nonallin_nodes_count[0] = 1
 		self.lookahead.nonterminal_nonallin_nodes_count[1] = 1
 		self.lookahead.nonterminal_nonallin_nodes_count[2] = self.lookahead.nonterminal_nodes_count[2] - 1 if game_settings.nl else self.lookahead.nonterminal_nodes_count[2]
 		self.lookahead.all_nodes_count[1] = 1
@@ -318,17 +310,29 @@ class LookaheadBuilder():
 		if node.current_player == constants.players.chance:
 			assert(parent_id <= self.lookahead.nonallinbets_count[layer-2])
 		if layer < self.lookahead.depth + 1:
-			gp_nonallinbets_count = self.lookahead.nonallinbets_count[layer-2]
-			prev_layer_terminal_actions_count = self.lookahead.terminal_actions_count[layer-1]
-			gp_terminal_actions_count = self.lookahead.terminal_actions_count[layer-2]
+			if layer == 1:
+				gp_nonallinbets_count = 1
+				prev_layer_terminal_actions_count = 0
+				gp_terminal_actions_count = 0
+				prev_layer_bets_count = 1
+			elif layer == 2:
+				gp_nonallinbets_count = 1
+				prev_layer_terminal_actions_count = self.lookahead.terminal_actions_count[layer-1]
+				gp_terminal_actions_count = 0
+				prev_layer_bets_count = self.lookahead.bets_count[layer-1]
+			else:
+				gp_nonallinbets_count = self.lookahead.nonallinbets_count[layer-2]
+				prev_layer_terminal_actions_count = self.lookahead.terminal_actions_count[layer-1]
+				gp_terminal_actions_count = self.lookahead.terminal_actions_count[layer-2]
+				prev_layer_bets_count = self.lookahead.bets_count[layer-1]
 			prev_layer_bets_count = 0
-			prev_layer_bets_count = self.lookahead.bets_count[layer-1]
 			# compute next coordinates for parent and grandparent
 			next_parent_id = action_id - prev_layer_terminal_actions_count
 			next_gp_id = gp_id * gp_nonallinbets_count + parent_id
 			if (not node.terminal) and (node.current_player != constants.players.chance):
 				# parent is not an allin raise
-				assert(parent_id <= self.lookahead.nonallinbets_count[layer-2])
+				if layer > 2:
+					assert(parent_id <= self.lookahead.nonallinbets_count[layer-2])
 				# do we need to mask some actions for that node? (that is, does the node have fewer children than the max number of children for any node on this layer)
 				if len(node.children) < self.lookahead.actions_count[layer]:
 					# we need to mask nonexisting padded bets
@@ -338,7 +342,8 @@ class LookaheadBuilder():
 					existing_bets_count = len(node.children) - terminal_actions_count
 					# allin situations
 					if existing_bets_count == 0:
-						assert(action_id == self.lookahead.actions_count[layer-1]-1)
+						if layer > 1:
+							assert(action_id == self.lookahead.actions_count[layer-1]-1)
 					for child_id in range(terminal_actions_count):
 						child_node = node.children[child_id]
 						# go deeper

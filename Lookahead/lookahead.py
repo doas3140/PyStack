@@ -103,11 +103,20 @@ class Lookahead():
 		for d in range(1, self.depth):
 			current_level_ranges = self.ranges_data[d]
 			next_level_ranges = self.ranges_data[d+1]
-			prev_layer_terminal_actions_count = self.terminal_actions_count[d-1]
-			prev_layer_actions_count = self.actions_count[d-1]
-			prev_layer_bets_count = self.bets_count[d-1]
-			gp_layer_nonallin_bets_count = self.nonallinbets_count[d-2]
-			gp_layer_terminal_actions_count = self.terminal_actions_count[d-2]
+			if d > 1:
+				prev_layer_terminal_actions_count = self.terminal_actions_count[d-1]
+				prev_layer_actions_count = self.actions_count[d-1]
+				prev_layer_bets_count = self.bets_count[d-1]
+			elif d == 1:
+				prev_layer_terminal_actions_count = 0
+				prev_layer_actions_count = 1
+				prev_layer_bets_count = 1
+			if d > 2:
+				gp_layer_nonallin_bets_count = self.nonallinbets_count[d-2]
+				gp_layer_terminal_actions_count = self.terminal_actions_count[d-2]
+			else:
+				gp_layer_nonallin_bets_count = 1
+				gp_layer_terminal_actions_count = 0
 			# copy the ranges of inner nodes and transpose (np.transpose - swaps axis: 1dim <-> 2 dim)
 			self.inner_nodes[d] = np.transpose(self.ranges_data[d][ prev_layer_terminal_actions_count: , :gp_layer_nonallin_bets_count , : , : , : , : ], [0,2,1,3,4,5])
 			super_view = self.inner_nodes[d]
@@ -251,8 +260,16 @@ class Lookahead():
 			values, computes their cfvs at all states of the lookahead.
 		'''
 		for d in range(self.depth, 1, -1):
-			gp_layer_terminal_actions_count = self.terminal_actions_count[d-2]
-			ggp_layer_nonallin_bets_count = self.nonallinbets_count[d-3]
+			if d > 3:
+				gp_layer_terminal_actions_count = self.terminal_actions_count[d-2]
+				ggp_layer_nonallin_bets_count = self.nonallinbets_count[d-3]
+			elif d == 3:
+				gp_layer_terminal_actions_count = self.terminal_actions_count[d-2]
+				ggp_layer_nonallin_bets_count = 1
+			elif d == 2:
+				gp_layer_terminal_actions_count = 0
+				ggp_layer_nonallin_bets_count = 1
+
 			self.cfvs_data[d][ : , : , : , : , 0, : ] *= self.empty_action_mask[d]
 			self.cfvs_data[d][ : , : , : , : , 1, : ] *= self.empty_action_mask[d]
 			self.placeholder_data[d] = self.cfvs_data[d].copy()
@@ -304,9 +321,15 @@ class Lookahead():
 		'''
 		HC, batch_size = game_settings.hand_count, self.batch_size
 		for d in range(self.depth, 1, -1):
-			gp_layer_terminal_actions_count = self.terminal_actions_count[d-2]
-			gp_layer_bets_count = self.bets_count[d-2]
-			ggp_layer_nonallin_bets_count = self.nonallinbets_count[d-3]
+			if d > 2:
+				gp_layer_terminal_actions_count = self.terminal_actions_count[d-2]
+				gp_layer_bets_count = self.bets_count[d-2]
+			if d > 3:
+				ggp_layer_nonallin_bets_count = self.nonallinbets_count[d-3]
+			if d < 3:
+				gp_layer_terminal_actions_count = 0
+				gp_layer_bets_count = 1
+				ggp_layer_nonallin_bets_count = 1
 			# current_regrets = self.current_regrets_data[d]
 			current_regrets = self.cfvs_data[d][ : , : , : , : , self.acting_player[d], : ].copy().reshape(self.current_regrets_data[d].shape) # ? - no need reshape?
 			next_level_cfvs = self.cfvs_data[d-1]
