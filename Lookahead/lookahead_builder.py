@@ -10,6 +10,7 @@ from Settings.game_settings import game_settings
 # from Tree.tree_visualiser import TreeVisualiser
 from Nn.next_round_value import NextRoundValue
 from Nn.value_nn import ValueNn
+from helper_classes import LookaheadLayer
 
 NEURAL_NET = {}
 AUX_NET = None
@@ -113,39 +114,29 @@ class LookaheadBuilder():
 		assert(self.lookahead.tree.street >= 1 and self.lookahead.tree.street <= constants.streets_count)
 		self.lookahead.regret_epsilon = 1.0 / 1000000000
 		# which player acts at particular depth
-		self.lookahead.acting_player = {}
-		self.lookahead.acting_player[0] = 0
+		self.lookahead.layers[0].acting_player = 0
 		for d in range(1, self.lookahead.depth+1):
-			self.lookahead.acting_player[d] = 1 - self.lookahead.acting_player[d-1]
-		# init node vars
-		self.lookahead.nonterminal_nodes_count = {}
-		self.lookahead.nonterminal_nonallin_nodes_count = {}
-		self.lookahead.all_nodes_count = {}
-		self.lookahead.terminal_nodes_count = {}
-		self.lookahead.allin_nodes_count = {}
-		self.lookahead.inner_nodes_count = {}
+			self.lookahead.layers[d].acting_player = 1 - self.lookahead.layers[d-1].acting_player
 		# compute the node counts
-		self.lookahead.nonterminal_nodes_count[0] = 1
-		self.lookahead.nonterminal_nodes_count[1] = self.lookahead.bets_count[0]
+		self.lookahead.layers[0].nonterminal_nodes_count = 1
+		self.lookahead.layers[1].nonterminal_nodes_count = self.lookahead.layers[0].bets_count
 		# self.lookahead.nonterminal_nonallin_nodes_count[0] = 1
-		self.lookahead.nonterminal_nonallin_nodes_count[0] = 1
-		self.lookahead.nonterminal_nonallin_nodes_count[1] = self.lookahead.nonterminal_nodes_count[1] - 1 if game_settings.nl else self.lookahead.nonterminal_nodes_count[1]
-		self.lookahead.all_nodes_count[0] = 1
-		self.lookahead.all_nodes_count[1] = self.lookahead.actions_count[0]
-		self.lookahead.allin_nodes_count[0] = 0
-		self.lookahead.allin_nodes_count[1] = 1
-		self.lookahead.inner_nodes_count[0] = 1
-		self.lookahead.inner_nodes_count[1] = 1
+		self.lookahead.layers[0].nonterminal_nonallin_nodes_count = 1
+		self.lookahead.layers[1].nonterminal_nonallin_nodes_count = self.lookahead.layers[1].nonterminal_nodes_count - 1 if game_settings.nl else self.lookahead.layers[1].nonterminal_nodes_count
+		self.lookahead.layers[0].all_nodes_count = 1
+		self.lookahead.layers[1].all_nodes_count = self.lookahead.layers[0].actions_count
+		self.lookahead.layers[0].allin_nodes_count = 0
+		self.lookahead.layers[1].allin_nodes_count = 1
 		# neural network input and output boxes
 		self.lookahead.next_street_boxes_inputs = {}
 		self.lookahead.next_street_boxes_outputs = {}
 		for d in range(1, self.lookahead.depth):
-			self.lookahead.all_nodes_count[d+1] = self.lookahead.nonterminal_nonallin_nodes_count[d-1] * self.lookahead.bets_count[d-1] * self.lookahead.actions_count[d]
-			self.lookahead.allin_nodes_count[d+1] = self.lookahead.nonterminal_nonallin_nodes_count[d-1] * self.lookahead.bets_count[d-1] * 1
-			self.lookahead.nonterminal_nodes_count[d+1] = self.lookahead.nonterminal_nonallin_nodes_count[d-1] * self.lookahead.nonallinbets_count[d-1] * self.lookahead.bets_count[d]
-			self.lookahead.nonterminal_nonallin_nodes_count[d+1] = self.lookahead.nonterminal_nonallin_nodes_count[d-1] * self.lookahead.nonallinbets_count[d-1] * self.lookahead.nonallinbets_count[d]
-			self.lookahead.next_street_boxes_inputs[d] = None
-			self.lookahead.next_street_boxes_outputs[d] = None
+			self.lookahead.layers[d+1].all_nodes_count = self.lookahead.layers[d-1].nonterminal_nonallin_nodes_count * self.lookahead.layers[d-1].bets_count * self.lookahead.layers[d].actions_count
+			self.lookahead.layers[d+1].allin_nodes_count = self.lookahead.layers[d-1].nonterminal_nonallin_nodes_count * self.lookahead.layers[d-1].bets_count * 1
+			self.lookahead.layers[d+1].nonterminal_nodes_count = self.lookahead.layers[d-1].nonterminal_nonallin_nodes_count * self.lookahead.layers[d-1].nonallinbets_count * self.lookahead.layers[d].bets_count
+			self.lookahead.layers[d+1].nonterminal_nonallin_nodes_count = self.lookahead.layers[d-1].nonterminal_nonallin_nodes_count * self.lookahead.layers[d-1].nonallinbets_count * self.lookahead.layers[d].nonallinbets_count
+			self.lookahead.layers[d].next_street_boxes_inputs = None
+			self.lookahead.layers[d].next_street_boxes_outputs = None
 
 
 	def construct_data_structures(self):
@@ -155,79 +146,63 @@ class LookaheadBuilder():
 		self._compute_structure()
 		# lookahead main data structures
 		# all the structures are per-layer tensors, that is, each layer holds the data in n-dimensional tensors
-		self.lookahead.pot_size = {}
-		self.lookahead.ranges_data = {}
-		self.lookahead.average_strategies_data = {}
-		self.lookahead.current_strategy_data = {}
-		self.lookahead.cfvs_data = {}
-		self.lookahead.average_cfvs_data = {}
-		self.lookahead.regrets_data = {}
-		self.lookahead.current_regrets_data = {}
-		self.lookahead.positive_regrets_data = {}
-		self.lookahead.placeholder_data = {}
-		self.lookahead.regrets_sum = {}
-		self.lookahead.empty_action_mask = {} # used to mask empty actions
-		# used to hold and swap inner (nonterminal) nodes when doing some transpose operations
-		self.lookahead.inner_nodes = {}
-		self.lookahead.inner_nodes_p1 = {}
-		self.lookahead.swap_data = {}
 		# create the data structure for the first two layers
 		# data structures [actions x parent_action x grandparent_id x batch x players x range]
-		self.lookahead.ranges_data[0] = np.full([1, 1, 1, batch_size, PC, HC], 1.0/HC, dtype=arguments.dtype)
-		self.lookahead.ranges_data[1] = np.full([self.lookahead.actions_count[0], 1, 1, batch_size, PC, HC], 1.0/HC, dtype=arguments.dtype)
-		self.lookahead.pot_size[0] = np.zeros_like(self.lookahead.ranges_data[0])
-		self.lookahead.pot_size[1] = np.zeros_like(self.lookahead.ranges_data[1])
-		self.lookahead.cfvs_data[0] = np.zeros_like(self.lookahead.ranges_data[0])
-		self.lookahead.cfvs_data[1] = np.zeros_like(self.lookahead.ranges_data[1])
-		self.lookahead.average_cfvs_data[0] = np.zeros_like(self.lookahead.ranges_data[0])
-		self.lookahead.average_cfvs_data[1] = np.zeros_like(self.lookahead.ranges_data[1])
-		self.lookahead.placeholder_data[0] = np.zeros_like(self.lookahead.ranges_data[0])
-		self.lookahead.placeholder_data[1] = np.zeros_like(self.lookahead.ranges_data[1])
+		self.lookahead.layers[0].ranges_data = np.full([1, 1, 1, batch_size, PC, HC], 1.0/HC, dtype=arguments.dtype)
+		self.lookahead.layers[1].ranges_data = np.full([self.lookahead.layers[0].actions_count, 1, 1, batch_size, PC, HC], 1.0/HC, dtype=arguments.dtype)
+		self.lookahead.layers[0].pot_size = np.zeros_like(self.lookahead.layers[0].ranges_data)
+		self.lookahead.layers[1].pot_size = np.zeros_like(self.lookahead.layers[1].ranges_data)
+		self.lookahead.layers[0].cfvs_data = np.zeros_like(self.lookahead.layers[0].ranges_data)
+		self.lookahead.layers[1].cfvs_data = np.zeros_like(self.lookahead.layers[1].ranges_data)
+		self.lookahead.layers[0].average_cfvs_data = np.zeros_like(self.lookahead.layers[0].ranges_data)
+		self.lookahead.layers[1].average_cfvs_data = np.zeros_like(self.lookahead.layers[1].ranges_data)
+		self.lookahead.layers[0].placeholder_data = np.zeros_like(self.lookahead.layers[0].ranges_data)
+		self.lookahead.layers[1].placeholder_data = np.zeros_like(self.lookahead.layers[1].ranges_data)
 		# data structures for one player [actions x parent_action x grandparent_id x 1 x range]
-		self.lookahead.average_strategies_data[0] = None
-		self.lookahead.average_strategies_data[1] = np.zeros([self.lookahead.actions_count[0], 1, 1, batch_size, HC], dtype=arguments.dtype)
-		self.lookahead.current_strategy_data[0] = None
-		self.lookahead.current_strategy_data[1] = np.zeros_like(self.lookahead.average_strategies_data[1])
-		self.lookahead.regrets_data[0] = None
-		self.lookahead.regrets_data[1] = np.zeros_like(self.lookahead.average_strategies_data[1])
-		self.lookahead.current_regrets_data[0] = None
-		self.lookahead.current_regrets_data[1] = np.zeros_like(self.lookahead.average_strategies_data[1])
-		self.lookahead.positive_regrets_data[0] = None
-		self.lookahead.positive_regrets_data[1] = np.zeros_like(self.lookahead.average_strategies_data[1])
-		self.lookahead.empty_action_mask[0] = None
-		self.lookahead.empty_action_mask[1] = np.ones_like(self.lookahead.average_strategies_data[1])
+		self.lookahead.layers[0].average_strategies_data = None
+		self.lookahead.layers[1].average_strategies_data = np.zeros([self.lookahead.layers[0].actions_count, 1, 1, batch_size, HC], dtype=arguments.dtype)
+		self.lookahead.layers[0].current_strategy_data = None
+		self.lookahead.layers[1].current_strategy_data = np.zeros_like(self.lookahead.layers[1].average_strategies_data)
+		self.lookahead.layers[0].regrets_data = None
+		self.lookahead.layers[1].regrets_data = np.zeros_like(self.lookahead.layers[1].average_strategies_data)
+		self.lookahead.layers[0].current_regrets_data = None
+		self.lookahead.layers[1].current_regrets_data = np.zeros_like(self.lookahead.layers[1].average_strategies_data)
+		self.lookahead.layers[0].positive_regrets_data = None
+		self.lookahead.layers[1].positive_regrets_data = np.zeros_like(self.lookahead.layers[1].average_strategies_data)
+		self.lookahead.layers[0].empty_action_mask = None
+		self.lookahead.layers[1].empty_action_mask = np.ones_like(self.lookahead.layers[1].average_strategies_data)
 		# data structures for summing over the actions [1 x parent_action x grandparent_id x range]
-		self.lookahead.regrets_sum[0] = np.zeros([1, 1, 1, batch_size, HC], dtype=arguments.dtype)
-		self.lookahead.regrets_sum[1] = np.zeros([1, self.lookahead.bets_count[0], 1, batch_size, HC], dtype=arguments.dtype)
+		self.lookahead.layers[0].regrets_sum = np.zeros([1, 1, 1, batch_size, HC], dtype=arguments.dtype)
+		self.lookahead.layers[1].regrets_sum = np.zeros([1, self.lookahead.layers[0].bets_count, 1, batch_size, HC], dtype=arguments.dtype)
 		# data structures for inner nodes (not terminal nor allin) [bets_count x parent_nonallinbetscount x gp_id x batch x players x range]
-		self.lookahead.inner_nodes[0] = np.zeros([1, 1, 1, batch_size, PC, HC], dtype=arguments.dtype)
-		self.lookahead.swap_data[0] = np.transpose(self.lookahead.inner_nodes[0], [0,2,1,3,4,5]) # :transpose(2,3):clone()
-		self.lookahead.inner_nodes_p1[0] = np.zeros([1, 1, 1, batch_size, 1, HC], dtype=arguments.dtype)
+		self.lookahead.layers[0].inner_nodes = np.zeros([1, 1, 1, batch_size, PC, HC], dtype=arguments.dtype)
+		self.lookahead.layers[0].swap_data = np.transpose(self.lookahead.layers[0].inner_nodes, [0,2,1,3,4,5]) # :transpose(2,3):clone()
+		self.lookahead.layers[0].inner_nodes_p1 = np.zeros([1, 1, 1, batch_size, 1, HC], dtype=arguments.dtype)
 		if self.lookahead.depth > 2:
-			self.lookahead.inner_nodes[1] = np.zeros([self.lookahead.bets_count[0], 1, 1, batch_size, PC, HC], dtype=arguments.dtype)
-			self.lookahead.swap_data[1] = np.transpose(self.lookahead.inner_nodes[1], [0,2,1,3,4,5]) # :transpose(2,3):clone()
-			self.lookahead.inner_nodes_p1[1] = np.zeros([self.lookahead.bets_count[0], 1, 1, batch_size, 1, HC], dtype=arguments.dtype)
+			self.lookahead.layers[1].inner_nodes = np.zeros([self.lookahead.layers[0].bets_count, 1, 1, batch_size, PC, HC], dtype=arguments.dtype)
+			self.lookahead.layers[1].swap_data = np.transpose(self.lookahead.layers[1].inner_nodes, [0,2,1,3,4,5]) # :transpose(2,3):clone()
+			self.lookahead.layers[1].inner_nodes_p1 = np.zeros([self.lookahead.layers[0].bets_count, 1, 1, batch_size, 1, HC], dtype=arguments.dtype)
 		# create the data structures for the rest of the layers
 		for d in range(2, self.lookahead.depth):
 			# data structures [actions x parent_action x grandparent_id x batch x players x range]
-			self.lookahead.ranges_data[d] = np.zeros([self.lookahead.actions_count[d-1], self.lookahead.bets_count[d-2], self.lookahead.nonterminal_nonallin_nodes_count[d-2], batch_size, PC, HC], dtype=arguments.dtype)
-			self.lookahead.cfvs_data[d] = self.lookahead.ranges_data[d].copy()
-			self.lookahead.placeholder_data[d] = self.lookahead.ranges_data[d].copy()
-			self.lookahead.pot_size[d] = np.full_like(self.lookahead.ranges_data[d], arguments.stack)
+			self.lookahead.layers[d].ranges_data = np.zeros([self.lookahead.layers[d-1].actions_count, self.lookahead.layers[d-2].bets_count, self.lookahead.layers[d-2].nonterminal_nonallin_nodes_count, batch_size, PC, HC], dtype=arguments.dtype)
+			self.lookahead.layers[d].cfvs_data = self.lookahead.layers[d].ranges_data.copy()
+			self.lookahead.layers[d].placeholder_data = self.lookahead.layers[d].ranges_data.copy()
+			self.lookahead.layers[d].pot_size = np.full_like(self.lookahead.layers[d].ranges_data, arguments.stack)
 			# data structures [actions x parent_action x grandparent_id x batch x 1 x range]
-			self.lookahead.average_strategies_data[d] = np.zeros([self.lookahead.actions_count[d-1], self.lookahead.bets_count[d-2], self.lookahead.nonterminal_nonallin_nodes_count[d-2], batch_size, HC], dtype=arguments.dtype)
-			self.lookahead.current_strategy_data[d] = self.lookahead.average_strategies_data[d].copy()
-			self.lookahead.regrets_data[d] = np.full_like(self.lookahead.average_strategies_data[d], self.lookahead.regret_epsilon)
-			self.lookahead.current_regrets_data[d] = np.zeros_like(self.lookahead.average_strategies_data[d])
-			self.lookahead.empty_action_mask[d] = np.ones_like(self.lookahead.average_strategies_data[d])
-			self.lookahead.positive_regrets_data[d] = self.lookahead.regrets_data[d].copy()
+			self.lookahead.layers[d].average_strategies_data = np.zeros([self.lookahead.layers[d-1].actions_count, self.lookahead.layers[d-2].bets_count, self.lookahead.layers[d-2].nonterminal_nonallin_nodes_count, batch_size, HC], dtype=arguments.dtype)
+			self.lookahead.layers[d].current_strategy_data = self.lookahead.layers[d].average_strategies_data.copy()
+			self.lookahead.layers[d].regrets_data = np.full_like(self.lookahead.layers[d].average_strategies_data, self.lookahead.regret_epsilon)
+			self.lookahead.layers[d].current_regrets_data = np.zeros_like(self.lookahead.layers[d].average_strategies_data)
+			self.lookahead.layers[d].empty_action_mask = np.ones_like(self.lookahead.layers[d].average_strategies_data)
+			self.lookahead.layers[d].positive_regrets_data = self.lookahead.layers[d].regrets_data.copy()
 			# data structures [1 x parent_action x grandparent_id x batch x players x range]
-			self.lookahead.regrets_sum[d] = np.zeros([1, self.lookahead.bets_count[d-2], self.lookahead.nonterminal_nonallin_nodes_count[d-2], batch_size, PC, HC], dtype=arguments.dtype)
+			self.lookahead.layers[d].regrets_sum = np.zeros([1, self.lookahead.layers[d-2].bets_count, self.lookahead.layers[d-2].nonterminal_nonallin_nodes_count, batch_size, PC, HC], dtype=arguments.dtype)
 			# data structures for the layers except the last one
 			if d < self.lookahead.depth:
-				self.lookahead.inner_nodes[d] = np.zeros([self.lookahead.bets_count[d-1], self.lookahead.nonallinbets_count[d-2], self.lookahead.nonterminal_nonallin_nodes_count[d-2], batch_size, PC, HC], dtype=arguments.dtype)
-				self.lookahead.inner_nodes_p1[d] = np.zeros([self.lookahead.bets_count[d-1], self.lookahead.nonallinbets_count[d-2], self.lookahead.nonterminal_nonallin_nodes_count[d-2], batch_size, 1, HC], dtype=arguments.dtype)
-				self.lookahead.swap_data[d] = np.transpose(self.lookahead.inner_nodes[d], [0,2,1,3,4,5]) # :transpose(2, 3):clone()
+				self.lookahead.layers[d].inner_nodes = np.zeros([self.lookahead.layers[d-1].bets_count, self.lookahead.layers[d-2].nonallinbets_count, self.lookahead.layers[d-2].nonterminal_nonallin_nodes_count, batch_size, PC, HC], dtype=arguments.dtype)
+				self.lookahead.layers[d].inner_nodes_p1 = np.zeros([self.lookahead.layers[d-1].bets_count, self.lookahead.layers[d-2].nonallinbets_count, self.lookahead.layers[d-2].nonterminal_nonallin_nodes_count, batch_size, 1, HC], dtype=arguments.dtype)
+				self.lookahead.layers[d].swap_data = np.transpose(self.lookahead.layers[d].inner_nodes, [0,2,1,3,4,5]) # :transpose(2, 3):clone()
 		# create the optimized data structures for terminal equity
 		self.lookahead.term_call_indices = {}
 		self.lookahead.num_term_call_nodes = 0
@@ -238,18 +213,18 @@ class LookaheadBuilder():
 			if self.lookahead.tree.street != constants.streets_count:
 				if game_settings.nl and (d>1 or self.lookahead.first_call_terminal):
 					before = self.lookahead.num_term_call_nodes
-					self.lookahead.num_term_call_nodes = self.lookahead.num_term_call_nodes + self.lookahead.ranges_data[d][1][-1].shape[0]
-					self.lookahead.term_call_indices[d] = np.array([before, self.lookahead.num_term_call_nodes])
+					self.lookahead.num_term_call_nodes = self.lookahead.num_term_call_nodes + self.lookahead.layers[d].ranges_data[1][-1].shape[0]
+					self.lookahead.layers[d].term_call_indices = np.array([before, self.lookahead.num_term_call_nodes])
 			else:
 				if d>1 or self.lookahead.first_call_terminal:
 					before = self.lookahead.num_term_call_nodes
-					self.lookahead.num_term_call_nodes = self.lookahead.num_term_call_nodes + self.lookahead.ranges_data[d][1].shape[0] * self.lookahead.ranges_data[d][1].shape[1]
-					self.lookahead.term_call_indices[d] = np.array([before, self.lookahead.num_term_call_nodes])
+					self.lookahead.num_term_call_nodes = self.lookahead.num_term_call_nodes + self.lookahead.layers[d].ranges_data[1].shape[0] * self.lookahead.layers[d].ranges_data[1].shape[1]
+					self.lookahead.layers[d].term_call_indices = np.array([before, self.lookahead.num_term_call_nodes])
 		# calculate term_fold_indices
 		for d in range(1,self.lookahead.depth):
 			before = self.lookahead.num_term_fold_nodes
-			self.lookahead.num_term_fold_nodes = self.lookahead.num_term_fold_nodes + self.lookahead.ranges_data[d][0].shape[0] * self.lookahead.ranges_data[d][0].shape[1]
-			self.lookahead.term_fold_indices[d] = np.array([before, self.lookahead.num_term_fold_nodes])
+			self.lookahead.num_term_fold_nodes = self.lookahead.num_term_fold_nodes + self.lookahead.layers[d].ranges_data[0].shape[0] * self.lookahead.layers[d].ranges_data[0].shape[1]
+			self.lookahead.layers[d].term_fold_indices = np.array([before, self.lookahead.num_term_fold_nodes])
 		self.lookahead.ranges_data_call = np.zeros([self.lookahead.num_term_call_nodes, batch_size, PC, HC], dtype=arguments.dtype)
 		self.lookahead.ranges_data_fold = np.zeros([self.lookahead.num_term_fold_nodes, batch_size, PC, HC], dtype=arguments.dtype)
 		self.lookahead.cfvs_data_call = np.zeros([self.lookahead.num_term_call_nodes, batch_size, PC, HC], dtype=arguments.dtype)
@@ -260,31 +235,31 @@ class LookaheadBuilder():
 		HC = game_settings.hand_count
 		for d in range(0, self.lookahead.depth):
 			if d in self.lookahead.ranges_data:
-				self.lookahead.ranges_data[d].fill(1.0/HC)
+				self.lookahead.layers[d].ranges_data.fill(1.0/HC)
 			if d in self.lookahead.average_strategies_data:
-				self.lookahead.average_strategies_data[d].fill(0)
+				self.lookahead.layers[d].average_strategies_data.fill(0)
 			if d in self.lookahead.current_strategy_data:
-				self.lookahead.current_strategy_data[d]:fill(0)
+				self.lookahead.layers[d].current_strategy_data.fill(0)
 			if d in self.lookahead.cfvs_data:
-				self.lookahead.cfvs_data[d].fill(0)
+				self.lookahead.layers[d].cfvs_data.fill(0)
 			if d in self.lookahead.average_cfvs_data:
-				self.lookahead.average_cfvs_data[d].fill(0)
+				self.lookahead.layers[d].average_cfvs_data.fill(0)
 			if d in self.lookahead.regrets_data:
-				self.lookahead.regrets_data[d].fill(0)
+				self.lookahead.layers[d].regrets_data.fill(0)
 			if d in self.lookahead.current_regrets_data:
-				self.lookahead.current_regrets_data[d].fill(0)
+				self.lookahead.layers[d].current_regrets_data.fill(0)
 			if d in self.lookahead.positive_regrets_data:
-				self.lookahead.positive_regrets_data[d].fill(0)
+				self.lookahead.layers[d].positive_regrets_data.fill(0)
 			if d in self.lookahead.placeholder_data:
-				self.lookahead.placeholder_data[d].fill(0)
+				self.lookahead.layers[d].placeholder_data.fill(0)
 			if d in self.lookahead.regrets_sum:
-				self.lookahead.regrets_sum[d].fill(0)
+				self.lookahead.layers[d].regrets_sum.fill(0)
 			if d in self.lookahead.inner_nodes:
-				self.lookahead.inner_nodes[d].fill(0)
+				self.lookahead.layers[d].inner_nodes.fill(0)
 			if d in self.lookahead.inner_nodes_p1:
-				self.lookahead.inner_nodes_p1[d].fill(0)
+				self.lookahead.layers[d].inner_nodes_p1.fill(0)
 			if d in self.lookahead.swap_data:
-				self.lookahead.swap_data[d].fill(0)
+				self.lookahead.layers[d].swap_data.fill(0)
 		if self.lookahead.next_street_boxes is not None:
 			self.lookahead.next_street_boxes.iter = 0
 			self.lookahead.next_street_boxes.start_computation(self.lookahead.next_round_pot_sizes, self.lookahead.batch_size)
@@ -302,13 +277,13 @@ class LookaheadBuilder():
 		'''
 		# fill the potsize
 		assert(node.pot)
-		self.lookahead.pot_size[layer][ action_id, parent_id, gp_id, : , : ] = node.pot
+		self.lookahead.layers[layer].pot_size[ action_id, parent_id, gp_id, : , : ] = node.pot
 		if layer == 2 and cur_action_id == constants.actions.ccall:
 			self.lookahead.parent_action_id[parent_id] = parent_action_id
 		node.lookahead_coordinates = np.array([action_id, parent_id, gp_id], dtype=arguments.dtype)
 		# transition call cannot be allin call
 		if node.current_player == constants.players.chance:
-			assert(parent_id <= self.lookahead.nonallinbets_count[layer-2])
+			assert(parent_id <= self.lookahead.layers[layer-2].nonallinbets_count)
 		if layer < self.lookahead.depth + 1:
 			if layer == 0:
 				gp_nonallinbets_count = 1
@@ -317,14 +292,14 @@ class LookaheadBuilder():
 				prev_layer_bets_count = 1
 			elif layer == 1:
 				gp_nonallinbets_count = 1
-				prev_layer_terminal_actions_count = self.lookahead.terminal_actions_count[layer-1]
+				prev_layer_terminal_actions_count = self.lookahead.layers[layer-1].terminal_actions_count
 				gp_terminal_actions_count = 0
-				prev_layer_bets_count = self.lookahead.bets_count[layer-1]
+				prev_layer_bets_count = self.lookahead.layers[layer-1].bets_count
 			else:
-				gp_nonallinbets_count = self.lookahead.nonallinbets_count[layer-2]
-				prev_layer_terminal_actions_count = self.lookahead.terminal_actions_count[layer-1]
-				gp_terminal_actions_count = self.lookahead.terminal_actions_count[layer-2]
-				prev_layer_bets_count = self.lookahead.bets_count[layer-1]
+				gp_nonallinbets_count = self.lookahead.layers[layer-2].nonallinbets_count
+				prev_layer_terminal_actions_count = self.lookahead.layers[layer-1].terminal_actions_count
+				gp_terminal_actions_count = self.lookahead.layers[layer-2].terminal_actions_count
+				prev_layer_bets_count = self.lookahead.layers[layer-1].bets_count
 			prev_layer_bets_count = 0
 			# compute next coordinates for parent and grandparent
 			next_parent_id = action_id - prev_layer_terminal_actions_count
@@ -332,18 +307,18 @@ class LookaheadBuilder():
 			if (not node.terminal) and (node.current_player != constants.players.chance):
 				# parent is not an allin raise
 				if layer > 1:
-					assert(parent_id <= self.lookahead.nonallinbets_count[layer-2])
+					assert(parent_id <= self.lookahead.layers[layer-2].nonallinbets_count)
 				# do we need to mask some actions for that node? (that is, does the node have fewer children than the max number of children for any node on this layer)
-				if len(node.children) < self.lookahead.actions_count[layer]:
+				if len(node.children) < self.lookahead.layers[layer].actions_count:
 					# we need to mask nonexisting padded bets
 					assert(layer > 0)
-					terminal_actions_count = self.lookahead.terminal_actions_count[layer]
+					terminal_actions_count = self.lookahead.layers[layer].terminal_actions_count
 					assert(terminal_actions_count == 2)
 					existing_bets_count = len(node.children) - terminal_actions_count
 					# allin situations
 					if existing_bets_count == 0:
 						if layer > 0:
-							assert(action_id == self.lookahead.actions_count[layer-1]-1)
+							assert(action_id == self.lookahead.layers[layer-1].actions_count-1)
 					for child_id in range(terminal_actions_count):
 						child_node = node.children[child_id]
 						# go deeper
@@ -351,10 +326,10 @@ class LookaheadBuilder():
 					# we need to make sure that even though there are fewer actions, the last action/allin is has the same last index as if we had full number of actions
 					# we manually set the action_id as the last action (allin)
 					for b in range(0, existing_bets_count):
-						self.set_datastructures_from_tree_dfs(node.children[len(node.children)-b], layer+1, self.lookahead.actions_count[layer]-b, next_parent_id, next_gp_id,  node.actions[len(node.children)-b], cur_action_id)
+						self.set_datastructures_from_tree_dfs(node.children[len(node.children)-b], layer+1, self.lookahead.layers[layer].actions_count-b, next_parent_id, next_gp_id,  node.actions[len(node.children)-b], cur_action_id)
 					# mask out empty actions
-					a = self.lookahead.empty_action_mask[layer+1].shape[0] - existing_bets_count
-					self.lookahead.empty_action_mask[layer+1][ terminal_actions_count:a, next_parent_id, next_gp_id, : ] = 0
+					a = self.lookahead.layers[layer+1].empty_action_mask.shape[0] - existing_bets_count
+					self.lookahead.layers[layer+1].empty_action_mask[ terminal_actions_count:a, next_parent_id, next_gp_id, : ] = 0
 				else:
 					# node has full action count, easy to handle
 					for child_id in range(len(node.children)):
@@ -369,12 +344,12 @@ class LookaheadBuilder():
 		'''
 		self.lookahead.tree = tree
 		self.lookahead.depth = tree.depth
+		# init layers
+		self.lookahead.layers = []
+		for d in range(0,self.lookahead.depth+1):
+			self.lookahead.layers.append( LookaheadLayer() )
 		# per layer information about tree actions
 		# per layer actions are the max number of actions for any of the nodes on the layer
-		self.lookahead.bets_count = {}
-		self.lookahead.nonallinbets_count = {}
-		self.lookahead.terminal_actions_count = {}
-		self.lookahead.actions_count = {}
 		self.lookahead.first_call_terminal = self.lookahead.tree.children[1].terminal
 		self.lookahead.first_call_transition = self.lookahead.tree.children[1].current_player == constants.players.chance
 		self.lookahead.first_call_check = (not self.lookahead.first_call_terminal) and (not self.lookahead.first_call_transition)
@@ -390,7 +365,7 @@ class LookaheadBuilder():
 		# 1) fewer actions means faster convergence
 		# 2) we need to make sure prob of free fold is zero because ACPC dealer changes such action to check
 		if self.lookahead.tree.bets[0] == self.lookahead.tree.bets[1]:
-			self.lookahead.empty_action_mask[1][0].fill(0)
+			self.lookahead.layers[1].empty_action_mask[0].fill(0)
 		# construct the neural net query boxes
 		self._construct_transition_boxes()
 
@@ -420,15 +395,15 @@ class LookaheadBuilder():
 		assert((layer_actions_count == 0) == (len(next_layer) == 0))
 		assert((layer_actions_count == 0) == (current_depth == self.lookahead.depth - 1))
 		# set action and bet counts
-		self.lookahead.bets_count[current_depth] = layer_actions_count - layer_terminal_actions_count
-		if game_settings.nl: self.lookahead.nonallinbets_count[current_depth] = self.lookahead.bets_count[current_depth] - 1 # remove allin
-		else: self.lookahead.nonallinbets_count[current_depth] = self.lookahead.bets_count[current_depth]
+		self.lookahead.layers[current_depth].bets_count = layer_actions_count - layer_terminal_actions_count
+		if game_settings.nl: self.lookahead.layers[current_depth].nonallinbets_count = self.lookahead.layers[current_depth].bets_count - 1 # remove allin
+		else: self.lookahead.layers[current_depth].nonallinbets_count = self.lookahead.layers[current_depth].bets_count
 		# if no allin...
 		if layer_actions_count == 2:
 			assert(layer_actions_count == layer_terminal_actions_count)
-			self.lookahead.nonallinbets_count[current_depth] = 0
-		self.lookahead.terminal_actions_count[current_depth] = layer_terminal_actions_count
-		self.lookahead.actions_count[current_depth] = layer_actions_count
+			self.lookahead.layers[current_depth].nonallinbets_count = 0
+		self.lookahead.layers[current_depth].terminal_actions_count = layer_terminal_actions_count
+		self.lookahead.layers[current_depth].actions_count = layer_actions_count
 		if len(next_layer) > 0:
 			assert(layer_actions_count >= 2)
 			# go deeper
