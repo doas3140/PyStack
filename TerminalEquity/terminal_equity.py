@@ -49,7 +49,7 @@ class TerminalEquity():
 		HC, num_boards = game_settings.hand_count, board_cards.shape[0]
 		if board_cards.ndim != 0:
 			assert(board_cards.shape[0] == 1 or board_cards.shape[0] == 2 or board_cards.shape[0] == 5) # Only Leduc, extended Leduc, and Texas Holdem are supported
-		strength = evaluator.batch_eval(board_cards)
+		strength = evaluator.batch_eval_fast(board_cards)
 		# handling hand stregths (winning probs)
 		strength_view_1 = strength.reshape([num_boards,HC,1]) * np.ones([num_boards, HC, HC], dtype=strength.dtype) # ? galima broadcastint
 		strength_view_2 = strength.reshape([num_boards,1,HC]) * np.ones_like(strength_view_1)

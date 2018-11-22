@@ -2,6 +2,7 @@
 	Implements depth-limited re-solving at a node of the game tree.
 	Internally uses @{cfrd_gadget|CFRDGadget} TODO SOLVER
 '''
+import time
 import numpy as np
 
 from Lookahead.lookahead import Lookahead
@@ -17,9 +18,10 @@ from Tree.tree_cfr import TreeCFR
 
 
 class Resolving():
-	def __init__(self, verbose=0):
+	def __init__(self, terminal_equity, verbose=0):
 		self.tree_builder = PokerTreeBuilder()
 		self.verbose = verbose
+		self.terminal_equity = terminal_equity
 
 
 	def _create_lookahead_tree(self, node):
@@ -41,14 +43,23 @@ class Resolving():
 		@param: player_range a range vector for the re-solving player
 		@param: opponent_range a range vector for the opponent
 		'''
+		self.player_range = player_range
+		self.opponent_range = opponent_range
+		self.opponent_cfvs = None
 		self._create_lookahead_tree(node)
-		self.lookahead = Lookahead()
+		if player_range.ndim == 1:
+			player_range = player_range.reshape([1, player_range.shape[0]])
+			opponent_range = opponent_range.reshape([1, opponent_range.shape[0]])
+		self.lookahead = Lookahead(self.terminal_equity, player_range.shape[0])
+		t0 = time.time()
 		self.lookahead.build_lookahead(self.lookahead_tree)
+		print('Build time: {}'.format(time.time() - t0)); t0 = time.time()
 		self.lookahead.resolve_first_node(player_range, opponent_range)
+		print('Resolve time: {}'.format(time.time() - t0))
 		self.resolve_results = self.lookahead.get_results()
 		if self.verbose > 0:
-			PC, CC = constants.players_count, game_settings.card_count
-			starting_ranges = np.zeros([PC,CC], dtype=arguments.dtype)
+			PC, HC = constants.players_count, game_settings.hand_count
+			starting_ranges = np.zeros([PC,HC], dtype=arguments.dtype)
 			starting_ranges[0] = player_range
 			starting_ranges[1] = opponent_range
 			tree_cfr = TreeCFR()
@@ -60,9 +71,9 @@ class Resolving():
 			# print(np.array2string(self.lookahead_tree.cf_values[self.lookahead_tree.current_player].reshape([-1,2]), suppress_small=True, precision=2))
 			# print()
 			# print(np.array2string(self.resolve_results.root_cfvs.reshape([-1,2]), suppress_small=True, precision=2))
-			# print(np.array2string(self.lookahead_tree.strategy.reshape([-1,6]), suppress_small=True, precision=2))
+			# print(np.array2string(self.lookahead_tree.strategy.reshape([3,-1])[ : , 1320:1326 ], suppress_small=True, precision=2))
 			# print()
-			# print(np.array2string(self.resolve_results.strategy.reshape([-1,6]), suppress_small=True, precision=2))
+			# print(np.array2string(self.resolve_results.strategy.reshape([3,-1])[ : , 1320:1326 ], suppress_small=True, precision=2))
 		return self.resolve_results
 
 
