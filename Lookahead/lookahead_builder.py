@@ -265,77 +265,63 @@ class LookaheadBuilder():
 			self.lookahead.next_street_boxes.start_computation(self.lookahead.next_round_pot_sizes, self.lookahead.batch_size)
 
 
-	def set_datastructures_from_tree_dfs(self, node, layer, action_id, parent_id, gp_id, cur_action_id, parent_action_id):
+	def set_datastructures_from_tree_dfs(self, node, depth, action_id, parent_id, gp_id, cur_action_id, parent_action_id):
 		''' Traverses the tree to fill in lookahead data structures that
 			summarize data contained in the tree.
 			 ex: saves pot sizes and numbers of actions at each lookahead state.
 		@param: node the current node of the public tree
-		@param: layer the depth of the current node
+		@param: depth the depth of the current node
 		@param: action_id the index of the action that led to this node
 		@param: parent_id the index of the current node's parent
 		@param: gp_id the index of the current node's grandparent
 		'''
 		# fill the potsize
 		assert(node.pot)
-		self.lookahead.layers[layer].pot_size[ action_id, parent_id, gp_id, : , : ] = node.pot
-		if layer == 2 and cur_action_id == constants.actions.ccall:
+		self.lookahead.layers[depth].pot_size[ action_id, parent_id, gp_id, : , : ] = node.pot
+		if depth == 2 and cur_action_id == constants.actions.ccall:
 			self.lookahead.parent_action_id[parent_id] = parent_action_id
 		node.lookahead_coordinates = np.array([action_id, parent_id, gp_id], dtype=arguments.dtype)
 		# transition call cannot be allin call
 		if node.current_player == constants.players.chance:
-			assert(parent_id <= self.lookahead.layers[layer-2].nonallinbets_count)
-		if layer < self.lookahead.depth + 1:
-			if layer == 0:
-				gp_nonallinbets_count = 1
-				prev_layer_terminal_actions_count = 0
-				gp_terminal_actions_count = 0
-				prev_layer_bets_count = 1
-			elif layer == 1:
-				gp_nonallinbets_count = 1
-				prev_layer_terminal_actions_count = self.lookahead.layers[layer-1].terminal_actions_count
-				gp_terminal_actions_count = 0
-				prev_layer_bets_count = self.lookahead.layers[layer-1].bets_count
-			else:
-				gp_nonallinbets_count = self.lookahead.layers[layer-2].nonallinbets_count
-				prev_layer_terminal_actions_count = self.lookahead.layers[layer-1].terminal_actions_count
-				gp_terminal_actions_count = self.lookahead.layers[layer-2].terminal_actions_count
-				prev_layer_bets_count = self.lookahead.layers[layer-1].bets_count
-			prev_layer_bets_count = 0
+			assert(parent_id <= self.lookahead.layers[depth-2].nonallinbets_count)
+		if depth < self.lookahead.depth + 1:
+			gp_num_nonallin_bets = self.lookahead.layers[depth-2].nonallinbets_count if depth > 1 else 1
+			p_num_terminal_actions = self.lookahead.layers[depth-1].terminal_actions_count if depth > 0 else 0
 			# compute next coordinates for parent and grandparent
-			next_parent_id = action_id - prev_layer_terminal_actions_count
-			next_gp_id = gp_id * gp_nonallinbets_count + parent_id
+			next_parent_id = action_id - p_num_terminal_actions
+			next_gp_id = gp_id * gp_num_nonallin_bets + parent_id
 			if (not node.terminal) and (node.current_player != constants.players.chance):
 				# parent is not an allin raise
-				if layer > 1:
-					assert(parent_id <= self.lookahead.layers[layer-2].nonallinbets_count)
+				if depth > 1:
+					assert(parent_id <= self.lookahead.layers[depth-2].nonallinbets_count)
 				# do we need to mask some actions for that node? (that is, does the node have fewer children than the max number of children for any node on this layer)
-				if len(node.children) < self.lookahead.layers[layer].actions_count:
+				if len(node.children) < self.lookahead.layers[depth].actions_count:
 					# we need to mask nonexisting padded bets
-					assert(layer > 0)
-					terminal_actions_count = self.lookahead.layers[layer].terminal_actions_count
+					assert(depth > 0)
+					terminal_actions_count = self.lookahead.layers[depth].terminal_actions_count
 					assert(terminal_actions_count == 2)
 					existing_bets_count = len(node.children) - terminal_actions_count
 					# allin situations
 					if existing_bets_count == 0:
-						if layer > 0:
-							assert(action_id == self.lookahead.layers[layer-1].actions_count-1)
+						if depth > 0:
+							assert(action_id == self.lookahead.layers[depth-1].actions_count-1)
 					for child_id in range(terminal_actions_count):
 						child_node = node.children[child_id]
 						# go deeper
-						self.set_datastructures_from_tree_dfs(child_node, layer+1, child_id, next_parent_id, next_gp_id, node.actions[child_id], cur_action_id)
+						self.set_datastructures_from_tree_dfs(child_node, depth+1, child_id, next_parent_id, next_gp_id, node.actions[child_id], cur_action_id)
 					# we need to make sure that even though there are fewer actions, the last action/allin is has the same last index as if we had full number of actions
 					# we manually set the action_id as the last action (allin)
 					for b in range(0, existing_bets_count):
-						self.set_datastructures_from_tree_dfs(node.children[len(node.children)-b], layer+1, self.lookahead.layers[layer].actions_count-b, next_parent_id, next_gp_id,  node.actions[len(node.children)-b], cur_action_id)
+						self.set_datastructures_from_tree_dfs(node.children[len(node.children)-b], depth+1, self.lookahead.layers[depth].actions_count-b, next_parent_id, next_gp_id,  node.actions[len(node.children)-b], cur_action_id)
 					# mask out empty actions
-					a = self.lookahead.layers[layer+1].empty_action_mask.shape[0] - existing_bets_count
-					self.lookahead.layers[layer+1].empty_action_mask[ terminal_actions_count:a, next_parent_id, next_gp_id, : ] = 0
+					a = self.lookahead.layers[depth+1].empty_action_mask.shape[0] - existing_bets_count
+					self.lookahead.layers[depth+1].empty_action_mask[ terminal_actions_count:a, next_parent_id, next_gp_id, : ] = 0
 				else:
 					# node has full action count, easy to handle
 					for child_id in range(len(node.children)):
 						child_node = node.children[child_id]
 						# go deeper
-						self.set_datastructures_from_tree_dfs(child_node, layer+1, child_id, next_parent_id, next_gp_id, node.actions[child_id], cur_action_id)
+						self.set_datastructures_from_tree_dfs(child_node, depth+1, child_id, next_parent_id, next_gp_id, node.actions[child_id], cur_action_id)
 
 
 	def build_from_tree(self, tree):

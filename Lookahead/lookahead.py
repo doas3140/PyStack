@@ -85,14 +85,15 @@ class Lookahead():
 		''' Uses regret matching to generate the players' current strategies.
 		'''
 		for d in range(1,self.depth):
-			self.layers[d].positive_regrets_data = self.layers[d].regrets_data.copy()
-			self.layers[d].positive_regrets_data = np.clip(self.layers[d].positive_regrets_data, self.regret_epsilon, constants.max_number)
+			layer = self.layers[d]
+			layer.positive_regrets_data = layer.regrets_data.copy()
+			layer.positive_regrets_data = np.clip(layer.positive_regrets_data, self.regret_epsilon, constants.max_number)
 			# 1.0 set regret of empty actions to 0
-			self.layers[d].positive_regrets_data *= self.layers[d].empty_action_mask
+			layer.positive_regrets_data *= layer.empty_action_mask
 			# 1.1  regret matching
 			# note that the regrets as well as the CFVs have switched player indexing
-			self.layers[d].regrets_sum = np.sum(self.layers[d].positive_regrets_data, axis=0, keepdims=True)
-			self.layers[d].current_strategy_data = self.layers[d].positive_regrets_data / (self.layers[d].regrets_sum * np.ones_like(self.layers[d].current_strategy_data))
+			layer.regrets_sum = np.sum(layer.positive_regrets_data, axis=0, keepdims=True)
+			layer.current_strategy_data = layer.positive_regrets_data / (layer.regrets_sum * np.ones_like(layer.current_strategy_data))
 
 
 	def _compute_ranges(self):
@@ -101,31 +102,28 @@ class Lookahead():
 		'''
 		PC, HC, batch_size = constants.players_count, game_settings.hand_count, self.batch_size
 		for d in range(0, self.depth-1):
-			current_level_ranges = self.layers[d].ranges_data
-			next_level_ranges = self.layers[d+1].ranges_data
+			next_layer, layer, parent, grandparent = self.layers[d+1], self.layers[d], self.layers[d-1], self.layers[d-2]
 			if d > 0:
-				prev_layer_terminal_actions_count = self.layers[d-1].terminal_actions_count
-				prev_layer_actions_count = self.layers[d-1].actions_count
-				prev_layer_bets_count = self.layers[d-1].bets_count
+				p_num_terminal_actions = parent.terminal_actions_count
+				parent_num_bets = parent.bets_count
 			elif d == 0:
-				prev_layer_terminal_actions_count = 0
-				prev_layer_actions_count = 1
-				prev_layer_bets_count = 1
+				p_num_terminal_actions = 0
+				parent_num_bets = 1
 			if d > 1:
-				gp_layer_nonallin_bets_count = self.layers[d-2].nonallinbets_count
-				gp_layer_terminal_actions_count = self.layers[d-2].terminal_actions_count
+				gp_num_nonallin_bets = grandparent.nonallinbets_count
+				gp_num_terminal_actions = grandparent.terminal_actions_count
 			else:
-				gp_layer_nonallin_bets_count = 1
-				gp_layer_terminal_actions_count = 0
+				gp_num_nonallin_bets = 1
+				gp_num_terminal_actions = 0
 			# copy the ranges of inner nodes and transpose (np.transpose - swaps axis: 1dim <-> 2 dim)
-			self.layers[d].inner_nodes = np.transpose(self.layers[d].ranges_data[ prev_layer_terminal_actions_count: , :gp_layer_nonallin_bets_count , : , : , : , : ], [0,2,1,3,4,5])
-			super_view = self.layers[d].inner_nodes
-			super_view = super_view.reshape([1, prev_layer_bets_count, -1, batch_size, PC, HC])
-			super_view = super_view * np.ones_like(self.layers[d+1].ranges_data)
-			next_level_strategies = self.layers[d+1].current_strategy_data
-			self.layers[d+1].ranges_data = super_view.copy() # .reshape(next_level_ranges.shape)
+			layer.inner_nodes = np.transpose(layer.ranges_data[ p_num_terminal_actions: , :gp_num_nonallin_bets , : , : , : , : ], [0,2,1,3,4,5])
+			super_view = layer.inner_nodes
+			super_view = super_view.reshape([1, parent_num_bets, -1, batch_size, PC, HC])
+			super_view = super_view * np.ones_like(next_layer.ranges_data)
+			next_level_strategies = next_layer.current_strategy_data
+			next_layer.ranges_data = super_view.copy() # .reshape(next_level_ranges.shape)
 			# multiply the ranges of the acting player by his strategy
-			self.layers[d+1].ranges_data[ : , : , : , : , self.layers[d].acting_player, : ] *= next_level_strategies
+			next_layer.ranges_data[ : , : , : , : , layer.acting_player, : ] *= next_level_strategies
 
 
 	def _compute_update_average_strategies(self, iter):
@@ -144,28 +142,30 @@ class Lookahead():
 		'''
 		HC = game_settings.hand_count
 		for d in range(1, self.depth):
+			layer = self.layers[d]
 			if d > 1 or self.first_call_terminal:
 				if self.tree.street != constants.streets_count:
-					self.ranges_data_call[ self.layers[d].term_call_indices[0]:self.layers[d].term_call_indices[1] ] = self.layers[d].ranges_data[1][-1].copy()
+					self.ranges_data_call[ layer.term_call_indices[0]:layer.term_call_indices[1] ] = layer.ranges_data[1][-1].copy()
 				else:
-					self.ranges_data_call[ self.layers[d].term_call_indices[0]:self.layers[d].term_call_indices[1] ] = self.layers[d].ranges_data[1].reshape(self.ranges_data_call[ self.layers[d].term_call_indices[0]:self.layers[d].term_call_indices[1] ].shape)
-			self.ranges_data_fold[ self.layers[d].term_fold_indices[0]:self.layers[d].term_fold_indices[1] ] = self.layers[d].ranges_data[0].reshape(self.ranges_data_fold[ self.layers[d].term_fold_indices[0]:self.layers[d].term_fold_indices[1] ].shape)
+					self.ranges_data_call[ layer.term_call_indices[0]:layer.term_call_indices[1] ] = layer.ranges_data[1].reshape(self.ranges_data_call[ layer.term_call_indices[0]:layer.term_call_indices[1] ].shape)
+			self.ranges_data_fold[ layer.term_fold_indices[0]:layer.term_fold_indices[1] ] = layer.ranges_data[0].reshape(self.ranges_data_fold[ layer.term_fold_indices[0]:layer.term_fold_indices[1] ].shape)
 		self.terminal_equity.call_value(self.ranges_data_call.reshape([-1,HC]), self.cfvs_data_call.reshape([-1,HC]))
 		self.terminal_equity.fold_value(self.ranges_data_fold.reshape([-1,HC]), self.cfvs_data_fold.reshape([-1,HC]))
 
 		for d in range(1,self.depth):
+			layer = self.layers[d]
 			if self.tree.street != constants.streets_count:
 				if game_settings.nl and (d > 1 or self.first_call_terminal):
-					self.layers[d].cfvs_data[1][-1] = self.cfvs_data_call[ self.layers[d].term_call_indices[0]:self.layers[d].term_call_indices[1] ].copy()
+					layer.cfvs_data[1][-1] = self.cfvs_data_call[ layer.term_call_indices[0]:layer.term_call_indices[1] ].copy()
 			else:
 				if d > 1 or self.first_call_terminal:
-					self.layers[d].cfvs_data[1] = self.cfvs_data_call[ self.layers[d].term_call_indices[0]:self.layers[d].term_call_indices[1] ].reshape(self.layers[d].cfvs_data[1].shape).copy()
-			self.layers[d].cfvs_data[0] = self.cfvs_data_fold[ self.layers[d].term_fold_indices[0]:self.layers[d].term_fold_indices[1] ].reshape(self.layers[d].cfvs_data[0].shape).copy()
+					layer.cfvs_data[1] = self.cfvs_data_call[ layer.term_call_indices[0]:layer.term_call_indices[1] ].reshape(layer.cfvs_data[1].shape).copy()
+			layer.cfvs_data[0] = self.cfvs_data_fold[ layer.term_fold_indices[0]:layer.term_fold_indices[1] ].reshape(layer.cfvs_data[0].shape).copy()
 
 			# correctly set the folded player by mutliplying by -1
-			fold_mutliplier = -1 if self.layers[d].acting_player == constants.players.P1 else 1
-			self.layers[d].cfvs_data[ 0, : , : , : , 0, : ] *= fold_mutliplier
-			self.layers[d].cfvs_data[ 0, : , : , : , 1, : ] *= -fold_mutliplier
+			fold_mutliplier = -1 if layer.acting_player == constants.players.P1 else 1
+			layer.cfvs_data[ 0, : , : , : , 0, : ] *= fold_mutliplier
+			layer.cfvs_data[ 0, : , : , : , 1, : ] *= -fold_mutliplier
 
 
 	def _compute_terminal_equities_next_street_box(self):
@@ -178,15 +178,16 @@ class Lookahead():
 		if self.num_pot_sizes == 0:
 			return
 		for d in range(1,self.depth):
+			layer = self.layers[d]
 			if d > 1 or self.first_call_transition:
 				# if there's only 1 parent, then it should've been an all in, so skip this next_street_box calculation
-				if self.layers[d].ranges_data[2].shape[0] > 1 or (d == 1 and self.first_call_transition) or not game_settings.nl:
+				if layer.ranges_data[2].shape[0] > 1 or (d == 1 and self.first_call_transition) or not game_settings.nl:
 					p_start, p_end = 0, -1 # parent indices
 					if d == 1:
 						p_start, p_end = 0, 1 # parent indices
 					elif not game_settings.nl:
-						p_start, p_end = 0, self.layers[d].ranges_data.shape[1] # parent indices
-					self.next_street_boxes_outputs[ self.layers[d].indices[0]:self.layers[d].indices[1] , : , : , : ] = self.layers[d].ranges_data[ 1, p_start:p_end, : , : , : , : ].copy()
+						p_start, p_end = 0, layer.ranges_data.shape[1] # parent indices
+					self.next_street_boxes_outputs[ layer.indices[0]:layer.indices[1] , : , : , : ] = layer.ranges_data[ 1, p_start:p_end, : , : , : , : ].copy()
 
 		if self.tree.current_player == constants.players.P2:
 			self.next_street_boxes_inputs = self.next_street_boxes_outputs.copy()
@@ -206,14 +207,15 @@ class Lookahead():
 			self.next_street_boxes_outputs[ : , : , 1, : ] = self.next_street_boxes_inputs[ : , : , 0, : ].copy()
 
 		for d in range(1, self.depth):
+			layer = self.layers[d]
 			if d > 1 or self.first_call_transition:
-				if self.layers[d].ranges_data[1].shape[0] > 1 or (d == 1 and self.first_call_transition) or not game_settings.nl:
+				if layer.ranges_data[1].shape[0] > 1 or (d == 1 and self.first_call_transition) or not game_settings.nl:
 					p_start, p_end = 0, -1 # parent indices
 					if d == 1:
 						p_start, p_end = 0, 1 # parent indices
 					elif not game_settings.nl:
-						p_start, p_end = 1, self.layers[d].cfvs_data.shape[1] # parent indices
-					self.layers[d].cfvs_data[ 1, p_start:p_end , : , : , : , : ] = self.next_street_boxes_outputs[ self.layers[d].indices[0]:self.layers[d].indices[1], : , : , : ].copy()
+						p_start, p_end = 1, layer.cfvs_data.shape[1] # parent indices
+					layer.cfvs_data[ 1, p_start:p_end , : , : , : , : ] = self.next_street_boxes_outputs[ layer.indices[0]:layer.indices[1], : , : , : ].copy()
 
 
 	def get_chance_action_cfv(self, action, board):
@@ -260,25 +262,19 @@ class Lookahead():
 			values, computes their cfvs at all states of the lookahead.
 		'''
 		for d in range(self.depth-1, 0, -1):
-			if d > 2:
-				gp_layer_terminal_actions_count = self.layers[d-2].terminal_actions_count
-				ggp_layer_nonallin_bets_count = self.layers[d-3].nonallinbets_count
-			elif d == 2:
-				gp_layer_terminal_actions_count = self.layers[d-2].terminal_actions_count
-				ggp_layer_nonallin_bets_count = 1
-			elif d == 1:
-				gp_layer_terminal_actions_count = 0
-				ggp_layer_nonallin_bets_count = 1
-
-			self.layers[d].cfvs_data[ : , : , : , : , 0, : ] *= self.layers[d].empty_action_mask
-			self.layers[d].cfvs_data[ : , : , : , : , 1, : ] *= self.layers[d].empty_action_mask
-			self.layers[d].placeholder_data = self.layers[d].cfvs_data.copy()
+			layer, parent = self.layers[d], self.layers[d-1]
+			gp_num_terminal_actions = self.layers[d-2].terminal_actions_count if d > 1 else 0
+			ggp_num_nonallin_bets = self.layers[d-3].nonallinbets_count if d > 2 else 1
+			#
+			layer.cfvs_data[ : , : , : , : , 0, : ] *= layer.empty_action_mask
+			layer.cfvs_data[ : , : , : , : , 1, : ] *= layer.empty_action_mask
+			layer.placeholder_data = layer.cfvs_data.copy()
 			# player indexing is swapped for cfvs
-			self.layers[d].placeholder_data[ : , : , : , : , self.layers[d].acting_player, : ] *= self.layers[d].current_strategy_data
-			self.layers[d].regrets_sum = np.sum(self.layers[d].placeholder_data, axis=0, keepdims=True)
+			layer.placeholder_data[ : , : , : , : , layer.acting_player, : ] *= layer.current_strategy_data
+			layer.regrets_sum = np.sum(layer.placeholder_data, axis=0, keepdims=True)
 			# use a swap placeholder to change [[1,2,3], [4,5,6]] into [[1,2], [3,4], [5,6]]
-			self.layers[d-1].swap_data = self.layers[d].regrets_sum.copy().reshape(self.layers[d-1].swap_data.shape)
-			self.layers[d-1].cfvs_data[ gp_layer_terminal_actions_count: , :ggp_layer_nonallin_bets_count , : , : , : , : ] = np.transpose(self.layers[d-1].swap_data, [0,2,1,3,4,5]).copy() # ? - transpose(2,3))
+			parent.swap_data = layer.regrets_sum.copy().reshape(parent.swap_data.shape)
+			parent.cfvs_data[ gp_num_terminal_actions: , :ggp_num_nonallin_bets , : , : , : , : ] = np.transpose(parent.swap_data, [0,2,1,3,4,5]).copy() # ? - transpose(2,3))
 
 
 	def _compute_cumulate_average_cfvs(self, iter):
@@ -321,26 +317,20 @@ class Lookahead():
 		'''
 		HC, batch_size = game_settings.hand_count, self.batch_size
 		for d in range(self.depth-1, 0, -1):
-			if d > 1:
-				gp_layer_terminal_actions_count = self.layers[d-2].terminal_actions_count
-				gp_layer_bets_count = self.layers[d-2].bets_count
-			if d > 2:
-				ggp_layer_nonallin_bets_count = self.layers[d-3].nonallinbets_count
-			if d < 2:
-				gp_layer_terminal_actions_count = 0
-				gp_layer_bets_count = 1
-				ggp_layer_nonallin_bets_count = 1
+			layer, parent = self.layers[d], self.layers[d-1] # current layer, parent layer
+			gp_num_terminal_actions = self.layers[d-2].terminal_actions_count if d > 1 else 0
+			gp_num_bets = self.layers[d-2].bets_count if d > 1 else 1
+			ggp_num_nonallin_bets = self.layers[d-3].nonallinbets_count if d > 2 else 1
 			# current_regrets = self.current_regrets_data[d]
-			current_regrets = self.layers[d].cfvs_data[ : , : , : , : , self.layers[d].acting_player, : ].copy().reshape(self.layers[d].current_regrets_data.shape) # ? - no need reshape?
-			next_level_cfvs = self.layers[d-1].cfvs_data
-			parent_inner_nodes = self.layers[d-1].inner_nodes_p1
-			parent_inner_nodes = np.transpose(next_level_cfvs[ gp_layer_terminal_actions_count: , :ggp_layer_nonallin_bets_count, : , : , self.layers[d].acting_player, : ], [0,2,1,3,4])
-			parent_inner_nodes = parent_inner_nodes.reshape([1, gp_layer_bets_count, -1, batch_size, HC])
+			current_regrets = layer.cfvs_data[ : , : , : , : , layer.acting_player, : ].copy().reshape(layer.current_regrets_data.shape) # ? - no need reshape?
+			parent_inner_nodes = parent.inner_nodes_p1
+			parent_inner_nodes = np.transpose(parent.cfvs_data[ gp_num_terminal_actions: , :ggp_num_nonallin_bets, : , : , layer.acting_player, : ], [0,2,1,3,4])
+			parent_inner_nodes = parent_inner_nodes.reshape([1, gp_num_bets, -1, batch_size, HC])
 			parent_inner_nodes = parent_inner_nodes * np.ones_like(current_regrets)
 			current_regrets -= parent_inner_nodes
-			self.layers[d].regrets_data += current_regrets
+			layer.regrets_data += current_regrets
 			# (CFR+)
-			self.layers[d].regrets_data = np.clip(self.layers[d].regrets_data, 0, constants.max_number)
+			layer.regrets_data = np.clip(layer.regrets_data, 0, constants.max_number)
 
 
 	def get_results(self):
