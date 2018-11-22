@@ -41,8 +41,8 @@ class Lookahead():
 		@param: player_range a range vector for the re-solving player
 		@param: opponent_range a range vector for the opponent
 		'''
-		self.ranges_data[1][ : , : , : , : , 0, : ] = player_range.copy()
-		self.ranges_data[1][ : , : , : , : , 1, : ] = opponent_range.copy()
+		self.ranges_data[0][ : , : , : , : , 0, : ] = player_range.copy()
+		self.ranges_data[0][ : , : , : , : , 1, : ] = opponent_range.copy()
 		self._compute()
 
 
@@ -57,7 +57,7 @@ class Lookahead():
 		assert(player_range is not None)
 		assert(opponent_cfvs is not None)
 		self.reconstruction_gadget = CFRDGadget(self.tree.board, player_range, opponent_cfvs)
-		self.ranges_data[1][ : , : , : , 0, : ] = player_range.copy()
+		self.ranges_data[0][ : , : , : , 0, : ] = player_range.copy()
 		self.reconstruction_opponent_cfvs = opponent_cfvs
 		self._compute()
 
@@ -84,7 +84,7 @@ class Lookahead():
 	def _compute_current_strategies(self):
 		''' Uses regret matching to generate the players' current strategies.
 		'''
-		for d in range(2,self.depth+1):
+		for d in range(1,self.depth):
 			self.positive_regrets_data[d] = self.regrets_data[d].copy()
 			self.positive_regrets_data[d] = np.clip(self.positive_regrets_data[d], self.regret_epsilon, constants.max_number)
 			# 1.0 set regret of empty actions to 0
@@ -100,18 +100,18 @@ class Lookahead():
 			probabilities of reaching each state of the lookahead.
 		'''
 		PC, HC, batch_size = constants.players_count, game_settings.hand_count, self.batch_size
-		for d in range(1, self.depth):
+		for d in range(0, self.depth-1):
 			current_level_ranges = self.ranges_data[d]
 			next_level_ranges = self.ranges_data[d+1]
-			if d > 1:
+			if d > 0:
 				prev_layer_terminal_actions_count = self.terminal_actions_count[d-1]
 				prev_layer_actions_count = self.actions_count[d-1]
 				prev_layer_bets_count = self.bets_count[d-1]
-			elif d == 1:
+			elif d == 0:
 				prev_layer_terminal_actions_count = 0
 				prev_layer_actions_count = 1
 				prev_layer_bets_count = 1
-			if d > 2:
+			if d > 1:
 				gp_layer_nonallin_bets_count = self.nonallinbets_count[d-2]
 				gp_layer_terminal_actions_count = self.terminal_actions_count[d-2]
 			else:
@@ -135,7 +135,7 @@ class Lookahead():
 		if iter > arguments.cfr_skip_iters:
 			# no need to go through layers since we care for the average strategy only in the first node anyway
 			# note that if you wanted to average strategy on lower layers, you would need to weight the current strategy by the current reach probability
-			self.average_strategies_data[2] += self.current_strategy_data[2]
+			self.average_strategies_data[1] += self.current_strategy_data[1]
 
 
 	def _compute_terminal_equities_terminal_equity(self):
@@ -143,8 +143,8 @@ class Lookahead():
 			values at each lookahead state which is a terminal state of the game.
 		'''
 		HC = game_settings.hand_count
-		for d in range(2, self.depth+1):
-			if d > 2 or self.first_call_terminal:
+		for d in range(1, self.depth):
+			if d > 1 or self.first_call_terminal:
 				if self.tree.street != constants.streets_count:
 					self.ranges_data_call[ self.term_call_indices[d][0]:self.term_call_indices[d][1] ] = self.ranges_data[d][1][-1].copy()
 				else:
@@ -153,12 +153,12 @@ class Lookahead():
 		self.terminal_equity.call_value(self.ranges_data_call.reshape([-1,HC]), self.cfvs_data_call.reshape([-1,HC]))
 		self.terminal_equity.fold_value(self.ranges_data_fold.reshape([-1,HC]), self.cfvs_data_fold.reshape([-1,HC]))
 
-		for d in range(2,self.depth+1):
+		for d in range(1,self.depth):
 			if self.tree.street != constants.streets_count:
-				if game_settings.nl and (d > 2 or self.first_call_terminal):
+				if game_settings.nl and (d > 1 or self.first_call_terminal):
 					self.cfvs_data[d][1][-1] = self.cfvs_data_call[ self.term_call_indices[d][0]:self.term_call_indices[d][1] ].copy()
 			else:
-				if d>2 or self.first_call_terminal:
+				if d > 1 or self.first_call_terminal:
 					self.cfvs_data[d][1] = self.cfvs_data_call[ self.term_call_indices[d][0]:self.term_call_indices[d][1] ].reshape(self.cfvs_data[d][1].shape).copy()
 			self.cfvs_data[d][0] = self.cfvs_data_fold[ self.term_fold_indices[d][0]:self.term_fold_indices[d][1] ].reshape(self.cfvs_data[d][0].shape).copy()
 
@@ -177,12 +177,12 @@ class Lookahead():
 		assert(self.tree.street == 1)
 		if self.num_pot_sizes == 0:
 			return
-		for d in range(2,self.depth+1):
-			if d > 2 or self.first_call_transition:
+		for d in range(1,self.depth):
+			if d > 1 or self.first_call_transition:
 				# if there's only 1 parent, then it should've been an all in, so skip this next_street_box calculation
-				if self.ranges_data[d][2].shape[0] > 1 or (d == 2 and self.first_call_transition) or not game_settings.nl:
+				if self.ranges_data[d][2].shape[0] > 1 or (d == 1 and self.first_call_transition) or not game_settings.nl:
 					p_start, p_end = 0, -1 # parent indices
-					if d == 2:
+					if d == 1:
 						p_start, p_end = 0, 1 # parent indices
 					elif not game_settings.nl:
 						p_start, p_end = 0, self.ranges_data[d].shape[1] # parent indices
@@ -205,11 +205,11 @@ class Lookahead():
 			self.next_street_boxes_outputs[ : , : , 0, : ] = self.next_street_boxes_inputs[ : , : , 1, : ].copy()
 			self.next_street_boxes_outputs[ : , : , 1, : ] = self.next_street_boxes_inputs[ : , : , 0, : ].copy()
 
-		for d in range(2, self.depth+1):
-			if d > 2 or self.first_call_transition:
-				if self.ranges_data[d][1].shape[0] > 1 or (d == 2 and self.first_call_transition) or not game_settings.nl:
+		for d in range(1, self.depth):
+			if d > 1 or self.first_call_transition:
+				if self.ranges_data[d][1].shape[0] > 1 or (d == 1 and self.first_call_transition) or not game_settings.nl:
 					p_start, p_end = 0, -1 # parent indices
-					if d == 2:
+					if d == 1:
 						p_start, p_end = 0, 1 # parent indices
 					elif not game_settings.nl:
 						p_start, p_end = 1, self.cfvs_data[d].shape[1] # parent indices
@@ -251,7 +251,7 @@ class Lookahead():
 			self._compute_terminal_equities_next_street_box()
 		self._compute_terminal_equities_terminal_equity()
 		# multiply by pot scale factor
-		for d in range(2, self.depth+1):
+		for d in range(1, self.depth):
 			self.cfvs_data[d] *= self.pot_size[d]
 
 
@@ -259,14 +259,14 @@ class Lookahead():
 		''' Using the players' reach probabilities and terminal counterfactual
 			values, computes their cfvs at all states of the lookahead.
 		'''
-		for d in range(self.depth, 1, -1):
-			if d > 3:
+		for d in range(self.depth-1, 0, -1):
+			if d > 2:
 				gp_layer_terminal_actions_count = self.terminal_actions_count[d-2]
 				ggp_layer_nonallin_bets_count = self.nonallinbets_count[d-3]
-			elif d == 3:
+			elif d == 2:
 				gp_layer_terminal_actions_count = self.terminal_actions_count[d-2]
 				ggp_layer_nonallin_bets_count = 1
-			elif d == 2:
+			elif d == 1:
 				gp_layer_terminal_actions_count = 0
 				ggp_layer_nonallin_bets_count = 1
 
@@ -287,8 +287,8 @@ class Lookahead():
 		@param: iter the current iteration number of re-solving
 		'''
 		if iter > arguments.cfr_skip_iters:
+			self.average_cfvs_data[0] += self.cfvs_data[0]
 			self.average_cfvs_data[1] += self.cfvs_data[1]
-			self.average_cfvs_data[2] += self.cfvs_data[2]
 
 
 	def _compute_normalize_average_strategies(self):
@@ -297,10 +297,10 @@ class Lookahead():
 			un-normalized average strategies, which are simpler to compute.
 		'''
 		# using regrets_sum as a placeholder container
-		player_avg_strategy = self.average_strategies_data[2]
-		player_avg_strategy_sum = self.regrets_sum[2]
-		self.regrets_sum[2] = np.sum(self.average_strategies_data[2], axis=0, keepdims=True)
-		self.average_strategies_data[2] /= self.regrets_sum[2] * np.ones_like(player_avg_strategy)
+		player_avg_strategy = self.average_strategies_data[1]
+		player_avg_strategy_sum = self.regrets_sum[1]
+		self.regrets_sum[1] = np.sum(self.average_strategies_data[1], axis=0, keepdims=True)
+		self.average_strategies_data[1] /= self.regrets_sum[1] * np.ones_like(player_avg_strategy)
 		# if the strategy is 'empty' (zero reach), strategy does not matter but we need to make sure
 		# it sums to one -> now we set to always fold
 		player_avg_strategy[0][ player_avg_strategy[0] != player_avg_strategy[0] ] = 1
@@ -312,7 +312,7 @@ class Lookahead():
 			Used at the end of re-solving so that we can track
 			un-normalized average cfvs, which are simpler to compute.
 		'''
-		self.average_cfvs_data[1] /= (arguments.cfr_iters - arguments.cfr_skip_iters)
+		self.average_cfvs_data[0] /= (arguments.cfr_iters - arguments.cfr_skip_iters)
 
 
 	def _compute_regrets(self):
@@ -320,13 +320,13 @@ class Lookahead():
 			total regrets for every state in the lookahead.
 		'''
 		HC, batch_size = game_settings.hand_count, self.batch_size
-		for d in range(self.depth, 1, -1):
-			if d > 2:
+		for d in range(self.depth-1, 0, -1):
+			if d > 1:
 				gp_layer_terminal_actions_count = self.terminal_actions_count[d-2]
 				gp_layer_bets_count = self.bets_count[d-2]
-			if d > 3:
+			if d > 2:
 				ggp_layer_nonallin_bets_count = self.nonallinbets_count[d-3]
-			if d < 3:
+			if d < 2:
 				gp_layer_terminal_actions_count = 0
 				gp_layer_bets_count = 1
 				ggp_layer_nonallin_bets_count = 1
@@ -356,30 +356,30 @@ class Lookahead():
 				average counterfactual values after each action
 				that the re-solve player can take at the root of the lookahead
 		'''
-		actions_count = self.average_strategies_data[2].shape[0]
+		actions_count = self.average_strategies_data[1].shape[0]
 		PC, HC, AC, batch_size = constants.players_count, game_settings.hand_count, actions_count, self.batch_size
 		out = LookaheadResults()
 		# 1.0 average strategy
 		# [actions x range]
 		# lookahead already computes the averate strategy we just convert the dimensions
-		out.strategy = self.average_strategies_data[2].reshape([-1,batch_size,HC]).copy()
+		out.strategy = self.average_strategies_data[1].reshape([-1,batch_size,HC]).copy()
 		# 2.0 achieved opponent's CFVs at the starting node
-		out.achieved_cfvs = self.average_cfvs_data[1].reshape([batch_size,PC,HC])[0].copy()
+		out.achieved_cfvs = self.average_cfvs_data[0].reshape([batch_size,PC,HC])[0].copy()
 		# 3.0 CFVs for the acting player only when resolving first node
 		if self.reconstruction_opponent_cfvs is not None:
 			out.root_cfvs = None
 		else:
-			out.root_cfvs = self.average_cfvs_data[1].reshape([batch_size,PC,HC])[ : , 1 , : ].copy()
+			out.root_cfvs = self.average_cfvs_data[0].reshape([batch_size,PC,HC])[ : , 1 , : ].copy()
 			# swap cfvs indexing
-			out.root_cfvs_both_players = self.average_cfvs_data[1].reshape([batch_size,PC,HC]).copy()
-			out.root_cfvs_both_players[ : , 1 , : ] = self.average_cfvs_data[1].reshape([batch_size,PC,HC])[ : , 0 , : ].copy()
-			out.root_cfvs_both_players[ : , 0 , : ] = self.average_cfvs_data[1].reshape([batch_size,PC,HC])[ : , 1 , : ].copy()
+			out.root_cfvs_both_players = self.average_cfvs_data[0].reshape([batch_size,PC,HC]).copy()
+			out.root_cfvs_both_players[ : , 1 , : ] = self.average_cfvs_data[0].reshape([batch_size,PC,HC])[ : , 0 , : ].copy()
+			out.root_cfvs_both_players[ : , 0 , : ] = self.average_cfvs_data[0].reshape([batch_size,PC,HC])[ : , 1 , : ].copy()
 		# 4.0 children CFVs
 		# [actions x range]
-		out.children_cfvs = self.average_cfvs_data[2][ : , : , : , : , 0, : ].copy().reshape([-1,HC])
+		out.children_cfvs = self.average_cfvs_data[1][ : , : , : , : , 0, : ].copy().reshape([-1,HC])
 		# IMPORTANT divide average CFVs by average strategy in here
-		scaler = self.average_strategies_data[2].reshape([-1,batch_size,HC]).copy()
-		range_mul = self.ranges_data[1][ : , : , : , : , 0, : ].reshape([1,batch_size,HC]).copy()
+		scaler = self.average_strategies_data[1].reshape([-1,batch_size,HC]).copy()
+		range_mul = self.ranges_data[0][ : , : , : , : , 0, : ].reshape([1,batch_size,HC]).copy()
 		range_mul = range_mul * np.ones_like(scaler)
 		scaler = scaler * range_mul
 		scaler = np.sum(scaler, axis=2, keepdims=True) * np.ones_like(range_mul)
@@ -398,8 +398,8 @@ class Lookahead():
 		'''
 		if self.reconstruction_opponent_cfvs is not None:
 			# note that CFVs indexing is swapped, thus the CFVs for the reconstruction player are for player '1'
-			opponent_range = self.reconstruction_gadget.compute_opponent_range(self.cfvs_data[1][ : , : , : , : , 0 , : ], iteration)
-			self.ranges_data[1][ : , : , : , : , 1 , : ] = opponent_range.copy()
+			opponent_range = self.reconstruction_gadget.compute_opponent_range(self.cfvs_data[0][ : , : , : , : , 0 , : ], iteration)
+			self.ranges_data[0][ : , : , : , : , 1 , : ] = opponent_range.copy()
 
 
 
