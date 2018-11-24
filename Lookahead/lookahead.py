@@ -93,8 +93,9 @@ class Lookahead():
 			# note that the regrets as well as the CFVs have switched player indexing
 			# [ 1, B{d-2}, NTNAN{d-2}, b, I] = [A{d-1}, B{d-2}, NTNAN{d-2}, b, I]
 			regrets_sum = np.sum(positive_regrets_data, axis=0, keepdims=True)
+			# broadcasting regrets_sum: [ 1, B{d-2}, NTNAN{d-2}, b, I] -> [A{d-1}, B{d-2}, NTNAN{d-2}, b, I]
 			# [ A{d-1}, B{d-2}, NTNAN{d-2}, b, I] = [A{d-1}, B{d-2}, NTNAN{d-2}, b, I] / [A{d-1}, B{d-2}, NTNAN{d-2}, b, I]
-			layer.current_strategy_data = positive_regrets_data / (regrets_sum * np.ones_like(layer.current_strategy_data))
+			layer.current_strategy_data = positive_regrets_data / regrets_sum
 
 
 	def _compute_ranges(self):
@@ -302,8 +303,9 @@ class Lookahead():
 			cfvs from the current iteration.
 		@param: iter the current iteration number of re-solving
 		'''
-		# [ A{d-1}, B{d-2}, NTNAN{d-2}, b, I]
+		# [ 1, 1, 1, b, I] += [ 1, 1, 1, b, I]
 		self.layers[0].average_cfvs_data += self.layers[0].cfvs_data
+		# [ A{0}, 1, 1, b, I] += [ A{0}, 1, 1, b, I]
 		self.layers[1].average_cfvs_data += self.layers[1].cfvs_data
 
 
@@ -312,8 +314,11 @@ class Lookahead():
 			Used at the end of re-solving so that we can track
 			un-normalized average strategies, which are simpler to compute.
 		'''
+		# [ 1, 1, 1, b, I] = [A{0}, 1, 1, b, I]
 		avg_strat_sum = np.sum(self.layers[1].average_strategies_data, axis=0, keepdims=True)
-		self.layers[1].average_strategies_data /= avg_strat_sum * np.ones_like(self.layers[1].average_strategies_data)
+		# broadcasting: [ 1, 1, 1, b, I] -> [A{0}, 1, 1, b, I]
+		# [A{0}, 1, 1, b, I] /= [ 1, 1, 1, b, I]
+		self.layers[1].average_strategies_data /= avg_strat_sum
 		# if the strategy is 'empty' (zero reach), strategy does not matter but we need to make sure
 		# it sums to one -> now we set to always fold
 		self.layers[1].average_strategies_data[0][ self.layers[1].average_strategies_data[0] != self.layers[1].average_strategies_data[0] ] = 1
@@ -325,6 +330,7 @@ class Lookahead():
 			Used at the end of re-solving so that we can track
 			un-normalized average cfvs, which are simpler to compute.
 		'''
+		# [ 1, 1, 1, b, P, I] /= scalar
 		self.layers[0].average_cfvs_data /= (arguments.cfr_iters - arguments.cfr_skip_iters)
 
 
@@ -345,8 +351,7 @@ class Lookahead():
 			parent_inner_nodes = np.transpose(parent.cfvs_data[ gp_num_terminal_actions: , :ggp_num_nonallin_bets, : , : , layer.acting_player, : ], [0,2,1,3,4])
 			# reshape: [B{d-2}, NTNAN{d-3}, NAB{d-3}, b, I] -> [ 1, B{d-2}, NTNAN{d-3} x NAB{d-3}, b, I] = [ 1, B{d-2}, NTNAN{d-2}, b, I]
 			parent_inner_nodes = parent_inner_nodes.reshape([1, gp_num_bets, -1, batch_size, HC])
-			# [ A{d-1}, B{d-2}, NTNAN{d-2}, b, I] = [ 1, B{d-2}, NTNAN{d-2}, b, I] * [ A{d-1}, B{d-2}, NTNAN{d-2}, b, I]
-			parent_inner_nodes = parent_inner_nodes * np.ones_like(current_regrets)
+			# broadcasting parent_inner_nodes: [ 1, B{d-2}, NTNAN{d-2}, b, I] -> [ A{d-1}, B{d-2}, NTNAN{d-2}, b, I]
 			# [ A{d-1}, B{d-2}, NTNAN{d-2}, b, I] -= [ A{d-1}, B{d-2}, NTNAN{d-2}, b, I]
 			# [ A{d-1}, B{d-2}, NTNAN{d-2}, b, I] += [ A{d-1}, B{d-2}, NTNAN{d-2}, b, I]
 			current_regrets -= parent_inner_nodes
@@ -374,28 +379,40 @@ class Lookahead():
 		# 1.0 average strategy
 		# [actions x range]
 		# lookahead already computes the averate strategy we just convert the dimensions
+		# reshape: [A{0}, 1, 1, b, I] -> [A{0}, b, I]
 		out.strategy = self.layers[1].average_strategies_data.reshape([-1,batch_size,HC]).copy()
 		# 2.0 achieved opponent's CFVs at the starting node
+		# reshape: [ 1, 1, 1, b, P, I] -> [b, P, I]
 		out.achieved_cfvs = self.layers[0].average_cfvs_data.reshape([batch_size,PC,HC])[0].copy()
 		# 3.0 CFVs for the acting player only when resolving first node
 		if reconstruct_opponent_cfvs:
 			out.root_cfvs = None
 		else:
-			out.root_cfvs = self.layers[0].average_cfvs_data.reshape([batch_size,PC,HC])[ : , 1 , : ].copy()
+			# reshape: [1, 1, 1, b, P, I] - > [b, P, I]
+			first_layer_avg_cfvs = self.layers[0].average_cfvs_data.reshape([batch_size,PC,HC])
+			# slicing: [b, P, I] [1] -> [b, I]
+			out.root_cfvs = first_layer_avg_cfvs[ : , 1 , : ].copy()
 			# swap cfvs indexing
-			out.root_cfvs_both_players = self.layers[0].average_cfvs_data.reshape([batch_size,PC,HC]).copy()
-			out.root_cfvs_both_players[ : , 1 , : ] = self.layers[0].average_cfvs_data.reshape([batch_size,PC,HC])[ : , 0 , : ].copy()
-			out.root_cfvs_both_players[ : , 0 , : ] = self.layers[0].average_cfvs_data.reshape([batch_size,PC,HC])[ : , 1 , : ].copy()
+			# [b, P, I] <-  [1, 1, 1, b, P, I]
+			out.root_cfvs_both_players = first_layer_avg_cfvs.copy()
+			out.root_cfvs_both_players[ : , 1 , : ] = first_layer_avg_cfvs[ : , 0 , : ].copy()
+			out.root_cfvs_both_players[ : , 0 , : ] = first_layer_avg_cfvs[ : , 1 , : ].copy()
 		# 4.0 children CFVs
-		# [actions x range]
-		out.children_cfvs = self.layers[1].average_cfvs_data[ : , : , : , : , 0, : ].copy().reshape([-1,HC])
+		# slicing and reshaping: [A{0}, 1, 1, b, P, I] -> [A{0}, b, I]
+		out.children_cfvs = self.layers[1].average_cfvs_data[ : , : , : , : , 0, : ].copy().reshape([-1,batch_size,HC])
 		# IMPORTANT divide average CFVs by average strategy in here
+		# reshape: [A{0}, 1, 1, b, I] -> [A{0}, b, I]
 		scaler = self.layers[1].average_strategies_data.reshape([-1,batch_size,HC]).copy()
+		# slicing and reshaping: [ 1, 1, 1, b, P, I] -> [1, b, I]
 		range_mul = self.layers[0].ranges_data[ : , : , : , : , 0, : ].reshape([1,batch_size,HC]).copy()
-		range_mul = range_mul * np.ones_like(scaler)
+		# broadcasting range_mul: [1, b, I] -> [A{0}, b, I]
 		scaler = scaler * range_mul
-		scaler = np.sum(scaler, axis=2, keepdims=True) * np.ones_like(range_mul)
+		# [A{0}, b, 1] = sum([A{0}, b, I])
+		scaler = np.sum(scaler, axis=2, keepdims=True)
+		# [A{0}, b, 1] *= scalar
 		scaler = scaler * (arguments.cfr_iters - arguments.cfr_skip_iters)
+		# broadcasting scaler: [A{0}, b, 1] -> [A{0}, b, I]
+		# [A{0}, b, I] /= [A{0}, b, 1]
 		out.children_cfvs = out.children_cfvs / scaler
 		assert(out.strategy is not None)
 		assert(out.achieved_cfvs is not None)
