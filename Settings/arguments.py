@@ -26,7 +26,7 @@ class Parameters():
 		# the size of each player's stack, in chips
 		self.stack = 20000
 		# the number of iterations that DeepStack runs CFR for
-		self.cfr_iters = 100
+		self.cfr_iters = 1000
 		# the number of preliminary CFR iterations which DeepStack doesn't
 		# factor into the average strategy (included in cfr_iters)
 		self.cfr_skip_iters = 0

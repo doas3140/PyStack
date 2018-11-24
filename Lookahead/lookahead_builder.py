@@ -61,15 +61,15 @@ class LookaheadBuilder():
 			if d == 1 and self.lookahead.first_call_transition:
 				before = self.lookahead.num_pot_sizes
 				self.lookahead.num_pot_sizes = self.lookahead.num_pot_sizes + 1
-				self.lookahead.indices[d] = np.array([before, self.lookahead.num_pot_sizes])
+				self.lookahead.layers[d].indices = np.array([before, self.lookahead.num_pot_sizes])
 			elif not game_settings.nl and (d > 1 or self.lookahead.first_call_transition):
 				before = self.lookahead.num_pot_sizes
-				self.lookahead.num_pot_sizes = self.lookahead.num_pot_sizes + (self.lookahead.pot_size[d][1].shape[0]) * self.lookahead.pot_size[d][1].shape[1]
-				self.lookahead.indices[d] = np.array([before, self.lookahead.num_pot_sizes])
-			elif self.lookahead.pot_size[d][1].shape[0] > 1:
+				self.lookahead.num_pot_sizes = self.lookahead.num_pot_sizes + (self.lookahead.layers[d].pot_size[1].shape[0]) * self.lookahead.layers[d].pot_size[1].shape[1]
+				self.lookahead.layers[d].indices = np.array([before, self.lookahead.num_pot_sizes])
+			elif self.lookahead.layers[d].pot_size[1].shape[0] > 1:
 				before = self.lookahead.num_pot_sizes
-				self.lookahead.num_pot_sizes = self.lookahead.num_pot_sizes + (self.lookahead.pot_size[d][1].shape[0] - 1) * self.lookahead.pot_size[d][1].shape[1]
-				self.lookahead.indices[d] = np.array([before, self.lookahead.num_pot_sizes])
+				self.lookahead.num_pot_sizes = self.lookahead.num_pot_sizes + (self.lookahead.layers[d].pot_size[1].shape[0] - 1) * self.lookahead.layers[d].pot_size[1].shape[1]
+				self.lookahead.layers[d].indices = np.array([before, self.lookahead.num_pot_sizes])
 
 		if self.lookahead.num_pot_sizes == 0:
 			return
@@ -83,18 +83,18 @@ class LookaheadBuilder():
 				if d == 1:
 					p_start, p_end = 0, 1 # parent_indices
 				elif not game_settings.nl:
-					p_start, p_end = 0, self.pot_size[d].shape[1] # parent indices
-				self.lookahead.next_round_pot_sizes[ self.lookahead.indices[d][0]:self.lookahead.indices[d][1] ] = self.lookahead.pot_size[d][ 1, p_Start:p_end, : , 0, 0, 0 ].copy()
+					p_start, p_end = 0, self.layers[d].pot_size.shape[1] # parent indices
+				self.lookahead.next_round_pot_sizes[ self.lookahead.layers[d].indices[0]:self.lookahead.layers[d].indices[1] ] = self.lookahead.layers[d].pot_size[ 1, p_Start:p_end, : , 0, 0, 0 ].copy()
 				if d <= 2:
 					if d == 1:
-						assert(self.lookahead.indices[d][0] == self.lookahead.indices[d][1])
-						self.lookahead.action_to_index[constants.actions.ccall] = self.lookahead.indices[d][0]
+						assert(self.lookahead.layers[d].indices[0] == self.lookahead.layers[d].indices[1])
+						self.lookahead.action_to_index[constants.actions.ccall] = self.lookahead.layers[d].indices[0]
 					else:
-						assert(self.lookahead.pot_size[d][1, p_Start:p_end].shape[1] == 1) # bad num_indices
-						for parent_action_idx in range(0, self.lookahead.pot_size[d][1].shape[0]):
+						assert(self.lookahead.layers[d].pot_size[1, p_Start:p_end].shape[1] == 1) # bad num_indices
+						for parent_action_idx in range(0, self.lookahead.layers[d].pot_size[1].shape[0]):
 							action_id = self.lookahead.parent_action_id[parent_action_idx]
 							assert(action_id not in self.lookahead.action_to_index)
-							self.lookahead.action_to_index[action_id] = self.lookahead.indices[d][0] + parent_action_idx - 1
+							self.lookahead.action_to_index[action_id] = self.lookahead.layers[d].indices[0] + parent_action_idx - 1
 
 		if constants.actions.ccall not in self.lookahead.action_to_index:
 			print(self.lookahead.action_to_index)
@@ -197,7 +197,7 @@ class LookaheadBuilder():
 			self.lookahead.layers[d].empty_action_mask = np.ones_like(self.lookahead.layers[d].average_strategies_data)
 			self.lookahead.layers[d].positive_regrets_data = self.lookahead.layers[d].regrets_data.copy()
 			# data structures [1 x parent_action x grandparent_id x batch x players x range]
-			self.lookahead.layers[d].regrets_sum = np.zeros([1, self.lookahead.layers[d-2].bets_count, self.lookahead.layers[d-2].nonterminal_nonallin_nodes_count, batch_size, PC, HC], dtype=arguments.dtype)
+			self.lookahead.layers[d].regrets_sum = np.zeros([1, self.lookahead.layers[d-2].bets_count, self.lookahead.layers[d-2].nonterminal_nonallin_nodes_count, batch_size, HC], dtype=arguments.dtype)
 			# data structures for the layers except the last one
 			if d < self.lookahead.depth:
 				self.lookahead.layers[d].inner_nodes = np.zeros([self.lookahead.layers[d-1].bets_count, self.lookahead.layers[d-2].nonallinbets_count, self.lookahead.layers[d-2].nonterminal_nonallin_nodes_count, batch_size, PC, HC], dtype=arguments.dtype)

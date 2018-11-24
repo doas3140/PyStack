@@ -50,6 +50,7 @@ class CFRDGadget():
 		play_values = current_opponent_cfvs.reshape([HC])
 		terminate_values = self.input_opponent_value.reshape([HC])
 		# 1.0 compute current regrets
+		# [I] = [I] * [I]
 		self.total_values = self.play_current_strategy * play_values
 		if self.total_values_p2 is None:
 			self.total_values_p2 = np.zeros_like(self.total_values)
@@ -57,36 +58,52 @@ class CFRDGadget():
 			self.play_current_regret = np.zeros_like(play_values)
 		if self.terminate_current_regret is None:
 			self.terminate_current_regret = np.zeros_like(self.play_current_regret)
+		# [I] = [I] * [I]
 		self.total_values_p2 = terminate_values * self.terminate_current_strategy
+		# [I] += [I]
 		self.total_values += self.total_values_p2
+		# [I] = [I]
 		self.play_current_regret = play_values.copy()
+		# [I] = [I]
 		self.play_current_regret -= self.total_values
+		# [I] = [I]
 		self.terminate_current_regret = terminate_values.copy()
+		# [I] -= [I]
 		self.terminate_current_regret -= self.total_values
 		# 1.1 cumulate regrets
+		# [I] += [I]
 		self.play_regrets += self.play_current_regret
+		# [I] += [I]
 		self.terminate_regrets += self.terminate_current_regret
 		# 2.0 we use cfr+ in reconstruction
 		self.terminate_regrets = np.clip( self.terminate_regrets, self.regret_epsilon, constants.max_number )
 		self.play_regrets = np.clip( self.play_regrets, self.regret_epsilon, constants.max_number )
+		# [I] = [I]
 		self.play_possitive_regrets = self.play_regrets
+		# [I] = [I]
 		self.terminate_possitive_regrets = self.terminate_regrets
 		# 3.0 regret matching
 		if self.regret_sum is None:
 			self.regret_sum = np.zeros_like(self.play_possitive_regrets)
+		# [I] = [I]
 		self.regret_sum = self.play_possitive_regrets.copy()
+		# [I] += [I]
 		self.regret_sum += self.terminate_possitive_regrets
+		# [I] = [I]
 		self.play_current_strategy = self.play_possitive_regrets.copy()
 		self.terminate_current_strategy = self.terminate_possitive_regrets.copy()
+		# [I] /= [I]
 		self.play_current_strategy /= self.regret_sum
 		self.terminate_current_strategy /= self.regret_sum
 		# 4.0 for poker, the range size is larger than the allowed hands
 		# we need to make sure reconstruction does not choose a range
 		# that is not allowed
+		# [I] *= [I]
 		self.play_current_strategy *= self.range_mask
 		self.terminate_current_strategy *= self.range_mask
 		if self.input_opponent_range is None:
 			self.input_opponent_range = np.zeros_like(self.play_current_strategy)
+		# [I] = [I]
 		self.input_opponent_range = self.play_current_strategy.copy()
 		return self.input_opponent_range
 

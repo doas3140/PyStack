@@ -34,30 +34,28 @@ class Resolving():
 		self.lookahead_tree = self.tree_builder.build_tree(build_tree_params)
 
 
-	def resolve_first_node(self, node, player_range, opponent_range):
-		''' Re-solves a depth-limited lookahead using input ranges.
-			Uses the input range for the opponent instead of a gadget range,
-			so only appropriate for re-solving the root node of the game tree
-			(where ranges are fixed).
-		@param: node the public node at which to re-solve
-		@param: player_range a range vector for the re-solving player
-		@param: opponent_range a range vector for the opponent
-		'''
-		self.player_range = player_range
-		self.opponent_range = opponent_range
-		self.opponent_cfvs = None
-		self._create_lookahead_tree(node)
+	def resolve(self, node, player_range, opponent_range=None, opponent_cfvs=None):
+		if opponent_range is not None and opponent_cfvs is not None: raise('only 1 var can be passed')
+		if opponent_range is None and opponent_cfvs is None: raise('one of those vars must be passed')
+		batch_size = player_range.shape[0]
 		if player_range.ndim == 1:
 			player_range = player_range.reshape([1, player_range.shape[0]])
-			opponent_range = opponent_range.reshape([1, opponent_range.shape[0]])
-		self.lookahead = Lookahead(self.terminal_equity, player_range.shape[0])
+			opponent_range = opponent_range.reshape([1, opponent_range.shape[0]]) if opponent_range is not None else opponent_range
+		# opponent_cfvs = None if we only need to resolve first node
+		self._create_lookahead_tree(node)
+		self.lookahead = Lookahead(self.terminal_equity, batch_size)
 		t0 = time.time()
 		self.lookahead.build_lookahead(self.lookahead_tree)
 		print('Build time: {}'.format(time.time() - t0)); t0 = time.time()
-		self.lookahead.resolve_first_node(player_range, opponent_range)
+		if opponent_range is not None:
+			self.lookahead.resolve(player_range=player_range, opponent_range=opponent_range)
+			self.resolve_results = self.lookahead.get_results(reconstruct_opponent_cfvs=False)
+		else: # opponent_cfvs is not None:
+			self.lookahead.resolve(player_range=player_range, opponent_cfvs=opponent_cfvs)
+			self.resolve_results = self.lookahead.get_results(reconstruct_opponent_cfvs=True)
 		print('Resolve time: {}'.format(time.time() - t0))
-		self.resolve_results = self.lookahead.get_results()
 		if self.verbose > 0:
+			self._create_lookahead_tree(node)
 			PC, HC = constants.players_count, game_settings.hand_count
 			starting_ranges = np.zeros([PC,HC], dtype=arguments.dtype)
 			starting_ranges[0] = player_range
@@ -67,30 +65,21 @@ class Resolving():
 			tree_values = TreeValues()
 			tree_values.compute_values(self.lookahead_tree, starting_ranges)
 			print('Exploitability: ' + str(self.lookahead_tree.exploitability) + ' [chips]')
+			print()
 			# debugging
-			# print(np.array2string(self.lookahead_tree.cf_values[self.lookahead_tree.current_player].reshape([-1,2]), suppress_small=True, precision=2))
-			# print()
-			# print(np.array2string(self.resolve_results.root_cfvs.reshape([-1,2]), suppress_small=True, precision=2))
-			# print(np.array2string(self.lookahead_tree.strategy.reshape([3,-1])[ : , 1320:1326 ], suppress_small=True, precision=2))
-			# print()
-			# print(np.array2string(self.resolve_results.strategy.reshape([3,-1])[ : , 1320:1326 ], suppress_small=True, precision=2))
-		return self.resolve_results
-
-
-	def resolve(self, node, player_range, opponent_cfvs):
-		''' Re-solves a depth-limited lookahead using an input range for the player
-			and the @{cfrd_gadget|CFRDGadget} to generate ranges for the opponent.
-			@param: node the public node at which to re-solve
-			@param: player_range a range vector for the re-solving player
-			@param: opponent_cfvs a vector of cfvs achieved by the opponent
-					before re-solving
-		'''
-		assert(card_tools.is_valid_range(player_range, node.board))
-		self._create_lookahead_tree(node)
-		self.lookahead = Lookahead()
-		self.lookahead.build_lookahead(self.lookahead_tree)
-		self.lookahead.resolve(player_range, opponent_cfvs)
-		self.resolve_results = self.lookahead.get_results()
+			print(np.array2string(self.lookahead_tree.cf_values[self.lookahead_tree.current_player].reshape([-1])[ 1320:1326 ], suppress_small=True, precision=2))
+			print(np.array2string(self.lookahead_tree.cf_values[1-self.lookahead_tree.current_player].reshape([-1])[ 1320:1326 ], suppress_small=True, precision=2))
+			print()
+			print(self.resolve_results.root_cfvs.shape, self.resolve_results.root_cfvs_both_players.shape)
+			print(np.array2string(self.resolve_results.root_cfvs.reshape([-1])[ 1320:1326 ], suppress_small=True, precision=2))
+			print(np.array2string(self.resolve_results.root_cfvs_both_players[ : , 1-self.lookahead_tree.current_player , : ].reshape([-1])[ 1320:1326 ], suppress_small=True, precision=2))
+			print(self.resolve_results.achieved_cfvs.shape)
+			print(np.array2string(self.resolve_results.achieved_cfvs.reshape([2,-1])[ 1-self.lookahead_tree.current_player , 1320:1326 ], suppress_small=True, precision=2))
+			print(np.array2string(self.resolve_results.achieved_cfvs.reshape([2,-1])[ self.lookahead_tree.current_player , 1320:1326 ], suppress_small=True, precision=2))
+			print()
+			print(np.array2string(self.lookahead_tree.strategy.reshape([3,-1])[ : , 1320:1326 ], suppress_small=True, precision=2))
+			print()
+			print(np.array2string(self.resolve_results.strategy.reshape([3,-1])[ : , 1320:1326 ], suppress_small=True, precision=2))
 		return self.resolve_results
 
 
