@@ -105,10 +105,10 @@ class Lookahead():
 		PC, HC, batch_size = constants.players_count, game_settings.hand_count, self.batch_size
 		for d in range(0, self.depth-1):
 			next_layer, layer, parent, grandparent = self.layers[d+1], self.layers[d], self.layers[d-1], self.layers[d-2]
-			p_num_terminal_actions = parent.terminal_actions_count if d > 0 else 0
-			parent_num_bets = parent.bets_count if d > 0 else 1
-			gp_num_nonallin_bets = grandparent.nonallinbets_count if d > 1 else 1
-			gp_num_terminal_actions = grandparent.terminal_actions_count if d > 1 else 0
+			p_num_terminal_actions = parent.num_terminal_actions if d > 0 else 0
+			parent_num_bets = parent.num_bets if d > 0 else 1
+			gp_num_nonallin_bets = grandparent.num_nonallin_bets if d > 1 else 1
+			gp_num_terminal_actions = grandparent.num_terminal_actions if d > 1 else 0
 			# copy the ranges of inner nodes and transpose (np.transpose - swaps axis: 1dim <-> 2 dim)
 			# array slicing: [A{d-1}, B{d-2}, NTNAN{d-2}, b, P, I] -> [B{d-1}, NAB{d-2}, NTNAN{d-2}, b, P, I]
 			# [B{d-1}, NTNAN{d-2}, NAB{d-2}, b, P, I] = [B{d-1}, NAB{d-2}, NTNAN{d-2}, b, P, I]
@@ -275,8 +275,8 @@ class Lookahead():
 		PC, HC, batch_size = constants.players_count, game_settings.hand_count, self.batch_size
 		for d in range(self.depth-1, 0, -1):
 			layer, parent = self.layers[d], self.layers[d-1]
-			num_gp_terminal_actions = self.layers[d-2].terminal_actions_count if d > 1 else 0
-			num_ggp_nonallin_bets = self.layers[d-3].nonallinbets_count if d > 2 else 1
+			num_gp_terminal_actions = self.layers[d-2].num_terminal_actions if d > 1 else 0
+			num_ggp_nonallin_bets = self.layers[d-3].num_nonallin_bets if d > 2 else 1
 			# [A{d-1}, B{d-2}, NTNAN{d-2}, b, P, I] *= [A{d-1}, B{d-2}, NTNAN{d-2}, b, P, I]
 			layer.cfvs[ : , : , : , : , 0, : ] *= layer.empty_action_mask
 			layer.cfvs[ : , : , : , : , 1, : ] *= layer.empty_action_mask
@@ -289,8 +289,8 @@ class Lookahead():
 			regrets_sum = np.sum(placeholder_data, axis=0, keepdims=True)
 			# print(layer.regrets_sum.shape, placeholder_data.shape, layer.current_strategy.shape, layer.cfvs.shape)
 			# use a swap placeholder to change dimensions
-			num_ggp_nonterminal_nonallin_nodes = self.layers[d-3].nonterminal_nonallin_nodes_count if d > 2 else 1
-			num_gpp_nonallin_bets = self.layers[d-3].nonallinbets_count if d > 2 else 1
+			num_ggp_nonterminal_nonallin_nodes = self.layers[d-3].num_nonterminal_nonallin_nodes if d > 2 else 1
+			num_gpp_nonallin_bets = self.layers[d-3].num_nonallin_bets if d > 2 else 1
 			num_gp_bets = regrets_sum.shape[1]
 			# note: NTNAN{d-3} x NAB{d-3} = NTNAN{d-2}
 			# reshape: [ 1, B{d-2}, NTNAN{d-2}, b, P, I] -> [B{d-2}, NTNAN{d-3}, NAB{d-3}, b, P, I]
@@ -341,9 +341,9 @@ class Lookahead():
 		HC, batch_size = game_settings.hand_count, self.batch_size
 		for d in range(self.depth-1, 0, -1):
 			layer, parent = self.layers[d], self.layers[d-1] # current layer, parent layer
-			gp_num_terminal_actions = self.layers[d-2].terminal_actions_count if d > 1 else 0
-			gp_num_bets = self.layers[d-2].bets_count if d > 1 else 1
-			ggp_num_nonallin_bets = self.layers[d-3].nonallinbets_count if d > 2 else 1
+			gp_num_terminal_actions = self.layers[d-2].num_terminal_actions if d > 1 else 0
+			gp_num_bets = self.layers[d-2].num_bets if d > 1 else 1
+			ggp_num_nonallin_bets = self.layers[d-3].num_nonallin_bets if d > 2 else 1
 			# reshape: [A{d-1}, B{d-2}, NTNAN{d-2}, b, P, I] -> [A{d-1}, B{d-2}, NTNAN{d-2}, b, I]
 			current_regrets = layer.cfvs[ : , : , : , : , layer.acting_player, : ].copy()
 			# slicing: [A{d-2}, B{d-3}, NTNAN{d-3}, b, P, I] -> [B{d-2}, NAB{d-3}, NTNAN{d-3}, b, I]
@@ -373,8 +373,8 @@ class Lookahead():
 				average counterfactual values after each action
 				that the re-solve player can take at the root of the lookahead
 		'''
-		actions_count = self.layers[1].strategies_avg.shape[0]
-		PC, HC, AC, batch_size = constants.players_count, game_settings.hand_count, actions_count, self.batch_size
+		num_actions = self.layers[1].strategies_avg.shape[0]
+		PC, HC, AC, batch_size = constants.players_count, game_settings.hand_count, num_actions, self.batch_size
 		out = LookaheadResults()
 		# 1.0 average strategy
 		# [actions x range]

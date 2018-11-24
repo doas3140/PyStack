@@ -122,18 +122,18 @@ class LookaheadLayer():
 	def __init__(self):
 		# _compute_tree_structures
 		# scalars
-		self.bets_count = None # [0 - d]
-		self.nonallinbets_count = None # [0 - d]
-		self.terminal_actions_count = None # [0 - d]
-		self.actions_count = None # [0 - d]
+		self.num_bets = None # [0 - d]
+		self.num_nonallin_bets = None # [0 - d]
+		self.num_terminal_actions = None # [0 - d]
+		self.num_actions = None # [0 - d]
 		# _compute_structure
 		# scalars
 		self.acting_player = None # [1 - d+1]
-		self.nonterminal_nodes_count = None # [1 - d]
-		self.nonterminal_nonallin_nodes_count = None # [1 - d]
-		self.all_nodes_count = None # [1 - d]
-		self.terminal_nodes_count = None # [1 - d]
-		self.allin_nodes_count = None # [1 - d]
+		self.num_nonterminal_nodes = None # [1 - d]
+		self.num_nonterminal_nonallin_nodes = None # [1 - d]
+		self.num_all_nodes = None # [1 - d]
+		# self.terminal_nodes_count = None # [1 - d]
+		self.num_allin_nodes = None # [1 - d]
 		#  None ?
 		self.next_street_boxes_inputs = None # [1 - d]
 		self.next_street_boxes_outputs = None # [d - d]
@@ -163,7 +163,7 @@ class LookaheadLayer():
 		self.term_fold_idx = None # [1 - d]
 		# set_datastructures_from_tree_dfs
 		# self.empty_action_mask = None # [0 - d]
-		# self.bets_count = None # [0 - d]
+		# self.num_bets = None # [0 - d]
 		# _construct_transition_boxes
 		self.indices = None # (2,) [1 - d]
 
