@@ -139,28 +139,28 @@ class LookaheadLayer():
 		self.next_street_boxes_outputs = None # [d - d]
 		# construct_data_structures
 		# (actions, parent_action, grandparent_id, batch, players, range)
-		self.ranges_data = None # [0 - d]
+		self.ranges = None # [0 - d]
 		self.pot_size = None # [0 - d]
-		self.cfvs_data = None # [0 - d]
-		self.placeholder_data = None # [0 - d]
-		self.average_cfvs_data = None # [0 - d]
+		self.cfvs = None # [0 - d]
+		# self.placeholder_data = None # [0 - d]
+		self.cfvs_avg = None # [0 - d]
 		# (actions, parent_action, grandparent_id, 1, range)
-		self.average_strategies_data = None # [0 - d]
-		self.current_strategy_data = None # [0 - d]
-		self.regrets_data = None # [0 - d]
-		self.current_regrets_data = None # [0 - d]
-		self.positive_regrets_data = None # [0 - d]
+		self.strategies_avg = None # [0 - d]
+		self.current_strategy = None # [0 - d]
+		self.regrets = None # [0 - d]
+		# self.current_regrets = None # [0 - d]
+		# self.positive_regrets = None # [0 - d]
 		self.empty_action_mask = None # [0 - d]
 		# sum over actions (1, parent_action, grandparent_id, range)
-		self.regrets_sum = None # [0 - d]
+		# self.regrets_sum = None # [0 - d]
 		# inner nodes (nor terminal, nor allin)
 		# (bets, parent_nonallinbetscount, grandparent_id, batch, players, range)
-		self.inner_nodes = None # [0 - d]
-		self.swap_data = None # [0 - d]
-		self.inner_nodes_p1 = None # [0 - d]
+		# self.inner_nodes = None # [0 - d]
+		# self.swap_data = None # [0 - d]
+		# self.inner_nodes_p1 = None # [0 - d]
 		# for terminal equity (2,)
-		self.term_call_indices = None # [1 - d]
-		self.term_fold_indices = None # [1 - d]
+		self.term_call_idx = None # [1 - d]
+		self.term_fold_idx = None # [1 - d]
 		# set_datastructures_from_tree_dfs
 		# self.empty_action_mask = None # [0 - d]
 		# self.bets_count = None # [0 - d]
