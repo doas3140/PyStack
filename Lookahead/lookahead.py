@@ -344,18 +344,16 @@ class Lookahead():
 			gp_num_terminal_actions = self.layers[d-2].num_terminal_actions if d > 1 else 0
 			gp_num_bets = self.layers[d-2].num_bets if d > 1 else 1
 			ggp_num_nonallin_bets = self.layers[d-3].num_nonallin_bets if d > 2 else 1
-			# reshape: [A{d-1}, B{d-2}, NTNAN{d-2}, b, P, I] -> [A{d-1}, B{d-2}, NTNAN{d-2}, b, I]
-			current_regrets = layer.cfvs[ : , : , : , : , layer.acting_player, : ].copy()
+			# slicing: [A{d-1}, B{d-2}, NTNAN{d-2}, b, P, I] -> [A{d-1}, B{d-2}, NTNAN{d-2}, b, I]
+			current_cfvs = layer.cfvs[ : , : , : , : , layer.acting_player, : ].copy()
 			# slicing: [A{d-2}, B{d-3}, NTNAN{d-3}, b, P, I] -> [B{d-2}, NAB{d-3}, NTNAN{d-3}, b, I]
 			# transpose: [B{d-2}, NAB{d-3}, NTNAN{d-3}, b, I] -> [B{d-2}, NTNAN{d-3}, NAB{d-3}, b, I]
-			parent_inner_nodes = np.transpose(parent.cfvs[ gp_num_terminal_actions: , :ggp_num_nonallin_bets, : , : , layer.acting_player, : ], [0,2,1,3,4])
+			parent_cfvs = np.transpose(parent.cfvs[ gp_num_terminal_actions: , :ggp_num_nonallin_bets, : , : , layer.acting_player, : ], [0,2,1,3,4])
 			# reshape: [B{d-2}, NTNAN{d-3}, NAB{d-3}, b, I] -> [ 1, B{d-2}, NTNAN{d-3} x NAB{d-3}, b, I] = [ 1, B{d-2}, NTNAN{d-2}, b, I]
-			parent_inner_nodes = parent_inner_nodes.reshape([1, gp_num_bets, -1, batch_size, HC])
-			# broadcasting parent_inner_nodes: [ 1, B{d-2}, NTNAN{d-2}, b, I] -> [ A{d-1}, B{d-2}, NTNAN{d-2}, b, I]
-			# [ A{d-1}, B{d-2}, NTNAN{d-2}, b, I] -= [ A{d-1}, B{d-2}, NTNAN{d-2}, b, I]
-			# [ A{d-1}, B{d-2}, NTNAN{d-2}, b, I] += [ A{d-1}, B{d-2}, NTNAN{d-2}, b, I]
-			current_regrets -= parent_inner_nodes
-			layer.regrets += current_regrets
+			parent_cfvs = parent_cfvs.reshape([1, gp_num_bets, -1, batch_size, HC])
+			# broadcasting parent_cfvs: [ 1, B{d-2}, NTNAN{d-2}, b, I] -> [ A{d-1}, B{d-2}, NTNAN{d-2}, b, I]
+			# [ A{d-1}, B{d-2}, NTNAN{d-2}, b, I] += [ A{d-1}, B{d-2}, NTNAN{d-2}, b, I] - [ 1, B{d-2}, NTNAN{d-2}, b, I]
+			layer.regrets += current_cfvs - parent_cfvs
 			# (CFR+)
 			layer.regrets = np.clip(layer.regrets, 0, constants.max_number)
 
@@ -383,7 +381,7 @@ class Lookahead():
 		out.strategy = self.layers[1].strategies_avg.reshape([-1,batch_size,HC]).copy()
 		# 2.0 achieved opponent's CFVs at the starting node
 		# reshape: [ 1, 1, 1, b, P, I] -> [b, P, I]
-		out.achieved_cfvs = self.layers[0].cfvs_avg.reshape([batch_size,PC,HC])[0].copy()
+		out.achieved_cfvs = self.layers[0].cfvs_avg.reshape([batch_size,PC,HC]).copy()
 		# 3.0 CFVs for the acting player only when resolving first node
 		if reconstruct_opponent_cfvs:
 			out.root_cfvs = None

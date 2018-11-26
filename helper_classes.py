@@ -94,11 +94,11 @@ class ResolvingParams():
 
 class LookaheadResults():
 	def __init__(self):
-		self.strategy = None
-		self.achieved_cfvs = None
-		self.root_cfvs = None
-		self.root_cfvs_both_players = None
-		self.children_cfvs = None
+		self.strategy = None				# [A{0}, b, I]
+		self.achieved_cfvs = None			# [b, P, I]
+		self.root_cfvs = None				# [b, I]
+		self.root_cfvs_both_players = None  # [b, P, I]
+		self.children_cfvs = None 			# [A{0}, b, I]
 
 	def __str__(self):
 		s = 'strat\n {} \ncfvs\n {} \nroot_cfvs\n {} \nboth_P_root_cfvs\n {} \nchildren_cfvs\n {}'. \
