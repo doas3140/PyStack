@@ -22,6 +22,7 @@ class Resolving():
 		self.tree_builder = PokerTreeBuilder()
 		self.verbose = verbose
 		self.terminal_equity = terminal_equity
+		self.lookahead = Lookahead(None, None)
 
 
 	def _create_lookahead_tree(self, node):
@@ -44,42 +45,29 @@ class Resolving():
 		# opponent_cfvs = None if we only need to resolve first node
 		self._create_lookahead_tree(node)
 		self.lookahead = Lookahead(self.terminal_equity, batch_size)
-		t0 = time.time()
+		if self.verbose > 0: t0 = time.time()
 		self.lookahead.build_lookahead(self.lookahead_tree)
-		print('Build time: {}'.format(time.time() - t0)); t0 = time.time()
+		if self.verbose > 0: print('Build time: {}'.format(time.time() - t0)); t0 = time.time()
 		if opponent_range is not None:
 			self.lookahead.resolve(player_range=player_range, opponent_range=opponent_range)
 			self.resolve_results = self.lookahead.get_results(reconstruct_opponent_cfvs=False)
 		else: # opponent_cfvs is not None:
 			self.lookahead.resolve(player_range=player_range, opponent_cfvs=opponent_cfvs)
 			self.resolve_results = self.lookahead.get_results(reconstruct_opponent_cfvs=True)
-		print('Resolve time: {}'.format(time.time() - t0))
+		if self.verbose > 0: print('Resolve time: {}'.format(time.time() - t0))
 		if self.verbose > 0:
-			self._create_lookahead_tree(node)
-			PC, HC = constants.players_count, game_settings.hand_count
-			starting_ranges = np.zeros([PC,HC], dtype=arguments.dtype)
-			starting_ranges[0] = player_range
-			starting_ranges[1] = opponent_range
-			tree_cfr = TreeCFR()
-			tree_cfr.run_cfr(self.lookahead_tree, starting_ranges)
-			tree_values = TreeValues()
-			tree_values.compute_values(self.lookahead_tree, starting_ranges)
-			print('Exploitability: ' + str(self.lookahead_tree.exploitability) + ' [chips]')
-			print()
-			# debugging
-			print(np.array2string(self.lookahead_tree.cf_values[self.lookahead_tree.current_player].reshape([-1])[ 1320:1326 ], suppress_small=True, precision=2))
-			print(np.array2string(self.lookahead_tree.cf_values[1-self.lookahead_tree.current_player].reshape([-1])[ 1320:1326 ], suppress_small=True, precision=2))
-			print()
-			print(self.resolve_results.root_cfvs.shape, self.resolve_results.root_cfvs_both_players.shape)
-			print(np.array2string(self.resolve_results.root_cfvs.reshape([-1])[ 1320:1326 ], suppress_small=True, precision=2))
-			print(np.array2string(self.resolve_results.root_cfvs_both_players[ : , 1-self.lookahead_tree.current_player , : ].reshape([-1])[ 1320:1326 ], suppress_small=True, precision=2))
-			print(self.resolve_results.achieved_cfvs.shape)
-			print(np.array2string(self.resolve_results.achieved_cfvs.reshape([2,-1])[ 1-self.lookahead_tree.current_player , 1320:1326 ], suppress_small=True, precision=2))
-			print(np.array2string(self.resolve_results.achieved_cfvs.reshape([2,-1])[ self.lookahead_tree.current_player , 1320:1326 ], suppress_small=True, precision=2))
-			print()
-			print(np.array2string(self.lookahead_tree.strategy.reshape([3,-1])[ : , 1320:1326 ], suppress_small=True, precision=2))
-			print()
-			print(np.array2string(self.resolve_results.strategy.reshape([3,-1])[ : , 1320:1326 ], suppress_small=True, precision=2))
+			batch = 0
+			print('printing batch:', batch)
+			print('root_cfvs -', self.resolve_results.root_cfvs.shape)
+			print(np.array2string(self.resolve_results.root_cfvs[batch].reshape([-1])[ 1320:1326 ], suppress_small=True, precision=2))
+			print('root_cfvs_both_players -', self.resolve_results.root_cfvs_both_players.shape)
+			print(np.array2string(self.resolve_results.root_cfvs_both_players[ : , 1-self.lookahead_tree.current_player , : ][batch].reshape([-1])[ 1320:1326 ], suppress_small=True, precision=2))
+			print(np.array2string(self.resolve_results.root_cfvs_both_players[ : , self.lookahead_tree.current_player , : ][batch].reshape([-1])[ 1320:1326 ], suppress_small=True, precision=2))
+			print('achieved_cfvs -', self.resolve_results.achieved_cfvs.shape)
+			print(np.array2string(self.resolve_results.achieved_cfvs[batch].reshape([2,-1])[ 1-self.lookahead_tree.current_player , 1320:1326 ], suppress_small=True, precision=2))
+			print(np.array2string(self.resolve_results.achieved_cfvs[batch].reshape([2,-1])[ self.lookahead_tree.current_player , 1320:1326 ], suppress_small=True, precision=2))
+			print('strategy -', self.resolve_results.strategy.shape)
+			print(np.array2string(self.resolve_results.strategy[ : , batch, : ].reshape([3,-1])[ : , 1320:1326 ], suppress_small=True, precision=2))
 		return self.resolve_results
 
 
