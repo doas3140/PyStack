@@ -1,7 +1,6 @@
 '''
 	Wraps the calls to the final neural net.
 '''
-import tensorflow.keras as keras
 import tensorflow as tf
 
 from Settings.arguments import arguments

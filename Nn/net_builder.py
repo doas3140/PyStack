@@ -12,7 +12,7 @@
 from Nn.bucketer import Bucketer
 from Settings.arguments import arguments
 from Settings.game_settings import game_settings
-import tensorflow.keras as keras
+import tensorflow as tf
 
 class NetBuilder():
 	def __init__(self):
@@ -34,26 +34,26 @@ class NetBuilder():
 		input_shape = [num_input]
 		output_shape = [num_output]
 		# neural network architecture
-		m_input = keras.layers.Input(input_shape, name='input')
+		m_input = tf.keras.layers.Input(input_shape, name='input')
 		# slicing off pot size ([1,2001] -> [1,2000])
-		sp = keras.layers.Lambda(lambda x: x[ : , :-1 ], name='input_ranges')(m_input)
+		sp = tf.keras.layers.Lambda(lambda x: x[ : , :-1 ], name='input_ranges')(m_input)
 		# feed forward part
 		ff = m_input
 		for i in range(arguments.num_layers):
 			names = [s.format(i) for s in ('dense_{}', 'prelu_{}')]
-			ff = keras.layers.Dense(arguments.num_neurons, name=names[0])(ff)
-			ff = keras.layers.PReLU(name=names[1])(ff)
-		ff = keras.layers.Dense(num_output, name='feed_forward_output')(ff)
+			ff = tf.keras.layers.Dense(arguments.num_neurons, name=names[0])(ff)
+			ff = tf.keras.layers.PReLU(name=names[1])(ff)
+		ff = tf.keras.layers.Dense(num_output, name='feed_forward_output')(ff)
 		# dot product of both (feed forward and player ranges)
-		d = keras.layers.dot([ff,sp], axes=1, name='dot_product')
+		d = tf.keras.layers.dot([ff,sp], axes=1, name='dot_product')
 		# repeat this number from shape [1] -> [2000]
-		d = keras.layers.RepeatVector(num_output, name='repeat_scalar')(d)
-		d = keras.layers.Flatten(name='flatten')(d)
+		d = tf.keras.layers.RepeatVector(num_output, name='repeat_scalar')(d)
+		d = tf.keras.layers.Flatten(name='flatten')(d)
 		# divide it by 2
-		d = keras.layers.Lambda(lambda x: x/2, name='divide_by_2')(d)
+		d = tf.keras.layers.Lambda(lambda x: x/2, name='divide_by_2')(d)
 		# subtract input (without pot) and last layer
-		m_output = keras.layers.subtract([ff,d], name='zero_sum_output')
-		model = keras.models.Model(m_input, m_output)
+		m_output = tf.keras.layers.subtract([ff,d], name='zero_sum_output')
+		model = tf.keras.models.Model(m_input, m_output)
 		return model, input_shape, output_shape
 
 
