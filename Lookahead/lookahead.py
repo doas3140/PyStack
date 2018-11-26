@@ -117,7 +117,8 @@ class Lookahead():
 			# [ 1, B{d-1}, NTNAN{d-2} x NAB{d-2}, b, P, I] is the same as [ 1, B{d-1}, NTNAN{d-1}, b, P, I]
 			next_layer_ranges = next_layer_ranges.reshape([1, parent_num_bets, -1, batch_size, PC, HC])
 			# [ A{d}, B{d-1}, NTNAN{d-1}, b, P, I] = [ 1, B{d-1}, NTNAN{d-1}, b, P, I] * [ A{d}, B{d-1}, NTNAN{d-1}, b, P, I]
-			next_layer_ranges = next_layer_ranges * np.ones_like(next_layer.ranges)
+			# same as below line, just slower: next_layer_ranges = next_layer_ranges * np.ones_like(next_layer.ranges)
+			next_layer_ranges = np.repeat(next_layer_ranges, next_layer.ranges.shape[0], axis=0)
 			# [ A{d}, B{d-1}, NTNAN{d-1}, b, P, I] = [ A{d}, B{d-1}, NTNAN{d-1}, b, P, I]
 			next_layer.ranges = next_layer_ranges.copy()
 			# multiply the ranges of the acting player by his strategy
