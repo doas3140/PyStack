@@ -52,13 +52,13 @@ class Parameters():
 		# factor into the average strategy (included in cfr_iters)
 		self.cfr_skip_iters = 500
 		# how many solved poker situations are generated
-		self.gen_different_boards = 2
+		self.gen_different_boards = 48
 		# how many poker situations are solved simultaneously during
 		# data generation
 		self.gen_batch_size = 16
 		# TOTAL SITUATIONS = different_boards x batch_size
 		# how many files to create (single element = ~22kB)
-		self.gen_num_files = 1
+		self.gen_num_files = 12
 
 		assert(self.gen_different_boards % self.gen_num_files == 0)
 

@@ -89,12 +89,13 @@ class DataGeneration():
 		total_situations = batch_size * num_different_boards
 		num_files = arguments.gen_num_files
 		num_batches_in_file = total_situations // num_files
+		num_different_boards_per_file = num_different_boards // num_files
 		for self.counter in range(starting_idx,  starting_idx + num_files):
 			TARGETS = np.zeros([num_batches_in_file, self.target_size], dtype=arguments.dtype)
 			INPUTS =  np.zeros([num_batches_in_file, self.input_size],  dtype=arguments.dtype)
-			BOARDS = np.zeros([num_different_boards, num_board_cards], dtype=arguments.dtype)
-			for b in range(num_different_boards):
-				# t0 = time.time()
+			BOARDS = np.zeros([num_different_boards_per_file, num_board_cards], dtype=arguments.dtype)
+			for b in range(num_different_boards_per_file):
+				t0 = time.time()
 				# init targets, inputs and create random board and solve it
 				board = np.random.choice(card_count, size=num_board_cards, replace=False)
 				inputs, targets = self.solve_board(board, batch_size)
@@ -102,7 +103,7 @@ class DataGeneration():
 				TARGETS[ b*batch_size:(b+1)*batch_size , : ] = targets
 				INPUTS[ b*batch_size:(b+1)*batch_size , : ] = inputs
 				BOARDS[ b , : ] = board
-				# print('{}, {}) took {} seconds'.format(self.counter, b, time.time()-t0))
+				print('{}, {}) took {} seconds'.format(self.counter, b, time.time()-t0))
 			# save
 			fpath = os.path.join(self.dirpath, '{}.{}')
 			np.save(fpath.format('inputs', self.counter), INPUTS.astype(np.float32))
