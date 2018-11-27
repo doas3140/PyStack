@@ -4,6 +4,7 @@
 import numpy as np
 
 from Settings.arguments import arguments
+from Settings.game_settings import game_settings
 from Game.Evaluation.evaluator import evaluator
 from Game.card_tools import card_tools
 
@@ -49,29 +50,34 @@ class RangeGenerator():
 		@see generate_range
 		'''
 		batch_size = ranges.shape[0]
-		BS = batch_size
-		mass = np.ones([BS], dtype=arguments.dtype)
+		mass = np.ones([batch_size], dtype=arguments.dtype)
 		self._generate_recursion(ranges, mass)
 
 
-	def set_board(self, board):
+	def set_board(self, terminal_equity, board):
 		''' Sets the (possibly empty) board cards to sample ranges with.
 			The sampled ranges will assign 0 probability to any private hands that
 			share any cards with the board.
 		@param: board a possibly empty vector of board cards
 		'''
-		hand_strengths = evaluator.batch_eval(board) # (CC,)
-		possible_hand_indexes = card_tools.get_possible_hand_indexes(board) # (CC,) dtype=bool
+		HC = game_settings.hand_count
+		# create hand strengths of particular board
+		hand_strengths = np.zeros([HC], dtype=arguments.dtype)
+		if board.ndim == 0:
+			hand_strengths = np.squeeze(terminal_equity.get_hand_strengths())
+		elif board.shape[0] == 5:
+			hand_strengths = evaluator.batch_eval_fast(board)
+		else:
+			hand_strengths = np.squeeze(terminal_equity.get_hand_strengths())
+		# get possible hands mask for particular board
+		possible_hand_indexes = card_tools.get_possible_hand_indexes(board).astype(bool)
 		self.possible_hands_count = possible_hand_indexes.sum(axis=0)
-		PH = self.possible_hands_count
-		self.possible_hands_mask = possible_hand_indexes.reshape([1,-1]) # (1,CC)
-		non_coliding_strengths = np.zeros([PH], dtype=hand_strengths.dtype)
-		non_coliding_strengths = hand_strengths[self.possible_hands_mask.reshape([-1])]
+		self.possible_hands_mask = possible_hand_indexes.reshape([1,-1])
+		# non_coliding_strengths shape: [self.possible_hands_count]
+		non_coliding_strengths = hand_strengths[ possible_hand_indexes ]
 		order = np.argsort(non_coliding_strengths)
 		self.reverse_order = np.argsort(order)
-		self.reverse_order = self.reverse_order.reshape([1,-1]) # (1,PH) # ? - :long()
-		# self.reordered_range = np.zeros([]) # ?
-		# self.sorted_range = np.zeros([])
+		self.reverse_order = self.reverse_order.reshape([1,-1]) # (1,PH)
 
 
 	def generate_range(self, ranges):
@@ -83,13 +89,14 @@ class RangeGenerator():
 		@param: range a (N,K) tensor in which to store the sampled ranges, where N is
 				the number of ranges to sample and K is the range size
 		'''
-		batch_size = ranges.shape[0]
-		BS, PH = batch_size, self.possible_hands_count
-		self.sorted_range = np.zeros([BS,PH], dtype=arguments.dtype)
+		batch_size, num_possible_hands = ranges.shape[0], self.possible_hands_count
+		self.sorted_range = np.zeros([batch_size, num_possible_hands], dtype=arguments.dtype)
 		self._generate_sorted_range(self.sorted_range)
-		# we have to reorder the the range back to undo the sort by strength
+		# we have to reorder the range back to undo the sort by strength
+		# broadcasting reverse_order: [1, possible_hands] -> [batch_size, possible_hands]
 		index = self.reverse_order * np.ones_like(self.sorted_range, dtype=arguments.int_dtype)
-		self.reordered_range = np_gather(self.sorted_range, 1, index)
+		self.reordered_range = np_gather(self.sorted_range, axis=1, index=index)
+		# broadcasting mask: [1, possible_hands] -> [batch_size, possible_hands]
 		mask = self.possible_hands_mask * np.ones_like(ranges, dtype=bool)
 		ranges.fill(0)
 		ranges[mask] = self.reordered_range.reshape([-1])
@@ -97,16 +104,16 @@ class RangeGenerator():
 
 
 
-def np_gather(a, dim, index):
+def np_gather(a, axis, index):
 	''' Does gather operation: https://github.com/torch/torch7/blob/master/doc/tensor.md#tensor-gatherdim-index '''
 	expanded_index = []
 	for i in range(a.ndim):
-		if dim==i:
+		if axis==i:
 			expanded_index.append( index )
 		else:
 			shape = [-1 if i==j else 1 for j in range(a.ndim)]
 			expanded_index.append( np.arange(a.shape[i]).reshape(shape) )
-	return a[expanded_index]
+	return a[tuple(expanded_index)]
 
 
 
