@@ -256,7 +256,7 @@ class LookaheadBuilder():
 			self.lookahead.next_street_boxes.start_computation(self.lookahead.next_round_pot_sizes, self.lookahead.batch_size)
 
 
-	def set_datastructures_from_tree_dfs(self, node, depth, action_id, parent_id, gp_id, cur_action_id, parent_action_id):
+	def set_datastructures_from_tree_dfs(self, node, depth, action_id, parent_id, gp_id, cur_action_id, parent_action_id=None):
 		''' Traverses the tree to fill in lookahead data structures that
 			summarize data contained in the tree.
 			 ex: saves pot sizes and numbers of actions at each lookahead state.
@@ -302,7 +302,7 @@ class LookaheadBuilder():
 						self.set_datastructures_from_tree_dfs(child_node, depth+1, child_id, next_parent_id, next_gp_id, node.actions[child_id], cur_action_id)
 					# we need to make sure that even though there are fewer actions, the last action/allin is has the same last index as if we had full number of actions
 					# we manually set the action_id as the last action (allin)
-					for b in range(0, existing_num_bets):
+					for b in range(2, existing_num_bets-1):
 						self.set_datastructures_from_tree_dfs(node.children[len(node.children)-b], depth+1, self.lookahead.layers[depth].num_actions-b, next_parent_id, next_gp_id,  node.actions[len(node.children)-b], cur_action_id)
 					# mask out empty actions
 					a = self.lookahead.layers[depth+1].empty_action_mask.shape[0] - existing_num_bets
@@ -338,7 +338,7 @@ class LookaheadBuilder():
 		self.lookahead.parent_action_id = {}
 		# traverse the tree and fill the datastructures (pot sizes, non-existin actions, ...)
 		# node, layer, action, parent_action, gp_id
-		self.set_datastructures_from_tree_dfs(tree, 0, 0, 0, 0, 0, -100)
+		self.set_datastructures_from_tree_dfs(tree, 0, 0, 0, 0, -100)
 		# we mask out fold as a possible action when check is for free, due to
 		# 1) fewer actions means faster convergence
 		# 2) we need to make sure prob of free fold is zero because ACPC dealer changes such action to check
