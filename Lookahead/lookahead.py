@@ -4,6 +4,7 @@
 '''
 import time
 import numpy as np
+from numba import njit
 
 from Lookahead.lookahead_builder import LookaheadBuilder
 from TerminalEquity.terminal_equity import TerminalEquity
@@ -84,8 +85,7 @@ class Lookahead():
 		for d in range(1,self.depth):
 			layer = self.layers[d]
 			# [A{d-1}, B{d-2}, NTNAN{d-2}, b, I] = [A{d-1}, B{d-2}, NTNAN{d-2}, b, I]
-			positive_regrets = layer.regrets.copy()
-			positive_regrets = np.clip(positive_regrets, self.regret_epsilon, constants.max_number)
+			positive_regrets = np.clip(layer.regrets, self.regret_epsilon, constants.max_number)
 			# 1.0 set regret of empty actions to 0
 			# [A{d-1}, B{d-2}, NTNAN{d-2}, b, I] *= [A{d-1}, B{d-2}, NTNAN{d-2}, b, I]
 			positive_regrets *= layer.empty_action_mask
@@ -116,11 +116,9 @@ class Lookahead():
 			# [ 1, B{d-1}, NTNAN{d-2} x NAB{d-2}, b, P, I] = [B{d-1}, NTNAN{d-2}, NAB{d-2}, b, P, I]
 			# [ 1, B{d-1}, NTNAN{d-2} x NAB{d-2}, b, P, I] is the same as [ 1, B{d-1}, NTNAN{d-1}, b, P, I]
 			next_layer_ranges = next_layer_ranges.reshape([1, parent_num_bets, -1, batch_size, PC, HC])
-			# [ A{d}, B{d-1}, NTNAN{d-1}, b, P, I] = [ 1, B{d-1}, NTNAN{d-1}, b, P, I] * [ A{d}, B{d-1}, NTNAN{d-1}, b, P, I]
-			# same as below line, just slower: next_layer_ranges = next_layer_ranges * np.ones_like(next_layer.ranges)
-			next_layer_ranges = np.repeat(next_layer_ranges, next_layer.ranges.shape[0], axis=0)
-			# [ A{d}, B{d-1}, NTNAN{d-1}, b, P, I] = [ A{d}, B{d-1}, NTNAN{d-1}, b, P, I]
-			next_layer.ranges = next_layer_ranges.copy()
+			# repeat next_layer_ranges: [ 1, B{d-1}, NTNAN{d-1}, b, P, I] -> [A{d}, B{d-1}, NTNAN{d-1}, b, P, I]
+			# [A{d}, B{d-1}, NTNAN{d-1}, b, P, I] = [A{d}, B{d-1}, NTNAN{d-1}, b, P, I]
+			next_layer.ranges = np.repeat(next_layer_ranges, next_layer.ranges.shape[0], axis=0)
 			# multiply the ranges of the acting player by his strategy
 			# [ A{d}, B{d-1}, NTNAN{d-1}, b, P, I] *= [ A{d}, B{d-1}, NTNAN{d-1}, b, I]
 			next_layer.ranges[ : , : , : , : , layer.acting_player, : ] *= next_layer.current_strategy
@@ -278,25 +276,28 @@ class Lookahead():
 			layer, parent = self.layers[d], self.layers[d-1]
 			num_gp_terminal_actions = self.layers[d-2].num_terminal_actions if d > 1 else 0
 			num_ggp_nonallin_bets = self.layers[d-3].num_nonallin_bets if d > 2 else 1
-			# [A{d-1}, B{d-2}, NTNAN{d-2}, b, P, I] *= [A{d-1}, B{d-2}, NTNAN{d-2}, b, P, I]
-			layer.cfvs[ : , : , : , : , 0, : ] *= layer.empty_action_mask
-			layer.cfvs[ : , : , : , : , 1, : ] *= layer.empty_action_mask
-			# [A{d-1}, B{d-2}, NTNAN{d-2}, b, P, I] = [A{d-1}, B{d-2}, NTNAN{d-2}, b, P, I]
-			placeholder_data = layer.cfvs.copy()
-			# player indexing is swapped for cfvs
-			# [A{d-1}, B{d-2}, NTNAN{d-2}, b, P, I] *= [A{d-1}, B{d-2}, NTNAN{d-2}, b, I]
-			placeholder_data[ : , : , : , : , layer.acting_player, : ] *= layer.current_strategy
-			# [ 1, B{d-2}, NTNAN{d-2}, b, P, I] = [A{d-1}, B{d-2}, NTNAN{d-2}, b, P, I]
-			regrets_sum = np.sum(placeholder_data, axis=0, keepdims=True)
-			# print(layer.regrets_sum.shape, placeholder_data.shape, layer.current_strategy.shape, layer.cfvs.shape)
-			# use a swap placeholder to change dimensions
 			num_ggp_nonterminal_nonallin_nodes = self.layers[d-3].num_nonterminal_nonallin_nodes if d > 2 else 1
 			num_gpp_nonallin_bets = self.layers[d-3].num_nonallin_bets if d > 2 else 1
-			num_gp_bets = regrets_sum.shape[1]
+			# expand_dims on mask: [A{d-1}, B{d-2}, NTNAN{d-2}, b, I] -> [A{d-1}, B{d-2}, NTNAN{d-2}, b, 1, I]
+			# broadcasting mask: [A{d-1}, B{d-2}, NTNAN{d-2}, b, 1, I] -> [A{d-1}, B{d-2}, NTNAN{d-2}, b, P, I]
+			# [A{d-1}, B{d-2}, NTNAN{d-2}, b, P, I] *= [A{d-1}, B{d-2}, NTNAN{d-2}, b, 1, I]
+			layer.cfvs *= np.expand_dims(layer.empty_action_mask, axis=4)
+			# save acting_player cfvs and use layer.cfvs as placeholder
+			# player indexing is swapped for cfvs
+			# slicing: [A{d-1}, B{d-2}, NTNAN{d-2}, b, P, I] -> [A{d-1}, B{d-2}, NTNAN{d-2}, b, I]
+			acting_player_cfvs = layer.cfvs[ : , : , : , : , layer.acting_player, : ].copy()
+			# [A{d-1}, B{d-2}, NTNAN{d-2}, b, P, I] *= [A{d-1}, B{d-2}, NTNAN{d-2}, b, I]
+			layer.cfvs[ : , : , : , : , layer.acting_player, : ] *= layer.current_strategy
+			# [ 1, B{d-2}, NTNAN{d-2}, b, P, I] = [A{d-1}, B{d-2}, NTNAN{d-2}, b, P, I]
+			expected_cfvs = np.sum(layer.cfvs, axis=0, keepdims=True)
+			# leave cfvs the same as it was before
+			layer.cfvs[ : , : , : , : , layer.acting_player, : ] = acting_player_cfvs
+			# change dimensions
+			num_gp_bets = expected_cfvs.shape[1]
 			# note: NTNAN{d-3} x NAB{d-3} = NTNAN{d-2}
 			# reshape: [ 1, B{d-2}, NTNAN{d-2}, b, P, I] -> [B{d-2}, NTNAN{d-3}, NAB{d-3}, b, P, I]
-			swap_data = regrets_sum.reshape([num_gp_bets, num_ggp_nonterminal_nonallin_nodes, num_gpp_nonallin_bets, batch_size, PC, HC])
-			parent.cfvs[ num_gp_terminal_actions: , :num_ggp_nonallin_bets , : , : , : , : ] = np.transpose(swap_data, [0,2,1,3,4,5]).copy()
+			expected_cfvs = expected_cfvs.reshape([num_gp_bets, num_ggp_nonterminal_nonallin_nodes, num_gpp_nonallin_bets, batch_size, PC, HC])
+			parent.cfvs[ num_gp_terminal_actions: , :num_ggp_nonallin_bets , : , : , : , : ] = np.transpose(expected_cfvs, [0,2,1,3,4,5])
 
 
 	def _compute_cumulate_average_cfvs(self, iter):
@@ -346,17 +347,17 @@ class Lookahead():
 			gp_num_bets = self.layers[d-2].num_bets if d > 1 else 1
 			ggp_num_nonallin_bets = self.layers[d-3].num_nonallin_bets if d > 2 else 1
 			# slicing: [A{d-1}, B{d-2}, NTNAN{d-2}, b, P, I] -> [A{d-1}, B{d-2}, NTNAN{d-2}, b, I]
-			current_cfvs = layer.cfvs[ : , : , : , : , layer.acting_player, : ].copy()
+			current_cfvs = layer.cfvs[ : , : , : , : , layer.acting_player, : ]
 			# slicing: [A{d-2}, B{d-3}, NTNAN{d-3}, b, P, I] -> [B{d-2}, NAB{d-3}, NTNAN{d-3}, b, I]
 			# transpose: [B{d-2}, NAB{d-3}, NTNAN{d-3}, b, I] -> [B{d-2}, NTNAN{d-3}, NAB{d-3}, b, I]
-			parent_cfvs = np.transpose(parent.cfvs[ gp_num_terminal_actions: , :ggp_num_nonallin_bets, : , : , layer.acting_player, : ], [0,2,1,3,4])
+			expected_cfvs = np.transpose(parent.cfvs[ gp_num_terminal_actions: , :ggp_num_nonallin_bets, : , : , layer.acting_player, : ], [0,2,1,3,4])
 			# reshape: [B{d-2}, NTNAN{d-3}, NAB{d-3}, b, I] -> [ 1, B{d-2}, NTNAN{d-3} x NAB{d-3}, b, I] = [ 1, B{d-2}, NTNAN{d-2}, b, I]
-			parent_cfvs = parent_cfvs.reshape([1, gp_num_bets, -1, batch_size, HC])
+			expected_cfvs = expected_cfvs.reshape([1, gp_num_bets, -1, batch_size, HC])
 			# broadcasting parent_cfvs: [ 1, B{d-2}, NTNAN{d-2}, b, I] -> [ A{d-1}, B{d-2}, NTNAN{d-2}, b, I]
 			# [ A{d-1}, B{d-2}, NTNAN{d-2}, b, I] += [ A{d-1}, B{d-2}, NTNAN{d-2}, b, I] - [ 1, B{d-2}, NTNAN{d-2}, b, I]
-			layer.regrets += current_cfvs - parent_cfvs
+			layer.regrets += current_cfvs - expected_cfvs
 			# (CFR+)
-			layer.regrets = np.clip(layer.regrets, 0, constants.max_number)
+			clip(layer.regrets, 0, constants.max_number)
 
 
 	def get_results(self, reconstruct_opponent_cfvs):
@@ -430,6 +431,18 @@ class Lookahead():
 		self.layers[0].ranges[ : , : , : , : , 1 , : ] = opponent_range.copy()
 
 
-
+@njit()
+def clip(arr, min_val, max_val):
+	''' clip 5 dim array without creating new one '''
+	shape = arr.shape
+	for i in range(shape[0]):
+		for j in range(shape[1]):
+			for k in range(shape[2]):
+				for l in range(shape[3]):
+					for m in range(shape[4]):
+						if arr[i,j,k,l,m] < min_val:
+							arr[i,j,k,l,m] = min_val
+						elif arr[i,j,k,l,m] > max_val:
+							arr[i,j,k,l,m] = max_val
 
 #
