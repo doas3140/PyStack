@@ -289,7 +289,7 @@ def np_scatter_add(index, src, out):
 	# not vectorized implementation:
 	for i in range(index.shape[0]):
 		for j in range(index.shape[1]):
-			out[ i, index[i,j] ] = src[i,j]
+			out[ i, index[i,j] ] += src[i,j]
 
 
 
