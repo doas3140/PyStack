@@ -67,7 +67,8 @@ class Resolving():
 			print(np.array2string(self.resolve_results.achieved_cfvs[batch].reshape([2,-1])[ 1-self.lookahead_tree.current_player , 1320:1326 ], suppress_small=True, precision=2))
 			print(np.array2string(self.resolve_results.achieved_cfvs[batch].reshape([2,-1])[ self.lookahead_tree.current_player , 1320:1326 ], suppress_small=True, precision=2))
 			print('strategy -', self.resolve_results.strategy.shape)
-			print(np.array2string(self.resolve_results.strategy[ : , batch, : ].reshape([3,-1])[ : , 1320:1326 ], suppress_small=True, precision=2))
+			a = self.resolve_results.strategy.shape[0]
+			print(np.array2string(self.resolve_results.strategy[ : , batch, : ].reshape([a,-1])[ : , 1320:1326 ], suppress_small=True, precision=2))
 		return self.resolve_results
 
 

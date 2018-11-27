@@ -39,7 +39,7 @@ class TerminalEquity():
 		self._handle_blocking_cards(call_matrix, board_cards)
 
 
-	def get_inner_call_matrix(self, board_cards, call_matrix):
+	def get_inner_call_matrix(self, board_cards, call_matrix): # TODO: can be problems
 		''' Constructs the matrix that turns player ranges into showdown equity.
 			Gives the matrix `A` such that for player ranges `x` and `y`, `x'Ay`
 			is the equity for the first player when no player folds.
@@ -118,10 +118,9 @@ class TerminalEquity():
 		CC = game_settings.card_count
 		street = card_tools.board_to_street(board)
 		self.equity_matrix = np.zeros([HC,HC], dtype=arguments.dtype)
-		if street == SC:
-			# for last round we just return the matrix
+		if street == SC: # for last round we just return the matrix
 			self.get_last_round_call_matrix(board, self.equity_matrix)
-		elif street == 3 or street == 2:
+		elif street == 3 or street == 2: # TODO: can be problems
 			# iterate through all possible next round streets
 			next_round_boards = card_tools.get_last_round_boards(board)
 			BC = next_round_boards.shape[0] # boards_count
@@ -188,7 +187,7 @@ class TerminalEquity():
 		return self.equity_matrix
 
 
-	def tree_node_call_value(self, ranges, result):
+	def tree_node_call_value(self, ranges, result): # ? - ar reikia
 		''' Computes the counterfactual values that both players achieve at a
 			terminal node where no player has folded.
 		@{set_board} must be called before this function.
@@ -201,7 +200,7 @@ class TerminalEquity():
 		self.call_value(ranges[1].reshape([1,-1]), result[0].reshape([1,-1]))
 
 
-	def tree_node_fold_value(self, ranges, result, folding_player):
+	def tree_node_fold_value(self, ranges, result, folding_player): # ? - ar reikia
 		''' Computes the counterfactual values that both players achieve at a
 			terminal node where either player has folded.
 		@{set_board} must be called before this function.
