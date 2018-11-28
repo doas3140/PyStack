@@ -49,10 +49,9 @@ class NetBuilder():
 		# repeat this number from shape [1] -> [2000]
 		d = tf.keras.layers.RepeatVector(num_output, name='repeat_scalar')(d)
 		d = tf.keras.layers.Flatten(name='flatten')(d)
-		# divide it by 2
-		d = tf.keras.layers.Lambda(lambda x: x/2, name='divide_by_2')(d)
-		# subtract input (without pot) and last layer
-		m_output = tf.keras.layers.subtract([ff,d], name='zero_sum_output')
+		# divide it by 2 and subtract from neural net output
+		d = tf.keras.layers.Lambda(lambda x: -x/2, name='divide_by_2')(d)
+		m_output = tf.keras.layers.add([ff,d], name='zero_sum_output')
 		model = tf.keras.models.Model(m_input, m_output)
 		return model, input_shape, output_shape
 
