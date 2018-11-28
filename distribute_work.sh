@@ -1,9 +1,12 @@
-start_idx=0
+start_idx=3000
 num_files=3
-num_cores=10
+num_cores=600
 street=4
 
-for idx in `seq $start_idx $num_files $num_cores`
+total=`expr $num_files \* $num_cores \+ $start_idx`
+
+for idx in `seq $start_idx $num_files $total`
 do
- ./run_cfr.sh $idx $street
+ echo $idx
+ sbatch ./run_cfr.sh $street $idx
 done
