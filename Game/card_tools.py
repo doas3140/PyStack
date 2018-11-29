@@ -43,25 +43,16 @@ class CardTools():
 		return ret
 
 
-	def convert_board_to_nn_feature(self, board, max_board_cards=5):
+	def convert_board_to_nn_feature(self, board):
 		'''
 		@param: vector of shape [num_cards on board] each with id of card
-		@param: maximum possible cards on board
-		@return vector of shape [num_suits x max_board_cards + max_board_cards] = [4 x 5 + 5] = [25]
+		@return vector of shape [total cards in deck] = [52]
 		'''
-		num_ranks, num_suits = game_settings.rank_count, game_settings.suit_count
-		one_hot_suits = np.zeros([max_board_cards, num_suits], dtype=np.float32)
-		normalized_ranks = np.zeros([max_board_cards], dtype=np.float32)
-		for i, card in enumerate(board):
-			suit = card_to_string.card_to_suit(card)
-			rank = card_to_string.card_to_rank(card)
-			one_hot_suits[ i , suit ] = 1
-			normalized_ranks[i] = (rank+1) / num_ranks # +1, because it starts from 0
-		one_hot_suits = one_hot_suits.flatten()
-		out = np.zeros([len(one_hot_suits) + len(normalized_ranks)], dtype=np.float)
-		out[ :len(one_hot_suits) ] = one_hot_suits
-		out[ len(one_hot_suits): ] = normalized_ranks
-		return out
+		num_cards = game_settings.card_count
+		one_hot_cards = np.zeros([num_cards], dtype=np.float32)
+		for card in board:
+			one_hot_cards[ card ] = 1
+		return one_hot_cards
 
 
 	def get_possible_hand_indexes(self, board):
