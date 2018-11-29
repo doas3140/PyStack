@@ -357,7 +357,7 @@ class Lookahead():
 			# [ A{d-1}, B{d-2}, NTNAN{d-2}, b, I] += [ A{d-1}, B{d-2}, NTNAN{d-2}, b, I] - [ 1, B{d-2}, NTNAN{d-2}, b, I]
 			layer.regrets += current_cfvs - expected_cfvs
 			# (CFR+)
-			clip(layer.regrets, 0, constants.max_number)
+			layer.regrets = np.clip(layer.regrets, 0, constants.max_number)
 
 
 	def get_results(self, reconstruct_opponent_cfvs):
@@ -431,18 +431,6 @@ class Lookahead():
 		self.layers[0].ranges[ : , : , : , : , 1 , : ] = opponent_range.copy()
 
 
-@njit()
-def clip(arr, min_val, max_val):
-	''' clip 5 dim array without creating new one '''
-	shape = arr.shape
-	for i in range(shape[0]):
-		for j in range(shape[1]):
-			for k in range(shape[2]):
-				for l in range(shape[3]):
-					for m in range(shape[4]):
-						if arr[i,j,k,l,m] < min_val:
-							arr[i,j,k,l,m] = min_val
-						elif arr[i,j,k,l,m] > max_val:
-							arr[i,j,k,l,m] = max_val
+
 
 #
