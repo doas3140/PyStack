@@ -19,8 +19,8 @@ from Lookahead.resolving import Resolving
 from helper_classes import Node
 
 class DataGeneration():
-	def __init__(self):
-		self.dirpath = os.path.join(arguments.data_path, 'npy')
+	def __init__(self, dirpath):
+		self.dirpath = dirpath
 		self.counter = 0
 		# init range generator and term eq
 		self.range_generator = RangeGenerator()
@@ -112,4 +112,6 @@ class DataGeneration():
 			self.counter += 1
 
 
-data_generation = DataGeneration()
+
+
+#

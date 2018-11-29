@@ -6,7 +6,7 @@ import os
 sys.path.append(os.getcwd())
 
 from Settings.arguments import arguments
-from DataGeneration.data_generation import data_generation
+from DataGeneration.data_generation import DataGeneration
 
 AVAILABLE_STREETS = [1,4]
 
@@ -46,8 +46,21 @@ def parse_arguments(args):
 		idx = 0
 	return street, idx
 
+def street2name(street):
+	if street == 1:
+		return 'preflop'
+	elif street == 2:
+		return 'flop'
+	elif street == 3:
+		return 'turn'
+	elif street == 4:
+		return 'river'
 
 args = sys.argv[1:]
 street, starting_idx = parse_arguments(args)
+street_name = street2name(street)
+
+dirpath = os.path.join(arguments.data_path, street_name, 'npy')
+data_generation = DataGeneration(dirpath)
 
 data_generation.generate_data(street, starting_idx)
