@@ -45,7 +45,7 @@ class Parameters():
 		self.tfrecords_batch_size = 512
 		# DATA GENERATION
 		# path to the solved poker situation data used to train the neural net
-		self.data_path = './Data/TrainSamples/'
+		self.data_path = 'D:/Datasets/Pystack/NoLimitTexasHoldem'
 		# the number of iterations that DeepStack runs CFR for
 		self.cfr_iters = 800
 		# the number of preliminary CFR iterations which DeepStack doesn't
