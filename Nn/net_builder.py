@@ -9,8 +9,8 @@
 	[{p1_cfvs}, {p2_cfvs}].
 '''
 
-from Nn.bucketer import Bucketer
 from Settings.arguments import arguments
+from Settings.constants import constants
 from Settings.game_settings import game_settings
 import tensorflow as tf
 
@@ -25,18 +25,16 @@ class NetBuilder():
 		@return input shape (ex: [224,224,3] if img)
 		@return output shape (ex: [10] if 10 classes)
 		'''
+		num_hands, num_players, num_cards = game_settings.hand_count, constants.players_count, game_settings.card_count
 		# input and output parameters
-		bucketer = Bucketer()
-		bucket_count = bucketer.get_bucket_count()
-		player_count = 2
-		num_output = bucket_count * player_count
-		num_input = num_output + 1
+		num_output = num_hands * num_players
+		num_input = num_output + 1 + num_cards
 		input_shape = [num_input]
 		output_shape = [num_output]
 		# neural network architecture
 		m_input = tf.keras.layers.Input(input_shape, name='input')
-		# slicing off pot size ([1,2001] -> [1,2000])
-		sp = tf.keras.layers.Lambda(lambda x: x[ : , :-1 ], name='input_ranges')(m_input)
+		# slicing off pot size and board ([1, hands x 2 + pot_size + board] -> [1, hands x 2])
+		sp = tf.keras.layers.Lambda(lambda x: x[ : , :num_output ], name='input_ranges')(m_input)
 		# feed forward part
 		ff = m_input
 		for i in range(arguments.num_layers):
@@ -44,14 +42,13 @@ class NetBuilder():
 			ff = tf.keras.layers.Dense(arguments.num_neurons, name=names[0])(ff)
 			ff = tf.keras.layers.PReLU(name=names[1])(ff)
 		ff = tf.keras.layers.Dense(num_output, name='feed_forward_output')(ff)
+		# zero-sum output
 		# dot product of both (feed forward and player ranges)
 		d = tf.keras.layers.dot([ff,sp], axes=1, name='dot_product')
-		# repeat this number from shape [1] -> [2000]
-		d = tf.keras.layers.RepeatVector(num_output, name='repeat_scalar')(d)
-		d = tf.keras.layers.Flatten(name='flatten')(d)
-		# divide it by 2 and subtract from neural net output
-		d = tf.keras.layers.Lambda(lambda x: -x/2, name='divide_by_2')(d)
-		m_output = tf.keras.layers.add([ff,d], name='zero_sum_output')
+		# divide it by 2
+		d = tf.keras.layers.Lambda(lambda x: x/2, name='division_by_2')(d)
+		# subtract from neural net output
+		m_output = tf.keras.layers.subtract([ff,d], name='zero_sum_output')
 		model = tf.keras.models.Model(m_input, m_output)
 		return model, input_shape, output_shape
 
