@@ -1,6 +1,7 @@
 '''
     Helper functions for reading and parsing data from TFRecords
 '''
+import os
 import tensorflow as tf
 
 
@@ -15,8 +16,7 @@ def create_parse_fn(x_shape, y_shape):
         # find in the TFRecords file.
         features = {
                     'input': tf.FixedLenFeature([], tf.string),
-                    'output': tf.FixedLenFeature([], tf.string),
-                    # 'mask': tf.FixedLenFeature([], tf.string)
+                    'output': tf.FixedLenFeature([], tf.string)
                    }
         # Parse the serialized data so we get a dict with our data.
         parsed_example = tf.parse_single_example( serialized=serialized,
@@ -42,7 +42,7 @@ def create_parse_fn(x_shape, y_shape):
     return parse_fn
 
 
-def create_iterator( filenames, train, x_shape, y_shape, batch_size, buffer_size ):
+def create_iterator( filenames, train, x_shape, y_shape, batch_size, num_cores=os.cpu_count() ):
     '''
     @param: Filenames for the TFRecords files.
     @param: Boolean whether training (True) or testing (False).
@@ -54,16 +54,21 @@ def create_iterator( filenames, train, x_shape, y_shape, batch_size, buffer_size
     '''
     # Create a TensorFlow Dataset-object which has functionality
     # for reading and shuffling data from TFRecords files.
-    dataset = tf.data.TFRecordDataset(filenames=filenames)
-    # Parse the serialized data in the TFRecords files.
-    # This returns TensorFlow tensors for the x, y and m.
-    dataset = dataset.map( create_parse_fn(x_shape,y_shape) )
+    buffer_size = 22 * 1024 * 1024 # 22 MB per file
+    dataset = tf.data.TFRecordDataset( filenames=filenames, num_parallel_reads=num_cores ) # buffer_size=buffer_size
     if train: # If training then read a buffer of the given size and randomly shuffle it.
-        dataset = dataset.shuffle(buffer_size=buffer_size)
-    # Get a batch of data with the given size.
-    dataset = dataset.batch(batch_size)
+        dataset = dataset.shuffle( buffer_size=768,                # applies sliding window
+                                   reshuffle_each_iteration=True )  # shuffles indices each iter
     dataset = dataset.repeat()
-    dataset = dataset.prefetch(tf.contrib.data.AUTOTUNE)
+    # Parse the serialized data in the TFRecords files.
+    # And create batches.
+    dataset = dataset.apply(tf.data.experimental.map_and_batch(
+                                batch_size=batch_size,
+                                num_parallel_batches=1,
+                                map_func=create_parse_fn(x_shape,y_shape)
+                          ))
+    # prefetches last command
+    dataset = dataset.prefetch(buffer_size=1) # buffer_size=tf.contrib.data.AUTOTUNE
     # Create an iterator for the dataset and the above modifications.
     iterator = dataset.make_one_shot_iterator()
     return iterator

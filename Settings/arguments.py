@@ -27,22 +27,25 @@ class Parameters():
 		# the size of each player's stack, in chips
 		self.stack = 20000
 		# NEURAL NETWORK
+		self.XLA = True
 		# path to the neural net model
-		self.model_path = './Data/Models/PotBet/'
+		self.model_path = './Data/Models/main/'
 		# self.final_model_path = os.path.join(self.model_path, 'weights.{epoch:02d}-{val_loss:.2f}.hdf5')
 		self.final_model_path = os.path.join(self.model_path, 'weights.final.hdf5')
 		# path where to save tf.profiler information
 		self.profiler_path = './Data/Models/PotBet/profiler'
 		# the neural net architecture
-		self.num_layers = 2 # (excluding output layer)
-		self.num_neurons = 50
+		self.num_layers = 5 # (excluding output layer)
+		self.num_neurons = 500
 		self.learning_rate = 1e-3
+		self.batch_size = 1024
+		self.num_epochs = 300
 		# how often to save the model during training
 		self.save_epoch = 2
 		# how many epochs to train for
 		self.epoch_count = 10
 		# TF RECORDS
-		self.tfrecords_batch_size = 512
+		self.tfrecords_batch_size = 1024
 		# DATA GENERATION
 		# path to the solved poker situation data used to train the neural net
 		self.data_path = 'D:/Datasets/Pystack/NoLimitTexasHoldem'
