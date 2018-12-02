@@ -22,13 +22,11 @@ class RangeGenerator():
 		batch_size = cards.shape[0]
 		assert(mass.shape[0] == batch_size)
 		card_count = cards.shape[1]
-		CC, BS = card_count, batch_size
 		# we terminate recursion at size of 1
-		if CC == 1:
-			cards[ : , 0 ] = mass.copy() # (10,1) <- (10,)
+		if card_count == 1:
+			cards[ : , 0 ] = mass.copy() # (b,1) <- (b,)
 		else:
-			rand = np.random.rand(batch_size)
-			mass1 = mass.copy() * rand
+			mass1 = mass * np.random.rand(batch_size)
 			mass2 = mass - mass1
 			halfSize = card_count / 2
 			# if the tensor contains an odd number of cards,
