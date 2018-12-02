@@ -51,24 +51,24 @@ class CardTools():
 		num_ranks, num_suits, num_cards = game_settings.rank_count, game_settings.suit_count, game_settings.card_count
 		# init vars
 		one_hot_board = np.zeros([num_cards], dtype=np.float32)
-	    suit_counts = np.zeros([num_suits], dtype=np.float32)
-	    rank_counts = np.zeros([num_ranks], dtype=np.float32)
+		suit_counts = np.zeros([num_suits], dtype=np.float32)
+		rank_counts = np.zeros([num_ranks], dtype=np.float32)
 		# fill vars
-	    for card in board:
-	        suit = card_to_string.card_to_suit(card)
-	        rank = card_to_string.card_to_rank(card)
-	        one_hot_board[ card ] = 1
-	        suit_counts[ suit ] += 1
-	        rank_counts[ rank ] += 1
-	    # normalize counts
-	    rank_counts /= num_ranks
-	    suit_counts /= num_suits
-	    # combine all arrays and return
-	    out = np.zeros([num_cards + num_suits + num_ranks], dtype=np.float32)
-	    out[ :num_cards ] = one_hot_board
-	    out[ num_cards:num_cards+num_suits ] = suit_counts
-	    out[ num_cards+num_suits: ] = rank_counts
-	    return out
+		for card in board:
+			suit = card_to_string.card_to_suit(card)
+			rank = card_to_string.card_to_rank(card)
+			one_hot_board[ card ] = 1
+			suit_counts[ suit ] += 1
+			rank_counts[ rank ] += 1
+		# normalize counts
+		rank_counts /= num_ranks
+		suit_counts /= num_suits
+		# combine all arrays and return
+		out = np.zeros([num_cards + num_suits + num_ranks], dtype=np.float32)
+		out[ :num_cards ] = one_hot_board
+		out[ num_cards:num_cards+num_suits ] = suit_counts
+		out[ num_cards+num_suits: ] = rank_counts
+		return out
 
 
 	def get_possible_hand_indexes(self, board):
