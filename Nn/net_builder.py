@@ -35,18 +35,21 @@ class NetBuilder():
 		# neural network architecture
 		m_input = tf.keras.layers.Input(input_shape, name='input')
 		# slicing off pot size and board ([1, hands x 2 + pot_size + board] -> [1, hands x 2])
-		# sp = tf.keras.layers.Lambda(lambda x: x[ : , :num_output ], name='input_ranges')(m_input)
+		r = tf.keras.layers.Lambda(lambda x: x[ : , :num_output ], name='input_ranges')(m_input)
+		# reconstruct mask from ranges
+		mask = tf.keras.layers.Lambda(generate_mask, name='mask')(r)
 		# feed forward part
 		ff = m_input
 		for i in range(arguments.num_layers):
 			names = [s.format(i) for s in ('dense_{}', 'relu_{}', 'dropout_{}')]
 			ff = tf.keras.layers.Dense(arguments.num_neurons, name=names[0])(ff)
 			ff = tf.keras.layers.PReLU(name=names[1])(ff)
-			ff = tf.keras.layers.Dropout(rate=0.2, name=names[2])(ff)
-		m_output = tf.keras.layers.Dense(num_output, name='feed_forward_output')(ff)
+			# ff = tf.keras.layers.Dropout(rate=0.15, name=names[2])(ff)
+		ff = tf.keras.layers.Dense(num_output, name='feed_forward_output')(ff)
+		m_output = tf.keras.layers.multiply([ff,mask], name='masked_output')
 		# # zero-sum output
 		# # dot product of both (feed forward and player ranges)
-		# d = tf.keras.layers.dot([ff,sp], axes=1, name='dot_product')
+		# d = tf.keras.layers.dot([ff,r], axes=1, name='dot_product')
 		# # divide it by 2
 		# d = tf.keras.layers.Lambda(lambda x: x/2, name='division_by_2')(d)
 		# # subtract from neural net output
@@ -55,6 +58,12 @@ class NetBuilder():
 		return model, input_shape, output_shape
 
 
-
+def generate_mask(ranges):
+	zero = tf.constant(0.0, dtype=tf.float32)
+	total_hands = tf.constant(1326*2, dtype=tf.float32)
+	mask = tf.where( tf.greater(ranges, zero), tf.ones_like(ranges), tf.zeros_like(ranges) )
+	# possible_hands = tf.reduce_sum(mask, axis=1, keepdims=True)
+	# mask_multiplier = (total_hands - possible_hands) / total_hands
+	return mask
 
 nnBuilder = NetBuilder()
