@@ -107,11 +107,11 @@ class Evaluator():
 			assert(False) # unsupported size of hand!
 
 
-	def evaluate_fast(self, hands):
+	def evaluate_fast(self, hands, mask):
 		ret = self._texas_lookup[ hands[ : , 0 ] + 54 ]
 		for c in range(1, hands.shape[1]):
 			ret = self._texas_lookup[ hands[ : , c ] + ret + 1 ]
-		ret *= card_tools.get_possible_hands_mask(hands)
+		ret *= mask
 		ret *= -1
 		return ret
 
@@ -153,22 +153,29 @@ class Evaluator():
 		return hand_values
 
 
-	def batch_eval_fast(self, board):
+	def batch_eval_fast(self, board): # works the same as previous one (faster 40ms -> 3)
 		HC, CC = game_settings.hand_count, game_settings.card_count
 		SC, HCC = game_settings.suit_count, game_settings.hand_card_count
 		if board.ndim == 0: # kuhn poker
 			return None
 		elif board.ndim == 2:
-			batch_size = board.shape[0]
-			hands = np.zeros([batch_size, HC, board.shape[1] + HCC], dtype=arguments.int_dtype) # ? - long
-			hands[ : , : ,  :board.shape[1] ] = board.reshape([batch_size, 1, board.shape[1]]) * np.ones([batch_size, HC, board.shape[1]], dtype=board.dtype)
+			boards = board
+			batch_size = boards.shape[0]
+			hands = np.zeros([batch_size, HC, boards.shape[1] + HCC], dtype=arguments.int_dtype)
+			hands[ : , : ,  :boards.shape[1] ] = board.reshape([batch_size, 1, boards.shape[1]]) * np.ones([batch_size, HC, boards.shape[1]], dtype=board.dtype)
 			hands[ : , : , -2: ] = self._idx_to_cards.reshape([1, HC, HCC]) * np.ones([batch_size, HC, HCC], dtype=self._idx_to_cards.dtype)
-			return self.evaluate_fast(hands.reshape([-1, board.shape[1] + HCC])).reshape([batch_size, HC])
+			mask = np.zeros([batch_size,HC], dtype=bool)
+			for i, b in enumerate(boards):
+				mask[i] = card_tools.get_possible_hand_indexes(b)
+			hands = hands.reshape([-1, board.shape[1] + HCC])
+			mask = mask.reshape([-1])
+			return self.evaluate_fast(hands, mask).reshape([batch_size, HC])
 		elif board.ndim == 1:
-			hands = np.zeros([HC, board.shape[0] + HCC], dtype=arguments.int_dtype) # ? - long
+			hands = np.zeros([HC, board.shape[0] + HCC], dtype=arguments.int_dtype)
 			hands[ : ,  :board.shape[0] ] = board.reshape([1,board.shape[0]]) * np.ones([HC,board.shape[0]])
 			hands[ : , -2: ] = self._idx_to_cards.copy()
-			return self.evaluate_fast(hands)
+			mask = card_tools.get_possible_hand_indexes(board)
+			return self.evaluate_fast(hands, mask)
 		else:
 			assert(False) # weird board dim
 
