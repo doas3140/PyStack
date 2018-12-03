@@ -134,7 +134,7 @@ class TreeCFR():
 		'''
 		actions_count = len(node.children)
 		AC, HC = actions_count, game_settings.hand_count
-		if iter > arguments.cfr_skip_iters:
+		if iter > self.cfr_skip_iters:
 			node.strategy = np.zeros([AC,HC], dtype=arguments.dtype) if node.strategy is None else node.strategy
 			node.iter_weight_sum = np.zeros([HC], dtype=arguments.dtype) if node.iter_weight_sum is None else node.iter_weight_sum
 			iter_weight_contribution = node.ranges_absolute[node.current_player].copy()
@@ -148,7 +148,7 @@ class TreeCFR():
 			node.strategy += strategy_addition
 
 
-	def run_cfr(self, root, starting_ranges, iter_count=arguments.cfr_iters):
+	def run_cfr(self, root, starting_ranges, iter_count=arguments.cfr_iters, skip=arguments.cfr_skip_iters):
 		''' Run CFR to solve the given game tree.
 		@param root the root node of the tree to solve.
 		@param: [opt] starting_ranges probability vectors over player private hands
@@ -158,8 +158,9 @@ class TreeCFR():
 		'''
 		assert(starting_ranges is not None)
 		root.ranges_absolute = starting_ranges
-		for iter in range(iter_count):
-			self.cfrs_iter_dfs(root, iter)
+		self.cfr_skip_iters = skip
+		for self.iter in range(iter_count):
+			self.cfrs_iter_dfs(root, self.iter)
 
 
 

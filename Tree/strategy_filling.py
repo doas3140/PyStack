@@ -39,7 +39,7 @@ class StrategyFilling():
 		# filling strategy
 		# we will fill strategy with an uniform probability, but it has to be
 		# zero for hands that are not possible on corresponding board
-		num_boards = tools.choose(CC - HCC * PC, BCC[node.street+1] - BCC[node.street])
+		num_boards = tools.choose(CC - HCC * PC, BCC[node.street] - BCC[node.street-1])
 		node.strategy = np.zeros([len(node.children), HC], dtype=arguments.dtype)
 		# setting probability of impossible hands to 0
 		for i in range(len(node.children)):
