@@ -55,11 +55,12 @@ class CardTools():
 		rank_counts = np.zeros([num_ranks], dtype=np.float32)
 		# fill vars
 		for card in board:
-			suit = card_to_string.card_to_suit(card)
-			rank = card_to_string.card_to_rank(card)
-			one_hot_board[ card ] = 1
-			suit_counts[ suit ] += 1
-			rank_counts[ rank ] += 1
+			if card >= 0:
+				suit = card_to_string.card_to_suit(card)
+				rank = card_to_string.card_to_rank(card)
+				one_hot_board[ card ] = 1
+				suit_counts[ suit ] += 1
+				rank_counts[ rank ] += 1
 		# normalize counts
 		rank_counts /= num_ranks
 		suit_counts /= num_suits
@@ -192,12 +193,12 @@ class CardTools():
 		BCC, CC = game_settings.board_card_count, game_settings.card_count
 		street = self.board_to_street(board)
 		boards_count = self.get_next_boards_count(street)
-		out = np.zeros([ boards_count, BCC[street] ], dtype=arguments.dtype)
+		out = np.zeros([ boards_count, BCC[street] ], dtype=arguments.int_dtype)
 		boards = [out,1] # (boards, index)
-		cur_board = np.zeros([ BCC[street] ], dtype=arguments.dtype)
+		cur_board = np.zeros([ BCC[street] ], dtype=arguments.int_dtype)
 		if board.ndim > 0:
 			for i in range(board.shape[0]):
-				cur_board[i] = board[i]
+				cur_board[i] = board[i] + 1
 		#
 		self._build_boards(boards, cur_board, out, BCC[street-1] + 1, BCC[street], BCC[street-1] + 1)
 		out -= 1
@@ -218,12 +219,12 @@ class CardTools():
 		BCC, SC = game_settings.board_card_count, constants.streets_count
 		street = self.board_to_street(board)
 		boards_count = self.get_last_boards_count(street)
-		out = np.zeros([ boards_count, BCC[SC-1] ], dtype=arguments.dtype)
+		out = np.zeros([ boards_count, BCC[SC-1] ], dtype=arguments.int_dtype)
 		boards = [out,1] # (boards, index)
 		cur_board = np.zeros([ BCC[SC-1] ], dtype=arguments.dtype)
 		if board.ndim > 0:
 			for i in range(board.shape[0]):
-				cur_board[i] = board[i]
+				cur_board[i] = board[i] + 1
 		self._build_boards(boards, cur_board, out, BCC[street-1] + 1, BCC[SC-1], BCC[street-1] + 1)
 		out -= 1
 		return out
