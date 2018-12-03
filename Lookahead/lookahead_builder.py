@@ -12,9 +12,9 @@ from Nn.next_round_value import NextRoundValue
 from Nn.value_nn import ValueNn
 from helper_classes import LookaheadLayer
 
-NEURAL_NET = {}
-AUX_NET = None
-NEXT_ROUND_PRE = None
+# NEURAL_NET = {}
+# AUX_NET = None
+# NEXT_ROUND_PRE = None
 
 class LookaheadBuilder():
 	def __init__(self, lookahead):
@@ -28,73 +28,89 @@ class LookaheadBuilder():
 		'''
 		if self.lookahead.tree.street == constants.streets_count:
 			return
-		# load neural net if not already loaded
-		if self.lookahead.tree.street in NEURAL_NET:
-			nn = NEURAL_NET[self.lookahead.tree.street]
-		else:
-			nn = ValueNn(pretrained_weights=True, verbose=0)
-		NEURAL_NET[self.lookahead.tree.street] = nn
+		# load neural net (of next layer) if not already loaded
 
-		if self.lookahead.tree.street == 1 and game_settings.nl:
-			if AUX_NET is None:
-				aux_net = ValueNn(self.lookahead.tree.street, True)
-				AUX_NET = aux_net
-			else:
-				aux_net = AUX_NET
-
-		self.lookahead.next_street_boxes = None
-		self.lookahead.indices = {}
-		self.lookahead.num_pot_sizes = 0
+		next_street = self.lookahead.tree.street + 1
+		nn = ValueNn(next_street, pretrained_weights=True, verbose=0)
 
 		if self.lookahead.tree.street == 1:
-			if NEXT_ROUND_PRE is None:
-				self.lookahead.next_street_boxes = NEXT_ROUND_PRE
-			else:
-				self.lookahead.next_street_boxes = NextRoundValuePre(nn, aux_net, self.lookahead.terminal_equity.board)
-			NEXT_ROUND_PRE = self.lookahead.next_street_boxes
+			aux_net = ValueNn(self.lookahead.tree.street, aux=True)
+
+		if self.lookahead.tree.street == 1:
+			self.lookahead.next_street_boxes = NextRoundValuePre(nn, aux_net, self.lookahead.terminal_equity.board)
 		else:
 			self.lookahead.next_street_boxes = NextRoundValue(nn, self.lookahead.terminal_equity.board)
 
-		# create the optimized data structures for batching next_round_value
+		# if self.lookahead.tree.street in NEURAL_NET:
+		# 	nn = NEURAL_NET[self.lookahead.tree.street]
+		# else:
+		# 	nn = ValueNn(pretrained_weights=True, verbose=0)
+		# NEURAL_NET[self.lookahead.tree.street] = nn
 
+		# if self.lookahead.tree.street == 1 and game_settings.nl:
+		# 	if AUX_NET is None:
+		# 		aux_net = ValueNn(self.lookahead.tree.street, True)
+		# 		AUX_NET = aux_net
+		# 	else:
+		# 		aux_net = AUX_NET
+
+		# if self.lookahead.tree.street == 1:
+		# 	if NEXT_ROUND_PRE is None:
+		# 		self.lookahead.next_street_boxes = NEXT_ROUND_PRE
+		# 	else:
+		# 		self.lookahead.next_street_boxes = NextRoundValuePre(nn, aux_net, self.lookahead.terminal_equity.board)
+		# 	NEXT_ROUND_PRE = self.lookahead.next_street_boxes
+		# else:
+		# 	self.lookahead.next_street_boxes = NextRoundValue(nn, self.lookahead.terminal_equity.board)
+
+		self.lookahead.num_pot_sizes = 0
+		# create the optimized data structures for batching next_round_value
 		for d in range(1,self.lookahead.depth):
+			# layers[d].pot_size - [A{d-1}, B{d-2}, NTNAN{d-2}, b, P, I]
+			num_grandparent_bets = self.lookahead.layers[d].pot_size[1].shape[0]
 			if d == 1 and self.lookahead.first_call_transition:
 				before = self.lookahead.num_pot_sizes
-				self.lookahead.num_pot_sizes = self.lookahead.num_pot_sizes + 1
-				self.lookahead.layers[d].indices = np.array([before, self.lookahead.num_pot_sizes])
-			elif not game_settings.nl and (d > 1 or self.lookahead.first_call_transition):
+				self.lookahead.num_pot_sizes += 1
+				self.lookahead.layers[d].indices = np.array([before, self.lookahead.num_pot_sizes], dtype=arguments.int_dtype)
+			elif num_grandparent_bets > 1:
 				before = self.lookahead.num_pot_sizes
-				self.lookahead.num_pot_sizes = self.lookahead.num_pot_sizes + (self.lookahead.layers[d].pot_size[1].shape[0]) * self.lookahead.layers[d].pot_size[1].shape[1]
-				self.lookahead.layers[d].indices = np.array([before, self.lookahead.num_pot_sizes])
-			elif self.lookahead.layers[d].pot_size[1].shape[0] > 1:
-				before = self.lookahead.num_pot_sizes
-				self.lookahead.num_pot_sizes = self.lookahead.num_pot_sizes + (self.lookahead.layers[d].pot_size[1].shape[0] - 1) * self.lookahead.layers[d].pot_size[1].shape[1]
-				self.lookahead.layers[d].indices = np.array([before, self.lookahead.num_pot_sizes])
+				num_nonterminal_nonallin_grandparents = self.lookahead.layers[d].pot_size[1].shape[1]
+				num_grandparent_nonallin_bets = self.lookahead.layers[d].pot_size[1].shape[0] - 1
+				num_nonterminal_nonallin_parents = num_nonterminal_nonallin_grandparents * num_grandparent_nonallin_bets
+				self.lookahead.num_pot_sizes += num_nonterminal_nonallin_parents
+				self.lookahead.layers[d].indices = np.array([before, self.lookahead.num_pot_sizes], dtype=arguments.int_dtype)
 
 		if self.lookahead.num_pot_sizes == 0:
 			return
 
 		self.lookahead.next_round_pot_sizes = np.zeros([self.lookahead.num_pot_sizes], dtype=arguments.dtype)
-
 		self.lookahead.action_to_index = {}
+
 		for d in range(1,self.lookahead.depth):
-			p_start, p_end = 0, -1 # parent_indices
-			if d in self.lookahead.indices:
-				if d == 1:
-					p_start, p_end = 0, 1 # parent_indices
-				elif not game_settings.nl:
-					p_start, p_end = 0, self.layers[d].pot_size.shape[1] # parent indices
-				self.lookahead.next_round_pot_sizes[ self.lookahead.layers[d].indices[0]:self.lookahead.layers[d].indices[1] ] = self.lookahead.layers[d].pot_size[ 1, p_Start:p_end, : , 0, 0, 0 ].copy()
+			if self.lookahead.layers[d].indices is not None:
+				p_start, p_end = (0,1) if d == 1 else (0,-1) # parent indices
+				pot_sizes = self.lookahead.layers[d].pot_size[ 1, p_start:p_end, : , 0, 0, 0 ].reshape([-1])
+				self.lookahead.next_round_pot_sizes[ self.lookahead.layers[d].indices[0]:self.lookahead.layers[d].indices[1] ] = pot_sizes.copy()
 				if d <= 2:
 					if d == 1:
 						assert(self.lookahead.layers[d].indices[0] == self.lookahead.layers[d].indices[1])
 						self.lookahead.action_to_index[constants.actions.ccall] = self.lookahead.layers[d].indices[0]
 					else:
-						assert(self.lookahead.layers[d].pot_size[1, p_Start:p_end].shape[1] == 1) # bad num_indices
+						assert(self.lookahead.layers[d].pot_size[1, p_start:p_end].shape[1] == 1) # bad num_indices
 						for parent_action_idx in range(0, self.lookahead.layers[d].pot_size[1].shape[0]):
 							action_id = self.lookahead.parent_action_id[parent_action_idx]
 							assert(action_id not in self.lookahead.action_to_index)
-							self.lookahead.action_to_index[action_id] = self.lookahead.layers[d].indices[0] + parent_action_idx - 1
+							self.lookahead.action_to_index[action_id] = self.lookahead.layers[d].indices[0] + parent_action_idx
+
+		# print(self.lookahead.next_round_pot_sizes)
+		# print(self.lookahead.num_pot_sizes)
+		# # for d in range(1,self.lookahead.depth):
+		# # 	print(self.lookahead.layers[d].indices)
+		# # for d in range(1,self.lookahead.depth):
+		# # 	print(self.lookahead.layers[d].pot_size)
+		print(self.lookahead.action_to_index)
+
+
 
 		if constants.actions.ccall not in self.lookahead.action_to_index:
 			print(self.lookahead.action_to_index)
@@ -103,8 +119,8 @@ class LookaheadBuilder():
 
 		PC, HC = constants.players_count, game_settings.hand_count
 		self.lookahead.next_street_boxes.start_computation(self.lookahead.next_round_pot_sizes, self.lookahead.batch_size)
-		self.lookahead.next_street_boxes_inputs = np.zeros([self.lookahead.num_pot_sizes, self.lookahead.batch_size, PC, HC], dtype=arguments.dtype)
-		self.lookahead.next_street_boxes_outputs = self.lookahead.next_street_boxes_inputs.copy()
+		# self.lookahead.next_street_boxes_inputs = np.zeros([self.lookahead.num_pot_sizes, self.lookahead.batch_size, PC, HC], dtype=arguments.dtype)
+		# self.lookahead.next_street_boxes_outputs = self.lookahead.next_street_boxes_inputs.copy()
 
 
 	def _compute_structure(self):
@@ -210,19 +226,26 @@ class LookaheadBuilder():
 		# calculate term_call_indices
 		for d in range(1,self.lookahead.depth):
 			if self.lookahead.tree.street != constants.streets_count:
-				if game_settings.nl and (d>1 or self.lookahead.first_call_terminal):
+				if d > 1 or self.lookahead.first_call_terminal:
 					before = self.lookahead.num_term_call_nodes
-					self.lookahead.num_term_call_nodes = self.lookahead.num_term_call_nodes + layers[d].ranges[1][-1].shape[0]
+					num_nonterminal_nonallin_grandparents = layers[d].ranges[1][-1].shape[0]
+					self.lookahead.num_term_call_nodes += num_nonterminal_nonallin_grandparents
 					layers[d].term_call_idx = np.array([before, self.lookahead.num_term_call_nodes], dtype=arguments.int_dtype)
 			else:
-				if d>1 or self.lookahead.first_call_terminal:
+				if d > 1 or self.lookahead.first_call_terminal:
 					before = self.lookahead.num_term_call_nodes
-					self.lookahead.num_term_call_nodes = self.lookahead.num_term_call_nodes + layers[d].ranges[1].shape[0] * layers[d].ranges[1].shape[1]
+					num_grandparent_bets = layers[d].ranges[1].shape[0]
+					num_nonterminal_nonallin_grandparents = layers[d].ranges[1].shape[1]
+					num_nonterminal_parents = num_nonterminal_nonallin_grandparents * num_grandparent_bets
+					self.lookahead.num_term_call_nodes += num_nonterminal_parents
 					layers[d].term_call_idx = np.array([before, self.lookahead.num_term_call_nodes], dtype=arguments.int_dtype)
 		# calculate term_fold_indices
 		for d in range(1,self.lookahead.depth):
 			before = self.lookahead.num_term_fold_nodes
-			self.lookahead.num_term_fold_nodes = self.lookahead.num_term_fold_nodes + layers[d].ranges[0].shape[0] * layers[d].ranges[0].shape[1]
+			num_grandparent_bets = layers[d].ranges[0].shape[0]
+			num_nonterminal_nonallin_grandparents = layers[d].ranges[0].shape[1]
+			num_nonterminal_parents = num_nonterminal_nonallin_grandparents * num_grandparent_bets
+			self.lookahead.num_term_fold_nodes += num_nonterminal_parents
 			layers[d].term_fold_idx = np.array([before, self.lookahead.num_term_fold_nodes], dtype=arguments.int_dtype)
 
 

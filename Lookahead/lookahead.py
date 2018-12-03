@@ -52,7 +52,8 @@ class Lookahead():
 		# 1.0 main loop
 		time_arr = np.zeros([8,arguments.cfr_iters])
 		t0 = time.time()
-		for iter in range(arguments.cfr_iters):
+		from tqdm import tqdm
+		for iter in tqdm(range(arguments.cfr_iters)):
 			if reconstruct_opponent_cfvs:
 				self._set_opponent_starting_range(iter)
 			time_arr[0,iter] = time.time() - t0; t0 = time.time()
@@ -164,7 +165,7 @@ class Lookahead():
 		for d in range(1,self.depth):
 			layer = self.layers[d]
 			if d > 1 or self.first_call_terminal:
-				if self.tree.street != constants.streets_count and game_settings.nl:
+				if self.tree.street != constants.streets_count:
 					# [A{d-1}, B{d-2}, NTNAN{d-2}, b, P, I] [1, -1] -> [NTNAN{d-2}, b, P, I]
 					layer.cfvs[1][-1] = call_cfvs[ layer.term_call_idx[0]:layer.term_call_idx[1] ]
 				else:
@@ -174,7 +175,7 @@ class Lookahead():
 			layer.cfvs[0] = fold_cfvs[ layer.term_fold_idx[0]:layer.term_fold_idx[1] ].reshape(layer.cfvs[0].shape)
 			# correctly set the folded player by mutliplying by -1
 			fold_mutliplier = -1 if layer.acting_player == constants.players.P1 else 1
-			# # [A{d-1}, B{d-2}, NTNAN{d-2}, b, P, I] *= scalar
+			# [A{d-1}, B{d-2}, NTNAN{d-2}, b, P, I] *= scalar
 			layer.cfvs[ 0, : , : , : , 0, : ] *= fold_mutliplier
 			layer.cfvs[ 0, : , : , : , 1, : ] *= -fold_mutliplier
 
@@ -184,47 +185,57 @@ class Lookahead():
 			compute the players' counterfactual values at the depth-limited
 			states of the lookahead.
 		'''
-		PC, HC = constants.players_count, game_settings.hand_count
-		assert(self.tree.street == 1)
+		PC, HC, batch_size = constants.players_count, game_settings.hand_count, self.batch_size
+		assert(self.tree.street != constants.streets_count)
 		if self.num_pot_sizes == 0:
 			return
+		next_street_boxes_inputs = np.zeros([self.num_pot_sizes, batch_size, PC, HC], dtype=arguments.dtype)
+		next_street_boxes_outputs = np.zeros([self.num_pot_sizes, batch_size, PC, HC], dtype=arguments.dtype)
 		for d in range(1,self.depth):
 			layer = self.layers[d]
 			if d > 1 or self.first_call_transition:
 				# if there's only 1 parent, then it should've been an all in, so skip this next_street_box calculation
-				if layer.ranges[2].shape[0] > 1 or (d == 1 and self.first_call_transition) or not game_settings.nl:
-					# parent indices
-					if d == 1:  			   p_start, p_end = 0, 1
-					elif not game_settings.nl: p_start, p_end = 0, layer.ranges.shape[1]
-					else: 					   p_start, p_end = 0, -1
-					self.next_street_boxes_outputs[ layer.indices[0]:layer.indices[1] , : , : , : ] = layer.ranges[ 1, p_start:p_end, : , : , : , : ].copy()
+				num_grandparent_bets = layer.ranges[1].shape[0]
+				if num_grandparent_bets > 1 or (d == 1 and self.first_call_transition):
+					p_start, p_end = (0,1) if d == 1 else (0,-1) # parent indices
+					# reshape: [B{d-2} - 1, NTNAN{d-2}, b, P, I] -> [(B{d-2} - 1) x NTNAN{d-2}, b, P, I]
+					ranges = layer.ranges[ 1, p_start:p_end, : , : , : , : ].reshape([-1, batch_size, PC, HC])
+					# use outputs as placeholder for later to switch players
+					# [sliced(PS), b, P, I] = [(B{d-2} - 1) x NTNAN{d-2}, b, P, I]
+					next_street_boxes_outputs[ layer.indices[0]:layer.indices[1] , : , : , : ] = ranges.copy()
 
 		if self.tree.current_player == constants.players.P2:
-			self.next_street_boxes_inputs = self.next_street_boxes_outputs.copy()
+			next_street_boxes_inputs = next_street_boxes_outputs.copy()
 		else:
-			self.next_street_boxes_inputs[ : , : , 0, : ] = self.next_street_boxes_outputs[ : , : , 1, : ].copy()
-			self.next_street_boxes_inputs[ : , : , 1, : ] = self.next_street_boxes_outputs[ : , : , 0, : ].copy()
+			next_street_boxes_inputs[ : , : , 0, : ] = next_street_boxes_outputs[ : , : , 1, : ].copy()
+			next_street_boxes_inputs[ : , : , 1, : ] = next_street_boxes_outputs[ : , : , 0, : ].copy()
 
 		if self.tree.street == 1:
-		    self.next_street_boxes.get_value_aux(self.next_street_boxes_inputs.reshape([-1,PC,HC]), self.next_street_boxes_outputs.reshape([-1,PC,HC]), self.next_board_idx)
+		    self.next_street_boxes.get_value_aux(next_street_boxes_inputs.reshape([-1,PC,HC]), next_street_boxes_outputs.reshape([-1,PC,HC]))
 		else:
-			self.next_street_boxes.get_value(self.next_street_boxes_inputs.reshape([-1,PC,HC]), self.next_street_boxes_outputs.reshape([-1,PC,HC]), self.next_board_idx)
+			self.next_street_boxes.get_value(next_street_boxes_inputs.reshape([-1,PC,HC]), next_street_boxes_outputs.reshape([-1,PC,HC]))
 
 		# now the neural net outputs for P1 and P2 respectively, so we need to swap the output values if necessary
 		if self.tree.current_player == constants.players.P2:
-			self.next_street_boxes_inputs = self.next_street_boxes_outputs.copy()
-			self.next_street_boxes_outputs[ : , : , 0, : ] = self.next_street_boxes_inputs[ : , : , 1, : ].copy()
-			self.next_street_boxes_outputs[ : , : , 1, : ] = self.next_street_boxes_inputs[ : , : , 0, : ].copy()
+			next_street_boxes_inputs = next_street_boxes_outputs.copy() # using as placeholder
+			next_street_boxes_outputs[ : , : , 0, : ] = next_street_boxes_inputs[ : , : , 1, : ].copy()
+			next_street_boxes_outputs[ : , : , 1, : ] = next_street_boxes_inputs[ : , : , 0, : ].copy()
 
 		for d in range(1, self.depth):
 			layer = self.layers[d]
 			if d > 1 or self.first_call_transition:
-				if layer.ranges[1].shape[0] > 1 or (d == 1 and self.first_call_transition) or not game_settings.nl:
-					# parent indices
-					if d == 1:				   p_start, p_end = 0, 1
-					elif not game_settings.nl: p_start, p_end = 1, layer.cfvs.shape[1]
-					else: 					   p_start, p_end = 0, -1
-					layer.cfvs[ 1, p_start:p_end , : , : , : , : ] = self.next_street_boxes_outputs[ layer.indices[0]:layer.indices[1], : , : , : ].copy()
+				num_grandparent_bets = layer.ranges[1].shape[0]
+				if num_grandparent_bets > 1 or (d == 1 and self.first_call_transition):
+					p_start, p_end = (0,1) if d == 1 else (0,-1) # parent indices
+					cfvs_shape = layer.cfvs[ 1, p_start:p_end , : , : , : , : ].shape
+					# reshape: [sliced(p), b, P, I] -> [sliced(B{d-2}), NTNAN{d-2}, b, P, I]
+					cfvs = next_street_boxes_outputs[ layer.indices[0]:layer.indices[1], : , : , : ].reshape(cfvs_shape)
+					# [A{d-1}, B{d-2}, NTNAN{d-2}, b, P, I] = [sliced(B{d-2}), NTNAN{d-2}, b, P, I]
+					# print(d, p_start, p_end, layer.indices[0], layer.indices[1])
+					# print(layer.cfvs.shape, self.next_street_boxes_outputs.shape)
+					# print(layer.cfvs[ 1, p_start:p_end , : , : , : , : ].shape, self.next_street_boxes_outputs[ layer.indices[0]:layer.indices[1], : , : , : ].shape)
+					layer.cfvs[ 1, p_start:p_end , : , : , : , : ] = cfvs.copy()
+		# asd()
 
 
 	def get_chance_action_cfv(self, action, board):

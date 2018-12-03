@@ -3,85 +3,24 @@
 '''
 import numpy as np
 
-from Nn.bucketer import Bucketer
 from Game.card_tools import card_tools
 from Settings.arguments import arguments
 from Settings.game_settings import game_settings
 from Settings.constants import constants
 
 class NextRoundValue():
-	def __init__(self, value_nn):
+	def __init__(self, value_nn, board):
 		''' Creates a tensor that can translate hand ranges to bucket ranges
 			on any board.
 		@param: Nn.ValueNn object
 		'''
 		self._values_are_prepared = False
 		self.nn = value_nn
-		self._init_bucketing()
+		self.current_board = board
+		self.street = card_tools.board_to_street(board)
 
 
-	def _init_bucketing(self):
-		''' Initializes the tensor that translates hand ranges to bucket ranges.
-		'''
-		self.bucketer = Bucketer()
-		self.bucket_count = self.bucketer.get_bucket_count()
-		boards = card_tools.get_second_round_boards()
-		self.board_count = boards.shape[0]
-		CC, BC, bC = game_settings.card_count, self.board_count, self.bucket_count
-		self._range_matrix = np.zeros([CC,BC*bC], dtype=arguments.dtype)
-		self._range_matrix_board_view = self._range_matrix.reshape([CC,BC,bC])
-		for idx in range(BC):
-			board = boards[idx]
-			buckets = self.bucketer.compute_buckets(board)
-			class_ids = np.arange(bC)
-			class_ids = class_ids.reshape([1,bC]) * np.ones([CC,bC], dtype=class_ids.dtype)
-			card_buckets = buckets.reshape([CC,1]) * np.ones([CC,bC], dtype=class_ids.dtype)
-			# finding all strength classes
-			# matrix for transformation from card ranges to strength class ranges
-			self._range_matrix_board_view[ : , idx, : ][ class_ids == card_buckets ] = 1
-		# matrix for transformation from class values to card values
-		self._reverse_value_matrix = self._range_matrix.T.copy()
-		# we need to div the matrix by the sum of possible boards
-		# (from point of view of each hand)
-		weight_constant = 1 / (BC-2) # count
-		self._reverse_value_matrix *= weight_constant
-
-
-	def _card_range_to_bucket_range(self, card_range, bucket_range):
-		''' Converts a range vector over private hands to a range vector over buckets.
-		@param: card_range a probability vector over private hands
-		@param: bucket_range a vector in which to store the output probabilities
-				over buckets
-		'''
-		bucket_range[:,:] = np.dot(card_range, self._range_matrix)
-
-
-	def _bucket_value_to_card_value(self, bucket_value, card_value):
-		''' Converts a value vector over buckets to a value vector over private hands.
-		@param: bucket_value a value vector over buckets
-		@param: card_value a vector in which to store the output values over
-				private hands
-		'''
-		card_value[:,:] = np.dot(bucket_value, self._reverse_value_matrix)
-
-
-	def _bucket_value_to_card_value_on_board(self, board, bucket_value, card_value):
-		''' Converts a value vector over buckets to a value vector over
-			private hands given a particular set of board cards.
-		@param: board a non-empty vector of board cards
-		@param: bucket_value a value vector over buckets
-		@param: card_value a vector in which to store the output values over
-				private hands
-		'''
-		CC, bC = game_settings.card_count, self.bucket_count
-		board_idx = card_tools.get_board_index(board)
-		board_matrix = self._range_matrix_board_view[ : , board_idx, : ].T
-		serialized_card_value = card_value.reshape([-1,CC])
-		serialized_bucket_value = bucket_value[ : , : , board_idx, : ].copy().reshape([-1,bC])
-		serialized_card_value[:,:] = np.dot(serialized_bucket_value, board_matrix)
-
-
-	def start_computation(self, pot_sizes):
+	def start_computation(self, pot_sizes, batch_size):
 		''' Initializes the value calculator with the pot size of each state that
 			we are going to evaluate.
 			During continual re-solving, there is one pot size for each
@@ -89,9 +28,44 @@ class NextRoundValue():
 			? at this point betting round ends ?
 		@param pot_sizes a vector of pot sizes
 		'''
-		self.iter = 0
-		self.pot_sizes = pot_sizes.reshape([-1,1]).copy()
-		self.batch_size = pot_sizes.shape[0]
+		# get next round boards
+		self.next_boards = card_tools.get_next_round_boards(self.current_board)
+		self.next_boards_count = self.next_boards.shape[0]
+		PC, BC, HC = constants.players_count, self.next_boards_count, game_settings.hand_count
+		# init pot sizes [b, 1], where p - number of pot sizes, b - batch size (not the same as in other files)
+		self.pot_sizes = pot_sizes.reshape([-1,1]) # [p,1]
+		self.pot_sizes = self.pot_sizes * np.ones([self.pot_sizes.shape[0], batch_size], dtype=arguments.dtype)
+		self.pot_sizes = self.pot_sizes.reshape([-1,1])
+		self.batch_size, batch_size = self.pot_sizes.shape[0], self.pot_sizes.shape[0]
+		# init board features [BC,69]
+		self.num_board_features = game_settings.rank_count + game_settings.suit_count + game_settings.card_count
+		self.board_features = np.zeros([BC, self.num_board_features], dtype=arguments.dtype)
+		for i, board in enumerate(self.next_boards):
+			self.board_features[i] = card_tools.convert_board_to_nn_feature(board)
+		# init inputs and outputs to neural net
+		self.next_round_inputs = np.zeros([batch_size,BC,HC*PC + 1 + self.num_board_features], dtype=arguments.dtype)
+		self.next_round_values = np.zeros([batch_size,BC,PC,HC], dtype=arguments.dtype)
+		# handling pot feature for nn
+		nn_bet_input = self.pot_sizes * (1/arguments.stack)
+		nn_bet_input = nn_bet_input.reshape([-1,1]) * np.ones([batch_size,BC], dtype=nn_bet_input.dtype)
+		# [ b, B, P x I + 1 + 69 ] = [ b, B ]
+		self.next_round_inputs[ : , : , PC*HC ] = nn_bet_input
+		# handling board feature for nn
+		# reshape: [B,69] -> [1,B,69]
+		nn_board_input = self.board_features.reshape([1,BC,self.num_board_features])
+		# broadcasting nn_board_input: [ 1, B, 69 ] -> [ b, B, 69 ]
+		# [ b, B, P x I + 1 + 69 ] = [ b, B, 69 ]
+		self.next_round_inputs[ : , : , PC*HC+1: ] = nn_board_input * np.ones([batch_size,BC,self.num_board_features], dtype=arguments.dtype)
+		# init board mask
+		# [B,I]
+		self.board_mask = np.zeros([BC,HC], dtype=bool)
+		for i, next_board in enumerate(self.next_boards):
+			self.board_mask[i] = card_tools.get_possible_hand_indexes(next_board)
+		# calculate possible boards for each hand (for later to make mean of board values (sum -> normalize))
+		# [I] = sum([B,I], axis=0)
+		self.mean_normalization = np.sum(self.board_mask, axis=0) / BC
+
+
 
 
 	def get_value(self, ranges, values):
@@ -107,58 +81,42 @@ class NextRoundValue():
 		@param: values an (N,2,K) tensor in which to store the N sets of 2 value vectors
 				which are output
 		'''
-		PC, BC = constants.players_count, self.board_count
-		BS, bC = self.batch_size, self.bucket_count
-		assert(ranges is not None and values is not None)
+		PC, BC, HC, batch_size = constants.players_count, self.next_boards_count, game_settings.hand_count, self.batch_size
 		assert(ranges.shape[0] == self.batch_size)
-		self.iter += 1
-		if self.iter == 1:
-			# initializing data structures
-			self.next_round_inputs = np.zeros([BS,BC,bC*PC + 1], dtype=arguments.dtype)
-			self.next_round_values = np.zeros([BS,BC,PC,bC], dtype=arguments.dtype)
-			self.transposed_next_round_values = np.zeros([BS,PC,BC,bC], dtype=arguments.dtype)
-			self.next_round_extended_range = np.zeros([BS,PC,BC*bC], dtype=arguments.dtype)
-			self.next_round_serialized_range = self.next_round_extended_range.reshape([-1,bC])
-			self.range_normalization = np.zeros([])
-			self.value_normalization = np.zeros([BS,PC,BC], dtype=arguments.dtype)
-			# handling pot feature for the nn
-			nn_bet_input = self.pot_sizes.copy() * (1/arguments.stack)
-			nn_bet_input = nn_bet_input.reshape([-1,1]) * np.ones([BS,BC], dtype=nn_bet_input.dtype)
-			self.next_round_inputs[ : , : , -1 ] = nn_bet_input.copy()
-		# we need to find if we need remember something in this iteration
-		use_memory = self.iter > arguments.cfr_skip_iters
-		if use_memory and self.iter == arguments.cfr_skip_iters + 1:
-			# first iter that we need to remember something - we need to init data structures
-			self.range_normalization_memory = np.zeros([BS*BC*PC,1], dtype=arguments.dtype)
-			self.counterfactual_value_memory = np.zeros([BS,PC,BC,bC], dtype=arguments.dtype)
-		# computing bucket range in next street for both players at once
-		self._card_range_to_bucket_range( ranges.reshape([BS*PC,-1]), self.next_round_extended_range.reshape([BS*PC,-1]) )
-		self.range_normalization = np.sum(self.next_round_serialized_range, axis=1, keepdims=True)
-		rn_view = self.range_normalization.reshape([BS,PC,BC])
-		for player in range(constants.players_count):
-			self.value_normalization[ : , player, : ] = rn_view[ : , 1 - player, : ].copy()
-		if use_memory:
-			self.range_normalization_memory += self.value_normalization.reshape(self.range_normalization_memory.shape)
-		# eliminating division by zero
-		self.range_normalization[ self.range_normalization == 0 ] = 1
-		self.next_round_serialized_range /= self.range_normalization * np.ones_like(self.next_round_serialized_range)
-		serialized_range_by_player = self.next_round_serialized_range.reshape([BS,PC,BC,bC])
-		for player in range(constants.players_count):
-			self.next_round_inputs[ : , : , player*bC:(player+1)*bC ] = self.next_round_extended_range[ : , player, : ].copy().reshape(self.next_round_inputs[ : , : , player*bC:(player+1)*bC ].shape)
-		# using nn to compute values
-		serialized_inputs_view = self.next_round_inputs.reshape([BS*BC,-1])
-		serialized_values_view = self.next_round_values.reshape([BS*BC,-1])
+		# handling ranges
+		# broadcasting ranges_: [ b, 1, P, I ] -> [ b, B, P, I ]
+		ranges_ = ranges.reshape([batch_size,1,PC*HC])
+		self.next_round_inputs[ : , : , :PC*HC ] = ranges_ * np.ones([batch_size,BC,PC*HC], dtype=arguments.dtype)
+		# mask inputs ?
+		self.next_round_inputs[ : , : , :HC ] *= self.board_mask
+		self.next_round_inputs[ : , : , HC:2*HC ] *= self.board_mask
 		# computing value in the next round
-		self.nn.get_value(serialized_inputs_view, serialized_values_view)
-		# normalizing values back according to the orginal range sum
-		normalization_view = np.transpose(self.value_normalization.reshape([BS,PC,BC,1]), [0,2,1,3]) # :transpose(2,3)
-		self.next_round_values *= normalization_view * np.ones_like(self.next_round_values)
-		self.transposed_next_round_values = np.transpose(self.next_round_values, [0,2,1,3]).copy() # :transpose(3,2)
-		# remembering the values for the next round
-		if use_memory:
-			self.counterfactual_value_memory += self.transposed_next_round_values
-		# translating bucket values back to the card values
-		self._bucket_value_to_card_value( self.transposed_next_round_values.reshape([BS*PC,-1]), values.reshape([BS*PC,-1]) )
+		self.nn.get_value( self.next_round_inputs.reshape([batch_size*BC,-1]), self.next_round_values.reshape([batch_size*BC,-1]) )
+		# for i in range(8):
+		# 	r = self.next_round_inputs[i,:,:1326*2].reshape([-1])
+		# 	# r = r[1326:]
+		# 	m1 = np.zeros_like(r)
+		# 	m1[ r > 0] = 1
+		# 	print(m1.sum(), end=' ')
+		# 	v = self.next_round_values[i,:].reshape([-1])
+		# 	m = np.ones_like(v)
+		# 	m[ v == 0] = 0
+		# 	print(m.sum(), end=' ')
+		# 	print(np.array_equal(m,m1))
+		#
+		# print()
+		# asd()
+
+		# apply mask (with possible boards with following cards in hand)
+		# broadcasting mask: [1,B,1,I] -> [b,B,P,I]
+		# [b,B,P,I] *= [b,B,P,I]
+		# self.next_round_values *= self.board_mask.reshape([1,BC,1,HC])
+		# calculate mean for each hand
+		# [b,P,I] = sum([b,B,P,I], axis=1) / [1,1,I]
+		board_values_mean = np.mean(self.next_round_values, axis=1) * self.mean_normalization.reshape([1,1,HC])
+		# store it in values var # [b,P,I] = [b,P,I]
+		values[:,:,:] = board_values_mean
+
 
 
 	def get_value_on_board(self, board, values):
