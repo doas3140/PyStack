@@ -13,24 +13,25 @@ from Nn.value_nn import ValueNn
 from Nn.basic_huber_loss import BasicHuberLoss, masked_huber_loss
 
 class Train(ValueNn):
-	def __init__(self, data_dir_list):
+	def __init__(self, street, data_dir_list):
 		'''
 		@param: list of tf records training set dirs
 		'''
 		# set up estimator from ValueNn
-		super().__init__()
+		super().__init__(street)
 		# resume model if exists
-		if os.path.exists(arguments.final_model_path):
+		if os.path.exists(self.model_path):
 			print('LOADING PREVIOUS MODEL...')
-			self.keras_model = tf.keras.models.load_model( arguments.final_model_path,
-							   custom_objects = {'loss':BasicHuberLoss(delta=1.0), 'masked_huber_loss':masked_huber_loss} )
+			self.keras_model = tf.keras.models.load_model( self.model_path,
+								   custom_objects = {'loss':BasicHuberLoss(delta=1.0),
+								   					 'masked_huber_loss':masked_huber_loss} )
 		else: # compile model
 			print('COMPILING MODEL...')
 			self.compile_keras_model(self.keras_model)
 		# set up read paths for train/valid datasets
 		self.tfrecords = self.get_tfrecords_from_multiple_dirs(data_dir_list)
 		self.create_keras_callback()
-		
+
 
 	def get_tfrecords_from_multiple_dirs(self, data_dirs):
 		all_paths = [f.path for dirpath in data_dirs for f in os.scandir(dirpath)]
@@ -74,12 +75,12 @@ class Train(ValueNn):
 		from tensorflow.keras.callbacks import ReduceLROnPlateau, ModelCheckpoint, \
 												  LearningRateScheduler, EarlyStopping
 		# tensorboard callback
-		tb_logdir = os.path.join( arguments.model_path, 'tensorboard' )
+		tb_logdir = os.path.join( self.model_dir_path, 'tensorboard' )
 		tb = KerasTensorBoard( log_dir=tb_logdir, histogram_freq=25, write_grads=True )
 		# Early sopping callback
 		es = EarlyStopping(monitor='val_loss', patience=20, verbose=0, mode='min')
 		# Save model callback
-		mc = ModelCheckpoint(arguments.final_model_path, save_best_only=True, monitor='val_loss', mode='min')
+		mc = ModelCheckpoint(self.model_path, save_best_only=True, monitor='val_loss', mode='min')
 		# Reducting LR callback
 		lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, verbose=1, min_delta=1e-4, mode='min')
 		# set keras callback for training

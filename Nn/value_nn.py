@@ -1,13 +1,15 @@
 '''
 	Wraps the calls to the final neural net.
 '''
+import os
 import tensorflow as tf
 
 from Settings.arguments import arguments
 from Nn.net_builder import nnBuilder
+from Nn.basic_huber_loss import BasicHuberLoss, masked_huber_loss
 
 class ValueNn():
-	def __init__(self, pretrained_weights=False, verbose=1):
+	def __init__(self, street, pretrained_weights=False, aux=False, verbose=1):
 		''' Loads the neural net from disk.
 		'''
 		# set input and output layer names
@@ -15,17 +17,21 @@ class ValueNn():
 		self.input_layer_name = 'input'
 		self.output_layer_name = 'zero_sum_output'
 		# set checkpoint and profiler (optional) dir
-		self.model_dir = arguments.model_path
-		self.profiler_dir = arguments.profiler_path
-		# load keras model
-		self.keras_model, self.x_shape, self.y_shape = nnBuilder.build_net()
+		street_name = street2name(street)
+		self.model_dir_path = os.path.join(arguments.model_path, street_name)
+		# load model or create one
+		if pretrained_weights:
+			self.model_path = os.path.join(self.model_dir_path, arguments.final_model_name)
+			self.keras_model = tf.keras.models.load_model( self.model_path,
+								   custom_objects = {'loss':BasicHuberLoss(delta=1.0),
+								   					 'masked_huber_loss':masked_huber_loss} )
+		else:
+			# load keras model
+			self.keras_model, self.x_shape, self.y_shape = nnBuilder.build_net()
+		# print architecture summary
 		if verbose > 0:
 			print('NN architecture:')
 			self.keras_model.summary()
-		if pretrained_weights:
-			# load model weights
-			# self.keras_model = tf.keras.models.load_model(arguments.final_model_path) # doesnt need building (can be faster)
-			self.keras_model.load_weights(arguments.final_model_path)
 
 
 	def get_value(self, inputs, output):
@@ -37,6 +43,16 @@ class ValueNn():
 		'''
 		output[:,:] = self.keras_model.predict(inputs)
 
+
+def street2name(street):
+    if street == 1:
+        return 'preflop'
+    elif street == 2:
+        return 'flop'
+    elif street == 3:
+        return 'turn'
+    elif street == 4:
+        return 'river'
 
 
 

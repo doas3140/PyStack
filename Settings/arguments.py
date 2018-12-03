@@ -30,10 +30,8 @@ class Parameters():
 		self.XLA = True
 		# path to the neural net model
 		self.model_path = './Data/Models/main/'
-		# self.final_model_path = os.path.join(self.model_path, 'weights.{epoch:02d}-{val_loss:.2f}.hdf5')
-		self.final_model_path = os.path.join(self.model_path, 'weights.final.hdf5')
-		# path where to save tf.profiler information
-		self.profiler_path = './Data/Models/PotBet/profiler'
+		# self.final_model_name = 'weights.{epoch:02d}-{val_loss:.2f}.hdf5'
+		self.final_model_name ='weights.final.hdf5'
 		# the neural net architecture
 		self.num_layers = 5 # (excluding output layer)
 		self.num_neurons = 500
