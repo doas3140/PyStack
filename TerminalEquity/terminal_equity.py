@@ -1,6 +1,7 @@
 '''
 	Evaluates player equities at terminal nodes of the game's public tree.
 '''
+import os
 import numpy as np
 
 from Game.Evaluation.evaluator import evaluator
@@ -12,10 +13,31 @@ from tools import tools
 
 class TerminalEquity():
 	def __init__(self):
-		self._block_matrix = np.load('TerminalEquity/block_matrix.npy')
-		self._pf_equity = np.load('TerminalEquity/pf_equity.npy')
+		# init call and fold matrices
 		self.equity_matrix = None # [I,I] can be named as call matrix
 		self.fold_matrix = None # [I,I]
+		# load preflop matrix
+		self._pf_equity = np.load('TerminalEquity/pf_equity.npy')
+		# load card blocking matrix from disk if exists
+		if os.path.exists('TerminalEquity/block_matrix.npy'):
+			self._block_matrix2 = np.load('TerminalEquity/block_matrix.npy')
+		else:
+			self._create_block_matrix()
+
+
+	def _create_block_matrix(self):
+		HC, CC = game_settings.hand_count, game_settings.card_count
+		self._block_matrix = np.ones([HC,HC], dtype=bool)
+		for p1_card1 in range(CC):
+			for p1_card2 in range(p1_card1+1, CC):
+				p1_idx = card_tools.get_hole_index([p1_card1, p1_card2])
+				for p2_card1 in range(CC):
+					for p2_card2 in range(p2_card1+1, CC):
+						p2_idx = card_tools.get_hole_index([p2_card1, p2_card2])
+						if p1_card1 == p2_card1 or p1_card1 == p2_card2 or \
+						   p1_card2 == p2_card1 or p1_card2 == p2_card2:
+						   self._block_matrix[p1_idx, p2_idx] = 0
+						   self._block_matrix[p2_idx, p1_idx] = 0
 
 
 	def set_last_round_call_matrix(self, call_matrix, board_cards):
