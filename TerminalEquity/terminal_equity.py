@@ -20,7 +20,7 @@ class TerminalEquity():
 		self._pf_equity = np.load('TerminalEquity/pf_equity.npy')
 		# load card blocking matrix from disk if exists
 		if os.path.exists('TerminalEquity/block_matrix.npy'):
-			self._block_matrix2 = np.load('TerminalEquity/block_matrix.npy')
+			self._block_matrix = np.load('TerminalEquity/block_matrix.npy')
 		else:
 			self._create_block_matrix()
 
