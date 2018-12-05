@@ -73,20 +73,22 @@ class TerminalEquity():
 		# evaluating all possible last round boards
 		strength = evaluator.batch_eval_fast(next_round_boards) # [b,I]
 		# strength from player 1 perspective for all the boards and all the card combinations
-		strength_view_1 = strength.reshape([num_boards,HC,1]) * np.ones([num_boards, HC, HC], dtype=strength.dtype)
+		strength_view_1 = strength.reshape([num_boards,HC,1]) # * np.ones([num_boards, HC, HC], dtype=strength.dtype)
 		# strength from player 2 perspective
-		strength_view_2 = strength.reshape([num_boards,1,HC]) * np.ones_like(strength_view_1)
+		strength_view_2 = strength.reshape([num_boards,1,HC]) # * np.ones_like(strength_view_1)
 		#
 		player_possible_mask = (strength < 0).astype(int)
-		possible_mask = player_possible_mask.reshape([num_boards,1,HC]) * player_possible_mask.reshape([num_boards,HC,1])
-		# handling hand stregths (winning probs)
-		matrix_mem = (strength_view_1 > strength_view_2).astype(int)
-		matrix_mem *= possible_mask
-		call_matrix[:,:] = np.sum(matrix_mem, axis=0)
 
-		matrix_mem = (strength_view_1 < strength_view_2).astype(int)
-		matrix_mem *= possible_mask
-		call_matrix[:,:] = call_matrix - np.sum(matrix_mem, axis=0)
+		for i in range(num_boards):
+			possible_mask = player_possible_mask[i].reshape([1,HC]) * player_possible_mask[i].reshape([HC,1])
+			# handling hand stregths (winning probs)
+			matrix_mem = (strength_view_1[i] > strength_view_2[i]).astype(int)
+			matrix_mem *= possible_mask[i]
+			call_matrix[:,:] = call_matrix + matrix_mem
+
+			matrix_mem = (strength_view_1[i] < strength_view_2[i]).astype(int)
+			matrix_mem *= possible_mask[i]
+			call_matrix[:,:] = call_matrix - matrix_mem
 		# normalize sum
 		num_possible_hands = card_combinations.count_possible_boards_with_player_cards(street)
 		call_matrix[:,:] = call_matrix * (1 / num_possible_hands)
