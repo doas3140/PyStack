@@ -9,7 +9,7 @@ sys.path.append( os.path.join(os.getcwd(),'src') )
 
 import tensorflow as tf
 
-from Training.train import Train
+from NnTraining.train import Train
 from Game.card_to_string_conversion import card_to_string
 from Settings.arguments import arguments
 

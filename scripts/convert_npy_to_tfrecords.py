@@ -8,7 +8,7 @@ sys.path.append( os.path.join(os.getcwd(),'src') )
 
 from Settings.arguments import arguments
 from Game.card_to_string_conversion import card_to_string
-from Training.tfrecords_converter import TFRecordsConverter
+from NnTraining.tfrecords_converter import TFRecordsConverter
 
 AVAILABLE_STREETS = [1,4]
 

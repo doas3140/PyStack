@@ -7,7 +7,7 @@ import tensorflow as tf
 from Settings.arguments import arguments
 from Settings.constants import constants
 from Game.card_to_string_conversion import card_to_string
-from Nn.nn_functions import BasicHuberLoss, masked_huber_loss, generate_mask
+from NeuralNetwork.nn_functions import BasicHuberLoss, masked_huber_loss, generate_mask
 
 class ValueNn():
 	def __init__(self, street, pretrained_weights=False, aux=False, verbose=1):

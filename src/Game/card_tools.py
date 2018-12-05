@@ -10,7 +10,6 @@ import numpy as np
 from Settings.arguments import arguments
 from Settings.constants import constants
 from Game.card_to_string_conversion import card_to_string
-# from tools import tools
 from Game.card_combinations import card_combinations
 
 class CardTools():

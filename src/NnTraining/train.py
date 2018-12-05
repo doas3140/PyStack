@@ -9,9 +9,9 @@ import numpy as np
 import tensorflow as tf
 
 from Settings.arguments import arguments
-from Training.tf_data import create_iterator
-from Nn.value_nn import ValueNn
-from Nn.nn_functions import BasicHuberLoss, masked_huber_loss
+from NnTraining.tf_data import create_iterator
+from NeuralNetwork.value_nn import ValueNn
+from NeuralNetwork.nn_functions import BasicHuberLoss, masked_huber_loss
 
 class Train(ValueNn):
 	def __init__(self, data_dir_list, street):

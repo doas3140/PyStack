@@ -3,9 +3,10 @@
 '''
 import numpy as np
 
-from Game.card_tools import card_tools
 from Settings.arguments import arguments
 from Settings.constants import constants
+from Game.card_tools import card_tools
+from Game.card_combinations import card_combinations
 
 class NextRoundValue():
 	def __init__(self, value_nn, board):
@@ -45,24 +46,23 @@ class NextRoundValue():
 		self.next_round_inputs = np.zeros([batch_size,BC,HC*PC + 1 + self.num_board_features], dtype=arguments.dtype)
 		self.next_round_values = np.zeros([batch_size,BC,PC,HC], dtype=arguments.dtype)
 		# handling pot feature for nn
-		nn_bet_input = self.pot_sizes * (1/arguments.stack)
-		nn_bet_input = nn_bet_input.reshape([-1,1]) * np.ones([batch_size,BC], dtype=nn_bet_input.dtype)
-		# [ b, B, P x I + 1 + 69 ] = [ b, B ]
-		self.next_round_inputs[ : , : , PC*HC ] = nn_bet_input
+		# broadcasting pot_sizes: [b] -> [b,B]
+		# [ b, B, P x I + 1 + 69 ] = scalar * [b] * [b,B]
+		self.next_round_inputs[ : , : , PC*HC ] = (1/arguments.stack) * self.pot_sizes * np.ones([batch_size,BC], dtype=self.pot_sizes.dtype)
 		# handling board feature for nn
 		# reshape: [B,69] -> [1,B,69]
 		nn_board_input = self.board_features.reshape([1,BC,self.num_board_features])
 		# broadcasting nn_board_input: [ 1, B, 69 ] -> [ b, B, 69 ]
 		# [ b, B, P x I + 1 + 69 ] = [ b, B, 69 ]
 		self.next_round_inputs[ : , : , PC*HC+1: ] = nn_board_input * np.ones([batch_size,BC,self.num_board_features], dtype=arguments.dtype)
-		# init board mask
-		# [B,I]
+		# init board mask # [B,I]
 		self.board_mask = np.zeros([BC,HC], dtype=bool)
 		for i, next_board in enumerate(self.next_boards):
 			self.board_mask[i] = card_tools.get_possible_hand_indexes(next_board)
 		# calculate possible boards for each hand (for later to make mean of board values (sum -> normalize))
 		# [I] = sum([B,I], axis=0)
-		self.mean_normalization = np.sum(self.board_mask, axis=0) / BC
+		num_possible_boards = card_combinations.count_possible_boards_with_player_cards(self.street)
+		self.sum_normalization = 1 / num_possible_boards
 
 
 
@@ -86,68 +86,21 @@ class NextRoundValue():
 		# broadcasting ranges_: [ b, 1, P, I ] -> [ b, B, P, I ]
 		ranges_ = ranges.reshape([batch_size,1,PC*HC])
 		self.next_round_inputs[ : , : , :PC*HC ] = ranges_ * np.ones([batch_size,BC,PC*HC], dtype=arguments.dtype)
-		# mask inputs ?
+		# mask inputs. normalize?
 		self.next_round_inputs[ : , : , :HC ] *= self.board_mask
 		self.next_round_inputs[ : , : , HC:2*HC ] *= self.board_mask
-		# computing value in the next round
+		# computing value in the next round (outputs are already masked, see neural network)
 		self.nn.get_value( self.next_round_inputs.reshape([batch_size*BC,-1]), self.next_round_values.reshape([batch_size*BC,-1]) )
-		# for i in range(8):
-		# 	r = self.next_round_inputs[i,:,:1326*2].reshape([-1])
-		# 	# r = r[1326:]
-		# 	m1 = np.zeros_like(r)
-		# 	m1[ r > 0] = 1
-		# 	print(m1.sum(), end=' ')
-		# 	v = self.next_round_values[i,:].reshape([-1])
-		# 	m = np.ones_like(v)
-		# 	m[ v == 0] = 0
-		# 	print(m.sum(), end=' ')
-		# 	print(np.array_equal(m,m1))
-		#
-		# print()
-		# asd()
-
-		# apply mask (with possible boards with following cards in hand)
-		# broadcasting mask: [1,B,1,I] -> [b,B,P,I]
-		# [b,B,P,I] *= [b,B,P,I]
-		# self.next_round_values *= self.board_mask.reshape([1,BC,1,HC])
-		# calculate mean for each hand
-		# [b,P,I] = sum([b,B,P,I], axis=1) / [1,1,I]
-		board_values_mean = np.mean(self.next_round_values, axis=1) * self.mean_normalization.reshape([1,1,HC])
-		# store it in values var # [b,P,I] = [b,P,I]
-		values[:,:,:] = board_values_mean
-
-
-
-	def get_value_on_board(self, board, values):
-		''' Gives the average counterfactual values on the given board
-			across previous calls to @{get_value}.
-			Used to update opponent counterfactual values during re-solving
-			after board cards are dealt.
-		@param: board a non-empty vector of board cards
-		@param: values a tensor in which to store the values
-		'''
-		# check if we have evaluated correct number of iterations
-		assert(self.iter == arguments.cfr_iters)
-		batch_size = values.shape[0]
-		assert(batch_size == self.batch_size)
-		self._prepare_next_round_values()
-		self._bucket_value_to_card_value_on_board(board, self.counterfactual_value_memory, values)
-
-
-	def _prepare_next_round_values(self):
-		''' Normalizes the counterfactual values remembered between @{get_value}
-			calls so that they are an average rather than a sum.
-		'''
-		bC = self.bucket_count
-		assert(self.iter == arguments.cfr_iters)
-		# do nothing if already prepared
-		if self._values_are_prepared:
-			return
-		# eliminating division by zero
-		self.range_normalization_memory[ self.range_normalization_memory == 0 ] = 1
-		serialized_memory_view = self.counterfactual_value_memory.reshape([-1,bC])
-		serialized_memory_view[:,:] /= self.range_normalization_memory * np.ones_like(serialized_memory_view)
-		self._values_are_prepared = True
+		# clip values that are more then maximum
+		# 20,000 > nn_value x nn_pot_size x 20,000 > -20,000
+		# 1 > nn_value x nn_pot_size > -1
+		# 1/nn_pot_size > nn_value > -1/nn_pot_size
+		max_values = 1 / self.pot_sizes.reshape([batch_size,1,1,1])
+		# [b,B,P,I] = clip([b,B,P,I], [b,1,1,1], [b,1,1,1])
+		np.clip(self.next_round_values, -max_values, max_values, out=self.next_round_values)
+		# calculate mean for each hand and return it
+		# [b,P,I] = sum([b,B,P,I], axis=1) * scalar
+		values[:,:,:] = np.sum(self.next_round_values, axis=1) * self.sum_normalization
 
 
 

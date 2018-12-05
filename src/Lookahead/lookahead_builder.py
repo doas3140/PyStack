@@ -5,8 +5,8 @@ import numpy as np
 
 from Settings.arguments import arguments
 from Settings.constants import constants
-from Nn.next_round_value import NextRoundValue
-from Nn.value_nn import ValueNn
+from NeuralNetwork.next_round_value import NextRoundValue
+from NeuralNetwork.value_nn import ValueNn
 from helper_classes import LookaheadLayer
 
 # NEURAL_NET = {}

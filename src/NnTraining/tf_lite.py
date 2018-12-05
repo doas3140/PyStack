@@ -6,10 +6,9 @@ sys.path.append(os.getcwd())
 import tensorflow as tf
 
 from Settings.arguments import arguments
-from Nn.net_builder import nnBuilder
 
 # # workaround for error: Unknown loss function:loss
-from Nn.nn_functions import BasicHuberLoss
+from NeuralNetwork.nn_functions import BasicHuberLoss
 custom_loss = BasicHuberLoss(delta=1.0)
 # tf.keras.losses.loss = custom_loss
 
