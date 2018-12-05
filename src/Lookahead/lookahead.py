@@ -368,7 +368,7 @@ class Lookahead():
 			# [ A{d-1}, B{d-2}, NTNAN{d-2}, b, I] += [ A{d-1}, B{d-2}, NTNAN{d-2}, b, I] - [ 1, B{d-2}, NTNAN{d-2}, b, I]
 			layer.regrets += current_cfvs - expected_cfvs
 			# (CFR+)
-			layer.regrets = np.clip(layer.regrets, 0, constants.max_number)
+			np.clip(layer.regrets, 0, constants.max_number, out=layer.regrets)
 
 
 	def get_results(self, reconstruct_opponent_cfvs):
