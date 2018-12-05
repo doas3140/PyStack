@@ -19,9 +19,9 @@ class ValueNn():
 		# set checkpoint and profiler (optional) dir
 		street_name = street2name(street)
 		self.model_dir_path = os.path.join(arguments.model_path, street_name)
+		self.model_path = os.path.join(self.model_dir_path, arguments.final_model_name)
 		# load model or create one
 		if pretrained_weights:
-			self.model_path = os.path.join(self.model_dir_path, arguments.final_model_name)
 			self.keras_model = tf.keras.models.load_model( self.model_path,
 								   custom_objects = {'loss':BasicHuberLoss(delta=1.0),
 								   					 'masked_huber_loss':masked_huber_loss} )

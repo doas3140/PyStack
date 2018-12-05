@@ -4,6 +4,7 @@
 '''
 import os
 import random
+random.seed(9999)
 import numpy as np
 import tensorflow as tf
 
@@ -13,7 +14,7 @@ from Nn.value_nn import ValueNn
 from Nn.basic_huber_loss import BasicHuberLoss, masked_huber_loss
 
 class Train(ValueNn):
-	def __init__(self, street, data_dir_list):
+	def __init__(self, data_dir_list, street):
 		'''
 		@param: list of tf records training set dirs
 		'''
@@ -25,9 +26,9 @@ class Train(ValueNn):
 			self.keras_model = tf.keras.models.load_model( self.model_path,
 								   custom_objects = {'loss':BasicHuberLoss(delta=1.0),
 								   					 'masked_huber_loss':masked_huber_loss} )
-		else: # compile model
-			print('COMPILING MODEL...')
-			self.compile_keras_model(self.keras_model)
+		# else: # compile model
+		print('COMPILING MODEL...')
+		self.compile_keras_model(self.keras_model)
 		# set up read paths for train/valid datasets
 		self.tfrecords = self.get_tfrecords_from_multiple_dirs(data_dir_list)
 		self.create_keras_callback()
@@ -35,7 +36,7 @@ class Train(ValueNn):
 
 	def get_tfrecords_from_multiple_dirs(self, data_dirs):
 		all_paths = [f.path for dirpath in data_dirs for f in os.scandir(dirpath)]
-		# random.shuffle(all_paths)
+		random.shuffle(all_paths)
 		return all_paths
 
 
@@ -81,10 +82,12 @@ class Train(ValueNn):
 		es = EarlyStopping(monitor='val_loss', patience=20, verbose=0, mode='min')
 		# Save model callback
 		mc = ModelCheckpoint(self.model_path, save_best_only=True, monitor='val_loss', mode='min')
+		# Change learning rate
+		lrs = LearningRateScheduler(lambda epoch: 1e-4 if epoch > 150 else arguments.learning_rate)
 		# Reducting LR callback
-		lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, verbose=1, min_delta=1e-4, mode='min')
+		lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, verbose=1, min_delta=1e-4, mode='min')
 		# set keras callback for training
-		self.callbacks = [tb, mc, lr]
+		self.callbacks = [tb, mc, lrs]
 
 
 
