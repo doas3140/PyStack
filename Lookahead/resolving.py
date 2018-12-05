@@ -23,6 +23,21 @@ class Resolving():
 		self.verbose = verbose
 		self.terminal_equity = terminal_equity
 		self.lookahead = Lookahead(None, None)
+		# temp bottom for lineprofiler
+		# from helper_classes import Node
+		# from Game.card_to_string_conversion import card_to_string
+		# current_node = Node()
+		# current_node.board = card_to_string.string_to_board('7d7c8s5s')
+		# current_node.street = 3
+		# current_node.current_player = constants.players.P2
+		# current_node.bets = np.array([8000, 8000], dtype=arguments.dtype)
+		# current_node.num_bets = 0
+		# build_tree_params = TreeParams()
+		# build_tree_params.root_node = current_node
+		# build_tree_params.limit_to_street = True
+		# self.lookahead_tree = self.tree_builder.build_tree(build_tree_params)
+		# self.lookahead = Lookahead(self.terminal_equity, 1)
+		# self.lookahead.build_lookahead(self.lookahead_tree)
 
 
 	def _create_lookahead_tree(self, node):

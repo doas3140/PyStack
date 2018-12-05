@@ -40,11 +40,12 @@ class NetBuilder():
 		mask = tf.keras.layers.Lambda(generate_mask, name='mask')(r)
 		# feed forward part
 		ff = m_input
-		for i in range(arguments.num_layers):
-			names = [s.format(i) for s in ('dense_{}', 'relu_{}', 'dropout_{}')]
-			ff = tf.keras.layers.Dense(arguments.num_neurons, name=names[0])(ff)
+		for i, num_neurons in enumerate(arguments.num_neurons):
+			names = [s.format(i) for s in ('dense_{}', 'relu_{}', 'dropout_{}', 'batch_norm_{}')]
+			ff = tf.keras.layers.Dense(num_neurons, name=names[0])(ff)
+			# ff = tf.keras.layers.BatchNormalization(name=names[3])(ff)
 			ff = tf.keras.layers.PReLU(name=names[1])(ff)
-			# ff = tf.keras.layers.Dropout(rate=0.15, name=names[2])(ff)
+			# ff = tf.keras.layers.Dropout(rate=0.05, name=names[2])(ff)
 		ff = tf.keras.layers.Dense(num_output, name='feed_forward_output')(ff)
 		m_output = tf.keras.layers.multiply([ff,mask], name='masked_output')
 		# # zero-sum output
@@ -62,8 +63,6 @@ def generate_mask(ranges):
 	zero = tf.constant(0.0, dtype=tf.float32)
 	total_hands = tf.constant(1326*2, dtype=tf.float32)
 	mask = tf.where( tf.greater(ranges, zero), tf.ones_like(ranges), tf.zeros_like(ranges) )
-	# possible_hands = tf.reduce_sum(mask, axis=1, keepdims=True)
-	# mask_multiplier = (total_hands - possible_hands) / total_hands
 	return mask
 
 nnBuilder = NetBuilder()

@@ -49,9 +49,11 @@ class TFRecordsConverter():
 					inputs = np.zeros([len(x) + len(b)], dtype=np.float32)
 					inputs[ :len(x) ] = x
 					inputs[ len(x): ] = b
+					inputs = x
+					targets = y
 					# append one item to temp list
 					X_temp.append(inputs)
-					Y_temp.append(y) # left unchanged
+					Y_temp.append(targets)
 					# check length of temp lists
 					if len(X_temp) == self.batch_size:
 						self._save_tfrecord(X_temp, Y_temp, tfrecords_dirpath)

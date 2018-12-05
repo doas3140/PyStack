@@ -50,6 +50,7 @@ class TerminalEquity():
 		HC = game_settings.hand_count
 		if board_cards.ndim != 0:
 			assert(board_cards.shape[0] == 1 or board_cards.shape[0] == 2 or board_cards.shape[0] == 5) # Only Leduc, extended Leduc, and Texas Holdem are supported
+		# batch eval with only single batch, because its last round
 		strength = evaluator.batch_eval_fast(board_cards)
 		# handling hand stregths (winning probs)
 		strength_view_1 = strength.reshape([HC,1]) # * np.ones_like(call_matrix)
@@ -70,12 +71,15 @@ class TerminalEquity():
 		BCC, CC = game_settings.board_card_count, game_settings.card_count
 		if next_round_boards.ndim != 0:
 			assert(next_round_boards.shape[1] == 0 or next_round_boards.shape[1] == 2 or next_round_boards.shape[1] == 5) # Only Leduc, extended Leduc, and Texas Holdem are supported
+		# evaluating all possible last round boards
 		strength = evaluator.batch_eval_fast(next_round_boards) # [b,I]
-		# handling hand stregths (winning probs)
+		# strength from player 1 perspective for all the boards and all the card combinations
 		strength_view_1 = strength.reshape([num_boards,HC,1]) * np.ones([num_boards, HC, HC], dtype=strength.dtype)
+		# strength from player 2 perspective
 		strength_view_2 = strength.reshape([num_boards,1,HC]) * np.ones_like(strength_view_1)
+		#
 		possible_mask = (strength < 0).astype(int)
-
+		# handling hand stregths (winning probs)
 		matrix_mem = (strength_view_1 > strength_view_2).astype(int)
 		matrix_mem *= possible_mask.reshape([num_boards,1,HC]) # * np.ones([num_boards,HC,HC], dtype=possible_mask.dtype)
 		matrix_mem *= possible_mask.reshape([num_boards,HC,1]) # * np.ones([num_boards,HC,HC], dtype=possible_mask.dtype)
@@ -85,6 +89,32 @@ class TerminalEquity():
 		matrix_mem *= possible_mask.reshape([num_boards,1,HC]) # * np.ones([num_boards,HC,HC], dtype=possible_mask.dtype)
 		matrix_mem *= possible_mask.reshape([num_boards,HC,1]) # * np.ones([num_boards,HC,HC], dtype=possible_mask.dtype)
 		call_matrix[:,:] = call_matrix - np.sum(matrix_mem, axis=0)
+		# normalize sum
+
+		# count_possible_boards_with_player_cards(boards)
+		# counts the number of possible boards if 2 cards where already taken (in players hand)
+		# the answer will be the same for all player 2 card combos
+		num_cards_on_board = game_settings.board_card_count[street-1]
+		max_cards_on_board = game_settings.board_card_count[-1]
+		max_cards_in_deck = game_settings.card_count
+		# counting total card combinations
+		num_cards_in_deck = max_cards_in_deck - num_cards_on_board
+		num_cards_to_pick = max_cards_on_board - num_cards_on_board
+		total_card_combos = tools.choose(num_cards_in_deck, num_cards_to_pick)
+		# counting possible card combos w/ card1 (from players hand)
+		card1 = 1
+		num_cards_in_deck = max_cards_in_deck - num_cards_on_board - card1
+		num_cards_to_pick = max_cards_on_board - num_cards_on_board - card1
+		card1_card_combos = tools.choose(num_cards_in_deck, num_cards_to_pick)
+		# counting possible card combos w/ card2 (from players hand)
+		card2 = 1
+		num_cards_in_deck = max_cards_in_deck - num_cards_on_board - card1 - card2 # (w/out card1)
+		num_cards_to_pick = max_cards_on_board - num_cards_on_board - card2
+		card2_card_combos = tools.choose(num_cards_in_deck, num_cards_to_pick)
+		# counting possible combos
+		num_possible_boards = total_card_combos - card1_card_combos - card2_card_combos
+
+
 		# normalize sum
 		num_cards_on_board = BCC[street-1]
 		num_cards_in_hand = game_settings.hand_card_count

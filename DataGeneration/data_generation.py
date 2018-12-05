@@ -11,8 +11,6 @@ from Settings.game_settings import game_settings
 from Settings.constants import constants
 from Game.card_to_string_conversion import card_to_string
 from DataGeneration.range_generator import RangeGenerator
-from Nn.bucketer import Bucketer
-from Nn.bucket_conversion import BucketConversion
 from TerminalEquity.terminal_equity import TerminalEquity
 from Lookahead.lookahead import Lookahead
 from Lookahead.resolving import Resolving

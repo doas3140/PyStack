@@ -33,11 +33,10 @@ class Parameters():
 		# self.final_model_name = 'weights.{epoch:02d}-{val_loss:.2f}.hdf5'
 		self.final_model_name ='weights.final.hdf5'
 		# the neural net architecture
-		self.num_layers = 5 # (excluding output layer)
-		self.num_neurons = 500
+		self.num_neurons = [500,500,500,500] # must be size of num_layers
 		self.learning_rate = 1e-3
 		self.batch_size = 1024
-		self.num_epochs = 300
+		self.num_epochs = 200
 		# how often to save the model during training
 		self.save_epoch = 2
 		# how many epochs to train for
@@ -48,18 +47,18 @@ class Parameters():
 		# path to the solved poker situation data used to train the neural net
 		self.data_path = 'D:/Datasets/Pystack/NoLimitTexasHoldem'
 		# the number of iterations that DeepStack runs CFR for
-		self.cfr_iters = 800
+		self.cfr_iters = 100
 		# the number of preliminary CFR iterations which DeepStack doesn't
 		# factor into the average strategy (included in cfr_iters)
-		self.cfr_skip_iters = 500
+		self.cfr_skip_iters = 0
 		# how many solved poker situations are generated
-		self.gen_different_boards = 48
+		self.gen_different_boards = 2
 		# how many poker situations are solved simultaneously during
 		# data generation
 		self.gen_batch_size = 16
 		# TOTAL SITUATIONS = different_boards x batch_size
 		# how many files to create (single element = ~22kB)
-		self.gen_num_files = 12
+		self.gen_num_files = 1
 
 		assert(self.gen_different_boards % self.gen_num_files == 0)
 

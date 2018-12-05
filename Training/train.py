@@ -68,7 +68,7 @@ class Train(ValueNn):
 								  steps_per_epoch = num_train_elements // batch_size,
 								  validation_steps = num_valid_elements // batch_size,
 								  epochs = num_epochs, verbose = verbose,
-								  callbacks = self.callbacks, initial_epoch = 0 )
+								  callbacks = self.callbacks, initial_epoch = 150 )
 
 
 	def create_keras_callback(self):

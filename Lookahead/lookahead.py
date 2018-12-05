@@ -166,9 +166,10 @@ class Lookahead():
 			layer = self.layers[d]
 			if d > 1 or self.first_call_terminal:
 				if self.tree.street != constants.streets_count:
+					# allin -> call ([1] = call, [-1] = allin)
 					# [A{d-1}, B{d-2}, NTNAN{d-2}, b, P, I] [1, -1] -> [NTNAN{d-2}, b, P, I]
 					layer.cfvs[1][-1] = call_cfvs[ layer.term_call_idx[0]:layer.term_call_idx[1] ]
-				else:
+				else: # call ([1] = call)
 					# cfvs: [A{d-1}, B{d-2}, NTNAN{d-2}, b, P, I] [1] -> [B{d-2}, NTNAN{d-2}, b, P, I]
 					layer.cfvs[1] = call_cfvs[ layer.term_call_idx[0]:layer.term_call_idx[1] ].reshape(layer.cfvs[1].shape)
 			# cfvs: [A{d-1}, B{d-2}, NTNAN{d-2}, b, P, I] [1] -> [B{d-2}, NTNAN{d-2}, b, P, I]
