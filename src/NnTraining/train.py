@@ -11,7 +11,7 @@ import tensorflow as tf
 from Settings.arguments import arguments
 from NnTraining.tf_data import create_iterator
 from NeuralNetwork.value_nn import ValueNn
-from NeuralNetwork.nn_functions import BasicHuberLoss, masked_huber_loss
+from NeuralNetwork.metrics import BasicHuberLoss, masked_huber_loss
 
 class Train(ValueNn):
 	def __init__(self, data_dir_list, street):
@@ -46,7 +46,7 @@ class Train(ValueNn):
 		keras_model.compile(loss=loss, optimizer=optimizer, metrics=[masked_huber_loss])
 
 
-	def train(self, num_epochs, batch_size, verbose=1, validation_size=0.7):
+	def train(self, num_epochs, batch_size, verbose=1, validation_size=0.06):
 		# get list of train and validation set filenames
 		num_valid_files = int(len(self.tfrecords)*validation_size)
 		train_filenames = self.tfrecords[ num_valid_files: ]

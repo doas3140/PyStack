@@ -45,15 +45,15 @@ class Parameters():
 		# path to the solved poker situation data used to train the neural net
 		self.data_path = './Data/TrainSamples/'
 		# the number of iterations that DeepStack runs CFR for
-		self.cfr_iters = 1000
+		self.cfr_iters = 100
 		# the number of preliminary CFR iterations which DeepStack doesn't
 		# factor into the average strategy (included in cfr_iters)
 		self.cfr_skip_iters = 0
 		# how many solved poker situations are generated
-		self.gen_different_boards = 2
+		self.gen_different_boards = 1
 		# how many poker situations are solved simultaneously during
 		# data generation
-		self.gen_batch_size = 16
+		self.gen_batch_size = 4
 		# TOTAL SITUATIONS = different_boards x batch_size
 		# how many files to create (single element = ~22kB)
 		self.gen_num_files = 1

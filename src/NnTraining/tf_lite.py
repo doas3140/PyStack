@@ -8,7 +8,7 @@ import tensorflow as tf
 from Settings.arguments import arguments
 
 # # workaround for error: Unknown loss function:loss
-from NeuralNetwork.nn_functions import BasicHuberLoss
+from NeuralNetwork.metrics import BasicHuberLoss
 custom_loss = BasicHuberLoss(delta=1.0)
 # tf.keras.losses.loss = custom_loss
 

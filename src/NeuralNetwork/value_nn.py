@@ -7,7 +7,7 @@ import tensorflow as tf
 from Settings.arguments import arguments
 from Settings.constants import constants
 from Game.card_to_string_conversion import card_to_string
-from NeuralNetwork.nn_functions import BasicHuberLoss, masked_huber_loss, generate_mask
+from NeuralNetwork.metrics import BasicHuberLoss, masked_huber_loss
 
 class ValueNn():
 	def __init__(self, street, pretrained_weights=False, aux=False, verbose=1):
@@ -20,8 +20,7 @@ class ValueNn():
 			self.keras_model = tf.keras.models.load_model( self.model_path,
 								   custom_objects = {'loss':BasicHuberLoss(delta=1.0),
 								   					 'masked_huber_loss':masked_huber_loss} )
-		else:
-			# load keras model
+		else: # create keras model
 			self.keras_model, self.x_shape, self.y_shape = self.build_net()
 		# print architecture summary
 		if verbose > 0:
@@ -55,9 +54,10 @@ class ValueNn():
 		# neural network architecture
 		m_input = tf.keras.layers.Input(input_shape, name='input')
 		# slicing off pot size and board ([1, hands x 2 + pot_size + board] -> [1, hands x 2])
-		r = tf.keras.layers.Lambda(lambda x: x[ : , :num_output ], name='input_ranges')(m_input)
-		# reconstruct mask from ranges
-		mask = tf.keras.layers.Lambda(generate_mask, name='mask')(r)
+		ranges = tf.keras.layers.Lambda(lambda x: x[ : , :num_output ], name='input_ranges')(m_input)
+		# reconstruct mask for not possible ranges (where ranges are 0)
+		zero = tf.constant(0.0, dtype=tf.float32)
+		mask = tf.keras.layers.Lambda(lambda x: tf.where( tf.greater(x, zero), tf.ones_like(x), tf.zeros_like(x) ), name='mask')(ranges)
 		# feed forward part
 		ff = m_input
 		for i, num_neurons in enumerate(arguments.num_neurons):

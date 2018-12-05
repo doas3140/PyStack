@@ -24,12 +24,6 @@ def masked_huber_loss(y_true, y_pred):
 	return loss * loss_multiplier
 
 
-# function to create masking layer (used only in nn architecture)
-def generate_mask(ranges):
-	''' generates mask for not possible ranges (where ranges are 0) '''
-	zero = tf.constant(0.0, dtype=tf.float32)
-	mask = tf.where( tf.greater(ranges, zero), tf.ones_like(ranges), tf.zeros_like(ranges) )
-	return mask
 
 
 #

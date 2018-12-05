@@ -89,7 +89,7 @@ class TerminalEquity():
 		call_matrix[:,:] = call_matrix - np.sum(matrix_mem, axis=0)
 		# normalize sum
 		num_possible_hands = card_combinations.count_possible_boards_with_player_cards(street)
-		call_matrix[:,:] = call_matrix / num_possible_hands
+		call_matrix[:,:] = call_matrix * (1 / num_possible_hands)
 
 
 
