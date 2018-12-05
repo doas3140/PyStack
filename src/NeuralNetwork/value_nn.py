@@ -56,8 +56,8 @@ class ValueNn():
 		# slicing off pot size and board ([1, hands x 2 + pot_size + board] -> [1, hands x 2])
 		ranges = tf.keras.layers.Lambda(lambda x: x[ : , :num_output ], name='input_ranges')(m_input)
 		# reconstruct mask for not possible ranges (where ranges are 0)
-		zero = tf.constant(0.0, dtype=tf.float32)
-		mask = tf.keras.layers.Lambda(lambda x: tf.where( tf.greater(x, zero), tf.ones_like(x), tf.zeros_like(x) ), name='mask')(ranges)
+		mask = tf.keras.layers.Lambda(lambda x: tf.where( tf.greater(x, tf.constant(0.0, dtype=tf.float32)),
+														  tf.ones_like(x), tf.zeros_like(x) ), name='mask')(ranges)
 		# feed forward part
 		ff = m_input
 		for i, num_neurons in enumerate(arguments.num_neurons):
