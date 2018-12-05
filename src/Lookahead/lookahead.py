@@ -51,8 +51,7 @@ class Lookahead():
 		# 1.0 main loop
 		time_arr = np.zeros([8,arguments.cfr_iters])
 		t0 = time.time()
-		from tqdm import tqdm
-		for iter in tqdm(range(arguments.cfr_iters)):
+		for iter in range(arguments.cfr_iters):
 			if reconstruct_opponent_cfvs:
 				self._set_opponent_starting_range(iter)
 			time_arr[0,iter] = time.time() - t0; t0 = time.time()
