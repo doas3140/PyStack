@@ -1,13 +1,14 @@
 '''
-Script that converts npy files into TFRecords files
+	Script that generates ranges and cfvs.
 '''
 import sys
 import os
+os.chdir('..')
 sys.path.append( os.path.join(os.getcwd(),'src') )
 
 from Settings.arguments import arguments
 from Game.card_to_string_conversion import card_to_string
-from Training.tfrecords_converter import TFRecordsConverter
+from DataGeneration.data_generation import DataGeneration
 
 AVAILABLE_STREETS = [1,4]
 
@@ -20,23 +21,21 @@ error = Exception(''' Please specify the street.
 	available streets:
 	1: preflop
 	4: river
+
+	setting starting idx of filenames:
+	python -m DataGeneration/main_data_generation.py --street 4 --start-idx 1
 	''')
 
 
-
 def main():
-	# parse CLI arguments
 	args = sys.argv[1:]
-	street = parse_arguments(args)
+	street, starting_idx = parse_arguments(args)
 	street_name = card_to_string.street2name(street)
-	# directories
-	NPY_DIR_TRAIN = os.path.join(arguments.data_path, street_name, 'npy')
-	TFRECORDS_DIR_TRAIN = os.path.join(arguments.data_path, street_name, 'tfrecords')
-	print('Initializing TFRecords Converter...')
-	converter = TFRecordsConverter(arguments.tfrecords_batch_size)
-	print('Converting NPY to TFRecords...')
-	converter.convert_npy_to_tfrecords(NPY_DIR_TRAIN, TFRECORDS_DIR_TRAIN)
-	print('Done!')
+
+	dirpath = os.path.join(arguments.data_path, street_name, 'npy')
+	data_generation = DataGeneration(dirpath)
+
+	data_generation.generate_data(street, starting_idx)
 
 
 
@@ -56,8 +55,11 @@ def search_argument(name, args):
 
 def parse_arguments(args):
 	street = search_argument('--street', args)
+	idx = search_argument('--start-idx', args)
 	if street is None or street not in AVAILABLE_STREETS:
 		raise(error)
-	return street
+	if idx is None:
+		idx = 0
+	return street, idx
 
 main()

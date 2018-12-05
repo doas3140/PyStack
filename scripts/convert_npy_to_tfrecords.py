@@ -1,17 +1,14 @@
 '''
-	Script that trains the neural network.
-	Uses data previously generated with @{data_generation_call}.
+Script that converts npy files into TFRecords files
 '''
 import sys
 import os
+os.chdir('..')
 sys.path.append( os.path.join(os.getcwd(),'src') )
 
-import tensorflow as tf
-
-from Training.train import Train
-from Game.card_to_string_conversion import card_to_string
 from Settings.arguments import arguments
-
+from Game.card_to_string_conversion import card_to_string
+from Training.tfrecords_converter import TFRecordsConverter
 
 AVAILABLE_STREETS = [1,4]
 
@@ -28,24 +25,19 @@ error = Exception(''' Please specify the street.
 
 
 
-if arguments.XLA:
-	config = tf.ConfigProto()
-	config.graph_options.optimizer_options.global_jit_level = tf.OptimizerOptions.ON_1
-	sess = tf.Session(config=config)
-	tf.keras.backend.set_session(sess)
-
-
 def main():
 	# parse CLI arguments
 	args = sys.argv[1:]
 	street = parse_arguments(args)
 	street_name = card_to_string.street2name(street)
-	# create data directories
-	data_dirs = []
-	data_dirs.append( os.path.join(os.getcwd(), 'Data', 'TrainSamples', street_name, 'tfrecords') )
-	# data_dirs.append( os.path.join(arguments.data_path, street_name, 'tfrecords') )
-	T = Train(data_dir_list=data_dirs, street=street)
-	T.train(num_epochs=arguments.num_epochs, batch_size=arguments.batch_size)
+	# directories
+	NPY_DIR_TRAIN = os.path.join(arguments.data_path, street_name, 'npy')
+	TFRECORDS_DIR_TRAIN = os.path.join(arguments.data_path, street_name, 'tfrecords')
+	print('Initializing TFRecords Converter...')
+	converter = TFRecordsConverter(arguments.tfrecords_batch_size)
+	print('Converting NPY to TFRecords...')
+	converter.convert_npy_to_tfrecords(NPY_DIR_TRAIN, TFRECORDS_DIR_TRAIN)
+	print('Done!')
 
 
 
