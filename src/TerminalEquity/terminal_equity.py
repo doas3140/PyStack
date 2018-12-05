@@ -59,19 +59,19 @@ class TerminalEquity():
 		call_matrix[:,:] -= (strength_view_1 < strength_view_2).astype(int)
 
 
-	def set_inner_call_matrix(self, call_matrix, next_round_boards, street):
+	def set_inner_call_matrix(self, call_matrix, last_round_boards, street):
 		''' Constructs the matrix that turns player ranges into showdown equity.
 			Gives the matrix `A` such that for player ranges `x` and `y`, `x'Ay`
 			is the equity for the first player when no player folds.
-		@param next_round_boards [b,5] a non-empty vector of board cards
+		@param last_round_boards [b,5] a non-empty vector of board cards
 		@param call_matrix a tensor where the computed matrix is stored
 		'''
-		HC, num_boards = constants.hand_count, next_round_boards.shape[0]
+		HC, num_boards = constants.hand_count, last_round_boards.shape[0]
 		BCC, CC = constants.board_card_count, constants.card_count
-		if next_round_boards.ndim != 0:
-			assert(next_round_boards.shape[1] == 0 or next_round_boards.shape[1] == 2 or next_round_boards.shape[1] == 5) # Only Leduc, extended Leduc, and Texas Holdem are supported
+		if last_round_boards.ndim != 0:
+			assert(last_round_boards.shape[1] == 0 or last_round_boards.shape[1] == 2 or last_round_boards.shape[1] == 5) # Only Leduc, extended Leduc, and Texas Holdem are supported
 		# evaluating all possible last round boards
-		strength = evaluator.batch_eval_fast(next_round_boards) # [b,I]
+		strength = evaluator.batch_eval_fast(last_round_boards) # [b,I]
 		# strength from player 1 perspective for all the boards and all the card combinations
 		strength_view_1 = strength.reshape([num_boards,HC,1]) # * np.ones([num_boards, HC, HC], dtype=strength.dtype)
 		# strength from player 2 perspective
@@ -128,8 +128,8 @@ class TerminalEquity():
 			self._handle_blocking_cards(self.equity_matrix, board)
 		elif street == 2 or street == 3:
 			self.equity_matrix = np.zeros([HC,HC], dtype=arguments.dtype)
-			next_round_boards = card_tools.get_last_round_boards(board)
-			self.set_inner_call_matrix(self.equity_matrix, next_round_boards, street)
+			last_round_boards = card_tools.get_last_round_boards(board)
+			self.set_inner_call_matrix(self.equity_matrix, last_round_boards, street)
 			self._handle_blocking_cards(self.equity_matrix, board)
 		else:
 			assert(False) # bad street/board

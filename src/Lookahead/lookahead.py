@@ -423,7 +423,7 @@ class Lookahead():
 		scaler = scaler * (arguments.cfr_iters - arguments.cfr_skip_iters)
 		# broadcasting scaler: [A{0}, b, 1] -> [A{0}, b, I]
 		# [A{0}, b, I] /= [A{0}, b, 1]
-		out.children_cfvs = out.children_cfvs / scaler
+		out.children_cfvs *= 1/scaler
 		assert(out.strategy is not None)
 		assert(out.achieved_cfvs is not None)
 		assert(out.children_cfvs is not None)
