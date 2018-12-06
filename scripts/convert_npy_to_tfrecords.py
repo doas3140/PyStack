@@ -10,7 +10,7 @@ from Settings.arguments import arguments
 from Game.card_to_string_conversion import card_to_string
 from NnTraining.tfrecords_converter import TFRecordsConverter
 
-AVAILABLE_STREETS = [1,4]
+AVAILABLE_STREETS = [1,3,4]
 
 error = Exception(''' Please specify the street.
 
@@ -20,6 +20,7 @@ error = Exception(''' Please specify the street.
 
 	available streets:
 	1: preflop
+	3: turn
 	4: river
 	''')
 
