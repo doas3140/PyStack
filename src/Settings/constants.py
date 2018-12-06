@@ -25,7 +25,6 @@ class Constants():
 		self.hand_count = 1326 # 52*51/2
 		self.limit_bet_sizes = [2, 2, 4, 4]
 		self.limit_bet_cap = 4
-		self.nl = True
 
 		# IDs for each player and chance
 		self.players = Players()

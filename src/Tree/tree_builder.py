@@ -82,7 +82,6 @@ class PokerTreeBuilder():
 		a1 = parent_node.street == 1
 		a2 = parent_node.current_player == constants.players.P1
 		a3 = parent_node.num_bets == 1
-		a4 = constants.limit_bet_cap > 1 or constants.nl
 		a5 = parent_node.street != 1 or constants.streets_count == 1
 		a6 = parent_node.current_player == constants.players.P2
 		a7 = parent_node.bets[0] == parent_node.bets[1]
@@ -94,7 +93,7 @@ class PokerTreeBuilder():
 		b6 = parent_node.current_player == constants.players.P1
 		b7 = parent_node.bets[0] != parent_node.bets[1]
 		b8 = parent_node.bets.max() < arguments.stack
-		if (a1 and a2 and a3 and a4) or (a5 and a6 and a7):
+		if (a1 and a2 and a3) or (a5 and a6 and a7):
 			check_node = Node()
 			check_node.type = constants.node_types.check
 			check_node.terminal = False
@@ -128,8 +127,10 @@ class PokerTreeBuilder():
 			terminal_call_node.bets = np.full_like(parent_node.bets.copy(), parent_node.bets.max())
 			children.append(terminal_call_node)
 		# 3.0 bet actions
-		if not constants.nl:
-			if parent_node.num_bets < constants.limit_bet_cap:
+		possible_bets = self.bet_sizing.get_possible_bets(parent_node) # (N,P), P=2
+		if possible_bets.ndim != 0:
+			assert (possible_bets.shape[1] == 2)
+			for i in range(possible_bets.shape[0]):
 				child = Node()
 				# child.node_type = constants.node_types.inner_node # ? prideta papildomai
 				child.parent = parent_node
@@ -137,28 +138,8 @@ class PokerTreeBuilder():
 				child.street = parent_node.street
 				child.board = parent_node.board
 				child.board_string = parent_node.board_string
-				child.bets = parent_node.bets.copy()
-				betsize = constants.limit_bet_sizes[parent_node.street-1]
-				if parent_node.current_player == constants.players.P1:
-					child.bets[0] = child.bets[1] + betsize
-				else:
-					child.bets[1] = child.bets[0] + betsize
-				child.num_bets = parent_node.num_bets + 1
+				child.bets = possible_bets[i]
 				children.append(child)
-		else:
-			possible_bets = self.bet_sizing.get_possible_bets(parent_node) # (N,P), P=2
-			if possible_bets.ndim != 0:
-				assert (possible_bets.shape[1] == 2)
-				for i in range(possible_bets.shape[0]):
-					child = Node()
-					# child.node_type = constants.node_types.inner_node # ? prideta papildomai
-					child.parent = parent_node
-					child.current_player = 1 - parent_node.current_player
-					child.street = parent_node.street
-					child.board = parent_node.board
-					child.board_string = parent_node.board_string
-					child.bets = possible_bets[i]
-					children.append(child)
 		return children
 
 
@@ -199,11 +180,7 @@ class PokerTreeBuilder():
 			elif i == 1:
 				current_node.actions[i] = constants.actions.ccall
 			else:
-				if not constants.nl:
-					assert(i==2) # wtf child
-					current_node.actions[i] = constants.actions.raise_
-				else:
-					current_node.actions[i] = children[i].bets.max()
+				current_node.actions[i] = children[i].bets.max()
 		current_node.depth = depth + 1
 		return current_node
 
