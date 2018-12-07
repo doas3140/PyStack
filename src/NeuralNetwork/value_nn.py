@@ -67,7 +67,12 @@ class ValueNn():
 			ff = tf.keras.layers.PReLU(name=names[1])(ff)
 			# ff = tf.keras.layers.Dropout(rate=0.05, name=names[2])(ff)
 		ff = tf.keras.layers.Dense(num_output, name='feed_forward_output')(ff)
-		m_output = tf.keras.layers.multiply([ff,mask], name='masked_output')
+		# mask neural network output
+		values = tf.keras.layers.multiply([ff,mask], name='masked_output')
+		# compute zero-sum output
+		estimated_value = tf.keras.layers.dot([values,ranges], axes=1, name='estimated_values')
+		estimated_value = tf.keras.layers.Lambda(lambda x: x/2, name='division_by_2')(estimated_value)
+		m_output = tf.keras.layers.subtract([values,estimated_value], name='zero_sum_output')
 		model = tf.keras.models.Model(m_input, m_output)
 		return model, input_shape, output_shape
 
