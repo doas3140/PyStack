@@ -319,7 +319,7 @@ class LookaheadBuilder():
 		self.lookahead.parent_action_id = {}
 		# traverse the tree and fill the datastructures (pot sizes, non-existin actions, ...)
 		# node, layer, action, parent_action, gp_id
-		self.set_datastructures_from_tree_dfs(tree, 0, 0, 0, 0, -100)
+		self.set_datastructures_from_tree_dfs(tree, depth=0, action_id=0, parent_id=0, gp_id=0, cur_action_id=-100)
 		# we mask out fold as a possible action when check is for free, due to
 		# 1) fewer actions means faster convergence
 		# 2) we need to make sure prob of free fold is zero because ACPC dealer changes such action to check
