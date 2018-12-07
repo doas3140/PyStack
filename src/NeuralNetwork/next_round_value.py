@@ -61,7 +61,7 @@ class NextRoundValue():
 			self.board_mask[i] = card_tools.get_possible_hand_indexes(next_board)
 		# calculate possible boards for each hand (for later to make mean of board values (sum -> normalize))
 		# [I] = sum([B,I], axis=0)
-		num_possible_boards = card_combinations.count_possible_boards_with_player_cards(self.street)
+		num_possible_boards = card_combinations.count_next_boards_possible_boards(self.street)
 		self.sum_normalization = 1 / num_possible_boards
 
 

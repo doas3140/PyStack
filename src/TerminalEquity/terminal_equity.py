@@ -84,14 +84,14 @@ class TerminalEquity():
 			# handling hand stregths (winning probs)
 			matrix_mem = (strength_view_1[i] > strength_view_2[i]).astype(int)
 			matrix_mem *= possible_mask[i]
-			call_matrix[:,:] = call_matrix + matrix_mem
+			call_matrix[:,:] += matrix_mem
 
 			matrix_mem = (strength_view_1[i] < strength_view_2[i]).astype(int)
 			matrix_mem *= possible_mask[i]
-			call_matrix[:,:] = call_matrix - matrix_mem
+			call_matrix[:,:] -= matrix_mem
 		# normalize sum
-		num_possible_hands = card_combinations.count_possible_boards_with_player_cards(street)
-		call_matrix[:,:] = call_matrix * (1 / num_possible_hands)
+		num_possible_boards = card_combinations.count_last_boards_possible_boards(street)
+		call_matrix[:,:] *= (1 / num_possible_boards)
 
 
 
