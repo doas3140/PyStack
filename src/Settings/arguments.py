@@ -40,7 +40,7 @@ class Parameters():
 		# how many epochs to train for
 		self.epoch_count = 10
 		# TF RECORDS
-		self.tfrecords_batch_size = 1024*5 # ~100MB
+		self.tfrecords_batch_size = 1024*10 # ~200MB
 		# DATA GENERATION
 		# path to the solved poker situation data used to train the neural net
 		self.data_path = './Data/TrainSamples/'
