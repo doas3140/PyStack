@@ -30,7 +30,7 @@ class Train(ValueNn):
 		print('COMPILING MODEL...')
 		self.compile_keras_model(self.keras_model)
 		# set up read paths for train/valid datasets
-		self.tfrecords = [f.path for dirpath in data_dirs for f in os.scandir(data_dir_list)]
+		self.tfrecords = [f.path for dirpath in data_dir_list for f in os.scandir(dirpath)]
 		# random.shuffle(self.tfrecords)
 		self.create_keras_callback()
 
@@ -44,8 +44,8 @@ class Train(ValueNn):
 	def train(self, num_epochs, batch_size, verbose=1, validation_size=0.06):
 		# get list of train and validation set filenames
 		num_valid_files = int(len(self.tfrecords)*validation_size) if validation_size < 1 else validation_size
-		train_filenames = self.tfrecords[ num_valid_files: ]
-		valid_filenames = self.tfrecords[ :num_valid_files ]
+		train_filenames = self.tfrecords[ :-num_valid_files ]
+		valid_filenames = self.tfrecords[ -num_valid_files: ]
 		# create tf.data iterators
 		train_iterator = create_iterator( filenames=train_filenames, train=True,
 										   batch_size=batch_size,

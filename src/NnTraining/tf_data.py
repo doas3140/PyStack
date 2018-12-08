@@ -57,7 +57,7 @@ def create_iterator( filenames, train, x_shape, y_shape, batch_size, num_cores=o
     buffer_size = 22 * 1024 * 1024 # 22 MB per file
     dataset = tf.data.TFRecordDataset( filenames=filenames, num_parallel_reads=num_cores ) # buffer_size=buffer_size
     if train: # If training then read a buffer of the given size and randomly shuffle it.
-        dataset = dataset.shuffle( buffer_size=768,                # applies sliding window
+        dataset = dataset.shuffle( buffer_size=5000,                # applies sliding window
                                    reshuffle_each_iteration=True )  # shuffles indices each iter
     dataset = dataset.repeat()
     # Parse the serialized data in the TFRecords files.

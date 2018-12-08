@@ -100,7 +100,7 @@ class DataGeneration():
 				TARGETS[ b*batch_size:(b+1)*batch_size , : ] = targets
 				INPUTS[ b*batch_size:(b+1)*batch_size , : ] = inputs
 				BOARDS[ b , : ] = board
-				print('{}, {}) took {} seconds'.format(self.counter, b, time.time()-t0))
+				print('took:{}'.format(time.time()-t0))
 			# save
 			fpath = os.path.join(self.dirpath, '{}.{}')
 			np.save(fpath.format('inputs', self.counter), INPUTS.astype(np.float32))
