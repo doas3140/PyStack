@@ -37,30 +37,40 @@ class TFRecordsConverter():
 			y_batch = np.load(y_path) # [batch_size x num_boards, target_size]
 			b_batch = np.load(b_path) # [num_boards, board_size]
 			batch_size = len(x_batch) // len(b_batch)
-			# there are batches solved for single board
-			# iterate through each board
-			for i, board in enumerate(b_batch):
-				x_current_board = x_batch[ i*batch_size:(i+1)*batch_size ]
-				y_current_board = y_batch[ i*batch_size:(i+1)*batch_size ]
-				# iterate through x, y for that single board
-				for x, y in zip(x_current_board, y_current_board):
-					# construct nn targets and inputs
-					b = card_tools.convert_board_to_nn_feature(board)
-					inputs = np.zeros([len(x) + len(b)], dtype=np.float32)
-					inputs[ :len(x) ] = x
-					inputs[ len(x): ] = b
-					targets = y
-					# append one item to temp list
-					X_temp.append(inputs)
-					Y_temp.append(targets)
-					# check length of temp lists
-					if len(X_temp) == self.batch_size:
-						self._save_tfrecord(X_temp, Y_temp, tfrecords_dirpath)
-						self.counter += 1
-						X_temp, Y_temp = [], []
+			b_batch = self._extend_board(b_batch, batch_size) # [batch_size x num_boards, card_on_board]
+			# randomize indexes
+			indexes = np.arange(len(x_batch))
+			np.random.shuffle(indexes)
+			# iterate through each x,y,b
+			for i in indexes:
+				x = x_batch[i]
+				y = y_batch[i]
+				board = b_batch[i]
+				# construct nn targets and inputs
+				b = card_tools.convert_board_to_nn_feature(board)
+				inputs = np.zeros([len(x) + len(b)], dtype=np.float32)
+				inputs[ :len(x) ] = x
+				inputs[ len(x): ] = b
+				targets = y
+				# append one item to temp list
+				X_temp.append(inputs)
+				Y_temp.append(targets)
+				# check length of temp lists
+				if len(X_temp) == self.batch_size:
+					self._save_tfrecord(X_temp, Y_temp, tfrecords_dirpath)
+					self.counter += 1
+					X_temp, Y_temp = [], []
 		# save last batch (not full)
 		if len(X_temp) != 0:
 			self._save_tfrecord(X_temp, Y_temp, tfrecords_dirpath)
+
+
+	def _extend_board(self, board_batch, batch_size):
+		num_boards, num_cards = board_batch.shape
+		new_boards = np.zeros([batch_size*num_boards, num_cards], dtype=board_batch.dtype)
+		for i, board in enumerate(board_batch):
+			new_boards[ i*batch_size:(i+1)*batch_size ] = board
+		return new_boards
 
 
 	def _get_npy_filepaths(self, npy_dirpath):
