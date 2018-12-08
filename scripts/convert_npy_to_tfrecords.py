@@ -22,6 +22,9 @@ error = Exception(''' Please specify the street.
 	1: preflop
 	3: turn
 	4: river
+
+	setting starting idx of filenames:
+	python -m DataGeneration/main_data_generation.py --street 4 --start-idx 1
 	''')
 
 
@@ -29,7 +32,7 @@ error = Exception(''' Please specify the street.
 def main():
 	# parse CLI arguments
 	args = sys.argv[1:]
-	street = parse_arguments(args)
+	street, start_idx = parse_arguments(args)
 	street_name = card_to_string.street2name(street)
 	# directories
 	NPY_DIR_TRAIN = os.path.join(arguments.data_path, street_name, 'npy')
@@ -37,7 +40,7 @@ def main():
 	print('Initializing TFRecords Converter...')
 	converter = TFRecordsConverter(arguments.tfrecords_batch_size)
 	print('Converting NPY to TFRecords...')
-	converter.convert_npy_to_tfrecords(NPY_DIR_TRAIN, TFRECORDS_DIR_TRAIN)
+	converter.convert_npy_to_tfrecords(NPY_DIR_TRAIN, TFRECORDS_DIR_TRAIN, start_idx)
 	print('Done!')
 
 
@@ -56,10 +59,14 @@ def search_argument(name, args):
 				raise(error)
 	return None
 
+
 def parse_arguments(args):
 	street = search_argument('--street', args)
+	idx = search_argument('--start-idx', args)
 	if street is None or street not in AVAILABLE_STREETS:
 		raise(error)
-	return street
+	if idx is None:
+		idx = 0
+	return street, idx
 
 main()

@@ -2,6 +2,7 @@
 	Creates TFRecords from npy files for faster training.
 '''
 import os
+import random
 import tensorflow as tf
 import numpy as np
 from tqdm import tqdm
@@ -19,7 +20,7 @@ class TFRecordsConverter():
 		self.batch_size = batch_size
 
 
-	def convert_npy_to_tfrecords(self, npy_dirpath, tfrecords_dirpath):
+	def convert_npy_to_tfrecords(self, npy_dirpath, tfrecords_dirpath, start_idx):
 		'''
 		@param: path to npy files dir
 		@param: path to destination dir (tfrecords)
@@ -29,7 +30,7 @@ class TFRecordsConverter():
 		# create temp lists to store batch data
 		X_temp, Y_temp = [], []
 		# iterate through batches of paths
-		self.counter = 0
+		self.counter = start_idx
 		for x_path, y_path, b_path in tqdm(zip(inputs, targets, boards), total=total_len):
 			# load files
 			x_batch = np.load(x_path) # [batch_size x num_boards, input_size]
@@ -69,9 +70,13 @@ class TFRecordsConverter():
 		targets = filter(lambda x: 'targets' in x, filenames)
 		boards = filter(lambda x: 'boards' in x, filenames)
 		# sort names
-		inputs = sorted(inputs)
-		targets = sorted(targets)
-		boards = sorted(boards)
+		inputs =  list( sorted(inputs) 	)
+		targets = list( sorted(targets) )
+		boards =  list( sorted(boards) 	)
+		# randomize
+		zipped = list(zip(inputs,targets,boards))
+		random.shuffle(zipped)
+		inputs, targets, boards = zip(*zipped)
 		# save total_len
 		total_len = len(inputs)
 		# check if len is the same
