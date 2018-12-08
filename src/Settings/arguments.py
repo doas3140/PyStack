@@ -45,7 +45,7 @@ class Parameters():
 		# path to the solved poker situation data used to train the neural net
 		self.data_path = './Data/TrainSamples/'
 		# the number of iterations that DeepStack runs CFR for
-		self.cfr_iters = 800
+		self.cfr_iters = 1000
 		# the number of preliminary CFR iterations which DeepStack doesn't
 		# factor into the average strategy (included in cfr_iters)
 		self.cfr_skip_iters = 500

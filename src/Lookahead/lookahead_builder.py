@@ -25,13 +25,12 @@ class LookaheadBuilder():
 		'''
 		if self.lookahead.tree.street == constants.streets_count:
 			return
-		# load neural net (of next layer) if not already loaded
-
-		next_street = self.lookahead.tree.street + 1
-		nn = ValueNn(next_street, pretrained_weights=True, verbose=0)
-
+		# # load neural net (of next layer) if not already loaded
 		if self.lookahead.tree.street == 1:
-			aux_net = ValueNn(self.lookahead.tree.street, aux=True)
+			nn = ValueNn(self.lookahead.tree.street, pretrained_weights=True, verbose=0)
+		else:
+			next_street = self.lookahead.tree.street + 1
+			nn = ValueNn(next_street, pretrained_weights=True, verbose=0)
 
 		if self.lookahead.tree.street == 1:
 			self.lookahead.next_street_boxes = NextRoundValuePre(nn, aux_net, self.lookahead.terminal_equity.board)
