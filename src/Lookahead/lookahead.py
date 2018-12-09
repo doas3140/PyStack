@@ -36,9 +36,9 @@ class Lookahead():
 		if opponent_range is not None and opponent_cfvs is not None: raise('only 1 var can be passed')
 		if opponent_range is None and opponent_cfvs is None: raise('one of those vars must be passed')
 		# can be cfvs or range
-		self.layers[0].ranges[ : , : , : , : , 0, : ] = player_range.copy()
+		self.layers[0].ranges[ 0 , 0 , 0 , : , 0, : ] = player_range.copy()
 		if opponent_cfvs is None:
-			self.layers[0].ranges[ : , : , : , : , 1, : ] = opponent_range.copy()
+			self.layers[0].ranges[ 0 , 0 , 0 , : , 1, : ] = opponent_range.copy()
 			self._compute(reconstruct_opponent_cfvs=False)
 		else:
 			self.reconstruction_gadget = CFRDGadget(self.tree.board, player_range, opponent_cfvs)
@@ -49,29 +49,18 @@ class Lookahead():
 		''' Re-solves the lookahead.
 		'''
 		# 1.0 main loop
-		time_arr = np.zeros([8,arguments.cfr_iters])
-		t0 = time.time()
 		for iter in range(arguments.cfr_iters):
 			if reconstruct_opponent_cfvs:
 				self._set_opponent_starting_range(iter)
-			time_arr[0,iter] = time.time() - t0; t0 = time.time()
 			self._compute_current_strategies()
-			time_arr[1,iter] = time.time() - t0; t0 = time.time()
 			self._compute_ranges()
-			time_arr[2,iter] = time.time() - t0; t0 = time.time()
 			if iter > arguments.cfr_skip_iters:
 				self._compute_update_average_strategies(iter)
-			time_arr[3,iter] = time.time() - t0; t0 = time.time()
 			self._compute_terminal_equities()
-			time_arr[4,iter] = time.time() - t0; t0 = time.time()
 			self._compute_cfvs()
-			time_arr[5,iter] = time.time() - t0; t0 = time.time()
 			self._compute_regrets()
-			time_arr[6,iter] = time.time() - t0; t0 = time.time()
 			if iter > arguments.cfr_skip_iters:
 				self._compute_cumulate_average_cfvs(iter)
-			time_arr[7,iter] = time.time() - t0; t0 = time.time()
-		print('times:', np.array2string(np.sum(time_arr, axis=1), suppress_small=True, precision=3))
 		# 2.0 at the end normalize average strategy
 		self._compute_normalize_average_strategies()
 		# 2.1 normalize root's CFVs
@@ -105,7 +94,7 @@ class Lookahead():
 		for d in range(0, self.depth-1):
 			next_layer, layer, parent, grandparent = self.layers[d+1], self.layers[d], self.layers[d-1], self.layers[d-2]
 			p_num_terminal_actions = parent.num_terminal_actions if d > 0 else 0
-			parent_num_bets = parent.num_bets if d > 0 else 1
+			p_num_bets = parent.num_bets if d > 0 else 1
 			gp_num_nonallin_bets = grandparent.num_nonallin_bets if d > 1 else 1
 			gp_num_terminal_actions = grandparent.num_terminal_actions if d > 1 else 0
 			# copy the ranges of inner nodes and transpose (np.transpose - swaps axis: 1dim <-> 2 dim)
@@ -114,7 +103,7 @@ class Lookahead():
 			next_layer_ranges = np.transpose(layer.ranges[ p_num_terminal_actions: , :gp_num_nonallin_bets , : , : , : , : ], [0,2,1,3,4,5])
 			# [ 1, B{d-1}, NTNAN{d-2} x NAB{d-2}, b, P, I] = [B{d-1}, NTNAN{d-2}, NAB{d-2}, b, P, I]
 			# [ 1, B{d-1}, NTNAN{d-2} x NAB{d-2}, b, P, I] is the same as [ 1, B{d-1}, NTNAN{d-1}, b, P, I]
-			next_layer_ranges = next_layer_ranges.reshape([1, parent_num_bets, -1, batch_size, PC, HC])
+			next_layer_ranges = next_layer_ranges.reshape([1, p_num_bets, -1, batch_size, PC, HC])
 			# repeat next_layer_ranges: [ 1, B{d-1}, NTNAN{d-1}, b, P, I] -> [A{d}, B{d-1}, NTNAN{d-1}, b, P, I]
 			# [A{d}, B{d-1}, NTNAN{d-1}, b, P, I] = [A{d}, B{d-1}, NTNAN{d-1}, b, P, I]
 			next_layer.ranges = np.repeat(next_layer_ranges, next_layer.ranges.shape[0], axis=0)
