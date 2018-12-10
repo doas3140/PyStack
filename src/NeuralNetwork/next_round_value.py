@@ -86,11 +86,28 @@ class NextRoundValue():
 		# broadcasting ranges_: [ b, 1, P, I ] -> [ b, B, P, I ]
 		ranges_ = ranges.reshape([batch_size,1,PC*HC])
 		self.next_round_inputs[ : , : , :PC*HC ] = ranges_ * np.ones([batch_size,BC,PC*HC], dtype=arguments.dtype)
-		# mask inputs. normalize?
-		self.next_round_inputs[ : , : , :HC ] *= self.board_mask
-		self.next_round_inputs[ : , : , HC:2*HC ] *= self.board_mask
+		# mask inputs
+		# [b,B,PxI+1+69] *= [B,I]
+		self.next_round_inputs[ : , : , :HC ] *= self.board_mask.reshape([1,BC,HC])
+		self.next_round_inputs[ : , : , HC:2*HC ] *= self.board_mask.reshape([1,BC,HC])
+		# sum all ranges for later to normalize ranges
+		ranges_sum = np.zeros([batch_size,BC,PC], dtype=arguments.dtype)
+		ranges_sum[:,:,0] = np.sum(self.next_round_inputs[ : , : , :HC ], axis=2)
+		ranges_sum[:,:,1] = np.sum(self.next_round_inputs[ : , : , HC:2*HC ], axis=2)
+		# save var for later on to normalize output values (swaped because of the swap at lookahead.get_results)
+		values_norm = np.zeros_like(ranges_sum)
+		values_norm[:,:,0] = ranges_sum[:,:,1].copy()
+		values_norm[:,:,1] = ranges_sum[:,:,0].copy()
+		# eliminate divide by zero
+		ranges_sum[ ranges_sum == 0 ] = 1
+		# normalize ranges
+		self.next_round_inputs[ : , : , :HC ] /= ranges_sum[:,:,0].reshape([batch_size,BC,1])
+		self.next_round_inputs[ : , : , HC:2*HC ] /= ranges_sum[:,:,1].reshape([batch_size,BC,1])
 		# computing value in the next round (outputs are already masked, see neural network)
 		self.nn.get_value( self.next_round_inputs.reshape([batch_size*BC,-1]), self.next_round_values.reshape([batch_size*BC,-1]) )
+		# normalizing values back to original range sum
+		# [b,B,P,I] *= [b,B,P,1]
+		self.next_round_values *= values_norm.reshape([batch_size,BC,PC,1])
 		# clip values that are more then maximum
 		# 20,000 > nn_value x nn_pot_size x 20,000 > -20,000
 		# 1 > nn_value x nn_pot_size > -1
