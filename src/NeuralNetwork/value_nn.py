@@ -63,9 +63,9 @@ class ValueNn():
 		for i, num_neurons in enumerate(arguments.num_neurons):
 			names = [s.format(i) for s in ('dense_{}', 'relu_{}', 'dropout_{}', 'batch_norm_{}')]
 			ff = tf.keras.layers.Dense(num_neurons, name=names[0])(ff)
-			# ff = tf.keras.layers.BatchNormalization(name=names[3])(ff)
+			ff = tf.keras.layers.Dropout(rate=0.05, name=names[2])(ff)
+			ff = tf.keras.layers.BatchNormalization(name=names[3])(ff)
 			ff = tf.keras.layers.PReLU(name=names[1])(ff)
-			# ff = tf.keras.layers.Dropout(rate=0.05, name=names[2])(ff)
 		ff = tf.keras.layers.Dense(num_output, name='feed_forward_output')(ff)
 		# mask neural network output
 		values = tf.keras.layers.multiply([ff,mask], name='masked_output')
