@@ -13,21 +13,7 @@ from NnTraining.train import Train
 from Game.card_to_string_conversion import card_to_string
 from Settings.arguments import arguments
 
-
-AVAILABLE_STREETS = [1,3,4]
-
-error = Exception(''' Please specify the street.
-
-	examples:
-	python -m DataGeneration/main_data_generation.py --street 4
-	python -m DataGeneration/main_data_generation.py --street=4
-
-	available streets:
-	1: preflop
-	3: turn
-	4: river
-	''')
-
+from arguments_parser import parse_arguments
 
 
 if arguments.XLA:
@@ -38,37 +24,15 @@ if arguments.XLA:
 
 
 def main():
-	# parse CLI arguments
 	args = sys.argv[1:]
-	street = parse_arguments(args)
+	street, starting_idx, approximate = parse_arguments(args)
 	street_name = card_to_string.street2name(street)
 	# create data directories
 	data_dirs = []
-	data_dirs.append( os.path.join(os.getcwd(), 'Data', 'TrainSamples', street_name, 'tfrecords') )
+	data_dirs.append( os.path.join(os.getcwd(), 'Data', 'TrainSamples', street_name, '{}_{}'.format(approximate, 'tfrecords')) )
 	# data_dirs.append( os.path.join(r'D:\Datasets\Pystack\NoLimitTexasHoldem\river', 'tfrecords_1m_16') )
 	T = Train(data_dir_list=data_dirs, street=street)
-	T.train(num_epochs=arguments.num_epochs, batch_size=arguments.batch_size, validation_size=0.1)
+	T.train(num_epochs=arguments.num_epochs, batch_size=arguments.batch_size, validation_size=0.1, start_epoch=starting_idx)
 
-
-
-
-def search_argument(name, args):
-	for i, arg in enumerate(args):
-		if name in arg:
-			if '=' in arg:
-				possible_result = arg.split('=')[-1]
-			else:
-				possible_result = args[i+1]
-			try:
-				return int(possible_result)
-			except:
-				raise(error)
-	return None
-
-def parse_arguments(args):
-	street = search_argument('--street', args)
-	if street is None or street not in AVAILABLE_STREETS:
-		raise(error)
-	return street
 
 main()
