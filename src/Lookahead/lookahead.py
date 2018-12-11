@@ -190,22 +190,17 @@ class Lookahead():
 					ranges = layer.ranges[ 1, p_start:p_end, : , : , : , : ].reshape([-1, batch_size, PC, HC])
 					# use outputs as placeholder for later to switch players
 					# [sliced(PS), b, P, I] = [(B{d-2} - 1) x NTNAN{d-2}, b, P, I]
-					next_street_boxes_outputs[ layer.indices[0]:layer.indices[1] , : , : , : ] = ranges.copy()
+					next_street_boxes_inputs[ layer.indices[0]:layer.indices[1] , : , : , : ] = ranges.copy()
 
-		if self.tree.current_player == constants.players.P2:
-			next_street_boxes_inputs = next_street_boxes_outputs.copy()
-		else:
+		if self.tree.current_player != constants.players.P2:
+			next_street_boxes_outputs = next_street_boxes_inputs.copy()
 			next_street_boxes_inputs[ : , : , 0, : ] = next_street_boxes_outputs[ : , : , 1, : ].copy()
 			next_street_boxes_inputs[ : , : , 1, : ] = next_street_boxes_outputs[ : , : , 0, : ].copy()
-
-		if self.tree.street == 1:
-		    self.next_street_boxes.get_value_aux(next_street_boxes_inputs.reshape([-1,PC,HC]), next_street_boxes_outputs.reshape([-1,PC,HC]))
-		else:
-			self.next_street_boxes.get_value(next_street_boxes_inputs.reshape([-1,PC,HC]), next_street_boxes_outputs.reshape([-1,PC,HC]))
-
+		# use neural net to approximate cfvs
+		self.next_street_boxes.get_value(next_street_boxes_inputs.reshape([-1,PC,HC]), next_street_boxes_outputs.reshape([-1,PC,HC]))
 		# now the neural net outputs for P1 and P2 respectively, so we need to swap the output values if necessary
 		if self.tree.current_player == constants.players.P2:
-			next_street_boxes_inputs = next_street_boxes_outputs.copy() # using as placeholder
+			next_street_boxes_inputs = next_street_boxes_outputs.copy()
 			next_street_boxes_outputs[ : , : , 0, : ] = next_street_boxes_inputs[ : , : , 1, : ].copy()
 			next_street_boxes_outputs[ : , : , 1, : ] = next_street_boxes_inputs[ : , : , 0, : ].copy()
 
@@ -223,7 +218,7 @@ class Lookahead():
 					# print(layer.cfvs.shape, self.next_street_boxes_outputs.shape)
 					# print(layer.cfvs[ 1, p_start:p_end , : , : , : , : ].shape, self.next_street_boxes_outputs[ layer.indices[0]:layer.indices[1], : , : , : ].shape)
 					layer.cfvs[ 1, p_start:p_end , : , : , : , : ] = cfvs.copy()
-		# asd()
+
 
 
 	def get_chance_action_cfv(self, action, board):
@@ -320,8 +315,9 @@ class Lookahead():
 		# broadcasting: [ 1, 1, 1, b, I] -> [A{0}, 1, 1, b, I]
 		# [A{0}, 1, 1, b, I] /= [ 1, 1, 1, b, I]
 		self.layers[1].strategies_avg /= avg_strat_sum
-		# if the strategy is 'empty' (zero reach), strategy does not matter but we need to make sure
+		# if the strategy is nans (zero reach), strategy does not matter but we need to make sure
 		# it sums to one -> now we set to always fold
+		# note: np.nan != np.nan = True, np.nan == np.nan = False
 		self.layers[1].strategies_avg[0][ self.layers[1].strategies_avg[0] != self.layers[1].strategies_avg[0] ] = 1
 		self.layers[1].strategies_avg[ self.layers[1].strategies_avg != self.layers[1].strategies_avg ] = 0
 
@@ -412,7 +408,7 @@ class Lookahead():
 		scaler = scaler * (arguments.cfr_iters - arguments.cfr_skip_iters)
 		# broadcasting scaler: [A{0}, b, 1] -> [A{0}, b, I]
 		# [A{0}, b, I] /= [A{0}, b, 1]
-		out.children_cfvs *= 1/scaler
+		out.children_cfvs /= scaler
 		assert(out.strategy is not None)
 		assert(out.achieved_cfvs is not None)
 		assert(out.children_cfvs is not None)

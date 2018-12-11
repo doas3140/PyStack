@@ -21,15 +21,11 @@ class NextRoundValue():
 
 
 	def start_computation(self, pot_sizes, batch_size):
-		''' Initializes the value calculator with the pot size of each state that
-			we are going to evaluate.
-			During continual re-solving, there is one pot size for each
-			initial state of the second betting round (before board cards are dealt).
-			? at this point betting round ends ?
-		@param pot_sizes a vector of pot sizes
-		'''
 		# get next round boards
-		self.next_boards = card_tools.get_next_round_boards(self.current_board)
+		if self.nn.approximate == 'root_nodes':
+			self.next_boards = card_tools.get_next_round_boards(self.current_board)
+		else: # self.nn.approximate == 'leaf_nodes':
+			self.next_boards = np.expand_dims(self.current_board, axis=0) # only single board
 		self.next_boards_count = self.next_boards.shape[0]
 		PC, BC, HC = constants.players_count, self.next_boards_count, constants.hand_count
 		# init pot sizes [b, 1], where p - number of pot sizes, b - batch size (not the same as in other files)

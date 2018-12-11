@@ -9,9 +9,6 @@ from NeuralNetwork.next_round_value import NextRoundValue
 from NeuralNetwork.value_nn import ValueNn
 from helper_classes import LookaheadLayer
 
-# NEURAL_NET = {}
-# AUX_NET = None
-# NEXT_ROUND_PRE = None
 
 class LookaheadBuilder():
 	def __init__(self, lookahead):
@@ -25,39 +22,6 @@ class LookaheadBuilder():
 		'''
 		if self.lookahead.tree.street == constants.streets_count:
 			return
-		# # load neural net (of next layer) if not already loaded
-		if self.lookahead.tree.street == 1:
-			nn = ValueNn(self.lookahead.tree.street, pretrained_weights=True, verbose=0)
-		else:
-			next_street = self.lookahead.tree.street + 1
-			nn = ValueNn(next_street, pretrained_weights=True, verbose=0)
-
-		if self.lookahead.tree.street == 1:
-			self.lookahead.next_street_boxes = NextRoundValuePre(nn, aux_net, self.lookahead.terminal_equity.board)
-		else:
-			self.lookahead.next_street_boxes = NextRoundValue(nn, self.lookahead.terminal_equity.board)
-
-		# if self.lookahead.tree.street in NEURAL_NET:
-		# 	nn = NEURAL_NET[self.lookahead.tree.street]
-		# else:
-		# 	nn = ValueNn(pretrained_weights=True, verbose=0)
-		# NEURAL_NET[self.lookahead.tree.street] = nn
-
-		# if self.lookahead.tree.street == 1:
-		# 	if AUX_NET is None:
-		# 		aux_net = ValueNn(self.lookahead.tree.street, True)
-		# 		AUX_NET = aux_net
-		# 	else:
-		# 		aux_net = AUX_NET
-
-		# if self.lookahead.tree.street == 1:
-		# 	if NEXT_ROUND_PRE is None:
-		# 		self.lookahead.next_street_boxes = NEXT_ROUND_PRE
-		# 	else:
-		# 		self.lookahead.next_street_boxes = NextRoundValuePre(nn, aux_net, self.lookahead.terminal_equity.board)
-		# 	NEXT_ROUND_PRE = self.lookahead.next_street_boxes
-		# else:
-		# 	self.lookahead.next_street_boxes = NextRoundValue(nn, self.lookahead.terminal_equity.board)
 
 		self.lookahead.num_pot_sizes = 0
 		# create the optimized data structures for batching next_round_value
@@ -107,13 +71,23 @@ class LookaheadBuilder():
 		print(self.lookahead.action_to_index)
 
 
-
 		if constants.actions.ccall not in self.lookahead.action_to_index:
 			print(self.lookahead.action_to_index)
 			print(self.lookahead.parent_action_id)
 			assert(False)
 
-		PC, HC = constants.players_count, constants.hand_count
+		# PC, HC = constants.players_count, constants.hand_count
+		# # load neural net (of next layer) if not already loaded
+		if self.lookahead.tree.street == 1:
+			# if first street approximate leaf nodes, because to calculate
+			# mean of 22100 next street root nodes takes a lot of time
+			nn = ValueNn(self.lookahead.tree.street, approximate='leaf_nodes', pretrained_weights=True, verbose=0)
+		else: # evaluate next street's root nodes
+			next_street = self.lookahead.tree.street + 1
+			nn = ValueNn(next_street, approximate='root_nodes', pretrained_weights=True, verbose=0)
+		# set up neural net to calculate next street values (or leaf nodes if street == 1)
+		self.lookahead.next_street_boxes = NextRoundValue(nn, self.lookahead.terminal_equity.board)
+
 		self.lookahead.next_street_boxes.start_computation(self.lookahead.next_round_pot_sizes, self.lookahead.batch_size)
 		# self.lookahead.next_street_boxes_inputs = np.zeros([self.lookahead.num_pot_sizes, self.lookahead.batch_size, PC, HC], dtype=arguments.dtype)
 		# self.lookahead.next_street_boxes_outputs = self.lookahead.next_street_boxes_inputs.copy()
@@ -141,15 +115,15 @@ class LookaheadBuilder():
 		layers[0].num_allin_nodes = 0
 		layers[1].num_allin_nodes = 1
 		# neural network input and output boxes
-		self.lookahead.next_street_boxes_inputs = {}
-		self.lookahead.next_street_boxes_outputs = {}
+		# self.lookahead.next_street_boxes_inputs = {}
+		# self.lookahead.next_street_boxes_outputs = {}
 		for d in range(1, self.lookahead.depth):
 			layers[d+1].num_all_nodes = layers[d-1].num_nonterminal_nonallin_nodes * layers[d-1].num_bets * layers[d].num_actions
 			layers[d+1].num_allin_nodes = layers[d-1].num_nonterminal_nonallin_nodes * layers[d-1].num_bets * 1
 			layers[d+1].num_nonterminal_nodes = layers[d-1].num_nonterminal_nonallin_nodes * layers[d-1].num_nonallin_bets * layers[d].num_bets
 			layers[d+1].num_nonterminal_nonallin_nodes = layers[d-1].num_nonterminal_nonallin_nodes * layers[d-1].num_nonallin_bets * layers[d].num_nonallin_bets
-			layers[d].next_street_boxes_inputs = None
-			layers[d].next_street_boxes_outputs = None
+			# layers[d].next_street_boxes_inputs = None
+			# layers[d].next_street_boxes_outputs = None
 
 
 	def construct_data_structures(self):
