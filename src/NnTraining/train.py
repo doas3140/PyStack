@@ -41,10 +41,11 @@ class Train(ValueNn):
 		keras_model.compile(loss=loss, optimizer=optimizer, metrics=[masked_huber_loss])
 
 
-	def train(self, num_epochs, batch_size, verbose=1, validation_size=0.06):
+	def train(self, num_epochs, batch_size, verbose=1, validation_size=0.1, start_epoch=0):
 		# get list of train and validation set filenames
 		num_valid_files = int(len(self.tfrecords)*validation_size) if validation_size < 1 else validation_size
 		train_filenames = self.tfrecords[ :-num_valid_files ]
+		random.shuffle(train_filenames)
 		valid_filenames = self.tfrecords[ -num_valid_files: ]
 		# create tf.data iterators
 		train_iterator = create_iterator( filenames=train_filenames, train=True,
@@ -63,7 +64,7 @@ class Train(ValueNn):
 								  steps_per_epoch = num_train_elements // batch_size,
 								  validation_steps = num_valid_elements // batch_size,
 								  epochs = num_epochs, verbose = verbose,
-								  callbacks = self.callbacks, initial_epoch = 0 )
+								  callbacks = self.callbacks, initial_epoch = start_epoch )
 
 
 	def create_keras_callback(self):
@@ -78,7 +79,7 @@ class Train(ValueNn):
 		# Save model callback
 		mc = ModelCheckpoint(self.model_path, save_best_only=True, monitor='val_loss', mode='min')
 		# Change learning rate
-		lrs = LearningRateScheduler(lambda epoch: 1e-4 if epoch > 150 else arguments.learning_rate)
+		lrs = LearningRateScheduler( lambda epoch: arguments.learning_rate/np.sqrt(epoch+1) )
 		# Reducting LR callback
 		lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, verbose=1, min_delta=1e-4, mode='min')
 		# set keras callback for training
