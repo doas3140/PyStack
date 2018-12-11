@@ -48,6 +48,10 @@ class CardTools():
 		@return vector of shape [total cards in deck + suit count + rank count] = [52+4+13] = [69]
 		'''
 		num_ranks, num_suits, num_cards = constants.rank_count, constants.suit_count, constants.card_count
+		# init output
+		out = np.zeros([num_cards + num_suits + num_ranks], dtype=np.float32)
+		if board.ndim == 0: # no cards were placed
+			return out
 		# init vars
 		one_hot_board = np.zeros([num_cards], dtype=np.float32)
 		suit_counts = np.zeros([num_suits], dtype=np.float32)
@@ -64,7 +68,6 @@ class CardTools():
 		rank_counts /= num_ranks
 		suit_counts /= num_suits
 		# combine all arrays and return
-		out = np.zeros([num_cards + num_suits + num_ranks], dtype=np.float32)
 		out[ :num_cards ] = one_hot_board
 		out[ num_cards:num_cards+num_suits ] = suit_counts
 		out[ num_cards+num_suits: ] = rank_counts
