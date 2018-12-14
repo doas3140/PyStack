@@ -45,7 +45,11 @@ class TFRecordsConverter():
 				nn_inputs = np.zeros([len(x) + len(b)], dtype=np.float32)
 				nn_inputs[ :len(x) ] = x
 				nn_inputs[ len(x): ] = b
-				nn_targets = y
+				# mask targets
+				ranges = x[:-1]
+				mask = np.ones_like(ranges) # without pot
+				mask[ ranges == 0 ] = 0
+				nn_targets = y * mask
 				# append one item to temp list
 				X_temp.append(nn_inputs)
 				Y_temp.append(nn_targets)
