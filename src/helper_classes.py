@@ -50,8 +50,6 @@ class Node():
 		self.possitive_regrets = None # np.array (AC,CC)
 		self.cf_values = None # np.array (PC,CC)
 		self.ranges_absolute = None # np.array (PC,CC)
-		# lookahead
-		self.lookahead_coordinates = None # np.array [action_id, parent_id, grandparent_id]
 
 
 

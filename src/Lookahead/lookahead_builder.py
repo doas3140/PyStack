@@ -225,7 +225,7 @@ class LookaheadBuilder():
 		self.lookahead.layers[depth].pot_size[ action_id, parent_id, gp_id, : , : ] = node.pot
 		if depth == 2 and cur_action_id == constants.actions.ccall:
 			self.lookahead.parent_action_id[parent_id] = parent_action_id
-		node.lookahead_coordinates = np.array([action_id, parent_id, gp_id], dtype=arguments.dtype)
+		# node.lookahead_coordinates = np.array([action_id, parent_id, gp_id], dtype=arguments.dtype)
 		# transition call cannot be allin call
 		if node.current_player == constants.players.chance:
 			assert(parent_id <= self.lookahead.layers[depth-2].num_nonallin_bets)
