@@ -5,16 +5,11 @@
 import numpy as np
 
 from Settings.arguments import arguments
+from Game.card_to_string_conversion import card_to_string
 
 class BetSizing():
-	def __init__(self, pot_fractions=None):
-		''' Constructor
-		@param: pot_fractions (num_fractions,) a list of fractions of the pot
-				which are allowed as bets, sorted in ascending (min->max) order
-		'''
-		if pot_fractions is not None: self.pot_fractions = pot_fractions
-		else: self.pot_fractions = np.array([1], dtype=arguments.dtype)
-
+	def __init__(self):
+		pass
 
 	def get_possible_bets(self, node):
 		''' Gives the bets which are legal at a game state.
@@ -42,12 +37,8 @@ class BetSizing():
 			return out # (N,P)
 		else:
 			# iterate through all bets and check if they are possible
-			if node.num_bets == 0:
-				fractions = self.pot_fractions[0]
-			elif node.num_bets == 1:
-				fractions = self.pot_fractions[1]
-			else:
-				fractions = self.pot_fractions[2]
+			street_name = card_to_string.street2name(node.street)
+			fractions = arguments.bet_sizing[street_name]
 			max_possible_bets_count = len(fractions) + 1 # we can always go allin
 			out = np.full([max_possible_bets_count,2], opponent_bet, dtype=arguments.int_dtype)
 			# take pot size after opponent bet is called

@@ -17,7 +17,7 @@ class Parameters():
 		self.acpc_server_port = 20000
 		# GAME INFORMATION
 		# list of pot-scaled bet sizes to use in tree
-		self.bet_sizing = np.array([ [1], [1], [1] ], dtype=self.dtype)
+		self.bet_sizing = { 'preflop':[1], 'flop':[1], 'turn':[1], 'river':[1] }
 		# the size of the game's ante, in chips
 		self.ante = 100
 		self.sb = 50
@@ -28,11 +28,11 @@ class Parameters():
 		self.XLA = True
 		# path to the neural net model
 		self.model_path = './Data/Models/'
-		# self.final_model_name = 'weights.{epoch:02d}-{val_loss:.2f}.hdf5'
-		self.final_model_name ='weights.final.hdf5'
+		# self.model_filename = 'weights.{epoch:02d}-{val_loss:.2f}' # show epoch and loss on filename
+		self.model_filename ='weights' # without ending
 		# the neural net architecture
 		self.num_neurons = [500,500,500,500] # must be size of num_layers
-		self.learning_rate = 1e-3
+		self.learning_rate = 2e-3
 		self.batch_size = 1024
 		self.num_epochs = 200
 		# how often to save the model during training
@@ -46,12 +46,12 @@ class Parameters():
 		self.data_path = './Data/TrainSamples/'
 		# self.data_path = r'D:\Datasets\Pystack\NoLimitTexasHoldem'
 		# the number of iterations that DeepStack runs CFR for
-		self.cfr_iters = 1000
+		self.cfr_iters = 100
 		# the number of preliminary CFR iterations which DeepStack doesn't
 		# factor into the average strategy (included in cfr_iters)
-		self.cfr_skip_iters = 500
+		self.cfr_skip_iters = 0
 		# how many solved poker situations are generated
-		self.gen_different_boards = 48
+		self.gen_different_boards = 5
 		# how many poker situations are solved simultaneously during
 		# data generation
 		self.gen_batch_size = 1
