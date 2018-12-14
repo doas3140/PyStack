@@ -28,28 +28,101 @@ class Lookahead():
 		self.builder.build_from_tree(tree)
 
 
-	def reset(self):
-		self.builder.reset()
+	# def reset(self):
+	# 	self.builder.reset()
+
+
+	def get_chance_action_cfv(self, action, board):
+		''' Gives the average counterfactual values for the opponent during
+			re-solving after a chance event
+			(the betting round changes and more cards are dealt).
+			Used during continual re-solving to track opponent cfvs.
+		'''
+		PC, HC, batch_size = constants.players_count, constants.hand_count, self.batch_size
+		# batch_size should be 1 here
+		box_outputs = np.zeros([self.num_pot_sizes * batch_size, PC, HC], dtype=arguments.dtype)
+		batch_index = self.action_to_index[action]
+		box_outputs = self.next_street_boxes.get_stored_value_on_board(board)
+		cfvs = box_outputs[batch_index][self.tree.current_player]
+		pot = self.next_round_pot_sizes[batch_index]
+		cfvs *= pot
+		return cfvs
+
+
+	def get_results(self, reconstruct_opponent_cfvs):
+		''' Gets the results of re-solving the lookahead.
+		@return a table containing the fields:
+				* `strategy`: an (A,K) tensor containing the re-solve player's
+				strategy at the root of the lookahead, where
+				A is the number of actions and K is the range size
+				* `achieved_cfvs`: a vector of the opponent's
+				average counterfactual values at the root of the lookahead
+				* `children_cfvs`: an (A,K) tensor of opponent
+				average counterfactual values after each action
+				that the re-solve player can take at the root of the lookahead
+		'''
+		num_actions = self.layers[1].strategies_avg.shape[0]
+		PC, HC, AC, batch_size = constants.players_count, constants.hand_count, num_actions, self.batch_size
+		out = LookaheadResults()
+		# 1.0 average strategy
+		# [actions x range]
+		# lookahead already computes the averate strategy we just convert the dimensions
+		# reshape: [A{0}, 1, 1, b, I] -> [A{0}, b, I]
+		out.strategy = self.layers[1].strategies_avg.reshape([-1,batch_size,HC]).copy()
+		# 2.0 achieved opponent's CFVs at the starting node
+		# reshape: [ 1, 1, 1, b, P, I] -> [b, P, I]
+		out.achieved_cfvs = self.layers[0].cfvs_avg.reshape([batch_size,PC,HC]).copy()
+		# 3.0 CFVs for the acting player only when resolving first node
+		if reconstruct_opponent_cfvs:
+			out.root_cfvs = None
+		else:
+			# reshape: [1, 1, 1, b, P, I] - > [b, P, I]
+			first_layer_avg_cfvs = self.layers[0].cfvs_avg.reshape([batch_size,PC,HC])
+			# slicing: [b, P, I] [1] -> [b, I]
+			out.root_cfvs = first_layer_avg_cfvs[ : , 1 , : ].copy()
+			# swap cfvs indexing
+			# [b, P, I] <-  [1, 1, 1, b, P, I]
+			out.root_cfvs_both_players = first_layer_avg_cfvs.copy()
+			out.root_cfvs_both_players[ : , 1 , : ] = first_layer_avg_cfvs[ : , 0 , : ].copy()
+			out.root_cfvs_both_players[ : , 0 , : ] = first_layer_avg_cfvs[ : , 1 , : ].copy()
+		# 4.0 children CFVs
+		# slicing and reshaping: [A{0}, 1, 1, b, P, I] -> [A{0}, b, I]
+		out.children_cfvs = self.layers[1].cfvs_avg[ : , : , : , : , 0, : ].copy().reshape([-1,batch_size,HC])
+		# IMPORTANT divide average CFVs by average strategy in here
+		# reshape: [A{0}, 1, 1, b, I] -> [A{0}, b, I]
+		scaler = self.layers[1].strategies_avg.reshape([-1,batch_size,HC]).copy()
+		# slicing and reshaping: [ 1, 1, 1, b, P, I] -> [1, b, I]
+		range_mul = self.layers[0].ranges[ : , : , : , : , 0, : ].reshape([1,batch_size,HC]).copy()
+		# broadcasting range_mul: [1, b, I] -> [A{0}, b, I]
+		scaler = scaler * range_mul
+		# [A{0}, b, 1] = sum([A{0}, b, I])
+		scaler = np.sum(scaler, axis=2, keepdims=True)
+		# [A{0}, b, 1] *= scalar
+		scaler = scaler * (arguments.cfr_iters - arguments.cfr_skip_iters)
+		# broadcasting scaler: [A{0}, b, 1] -> [A{0}, b, I]
+		# [A{0}, b, I] /= [A{0}, b, 1]
+		out.children_cfvs /= scaler
+		return out
 
 
 	def resolve(self, player_range, opponent_range=None, opponent_cfvs=None):
 		if opponent_range is not None and opponent_cfvs is not None: raise('only 1 var can be passed')
 		if opponent_range is None and opponent_cfvs is None: raise('one of those vars must be passed')
+		P1, P2 = constants.players.P1, constants.players.P2
 		# can be cfvs or range
-		self.layers[0].ranges[ 0 , 0 , 0 , : , 0, : ] = player_range.copy()
+		self.layers[0].ranges[ 0 , 0 , 0 , : , P1 , : ] = player_range.copy()
 		if opponent_cfvs is None:
-			self.layers[0].ranges[ 0 , 0 , 0 , : , 1, : ] = opponent_range.copy()
+			self.layers[0].ranges[ 0 , 0 , 0 , : , P2 , : ] = opponent_range.copy()
 			self._compute(reconstruct_opponent_cfvs=False)
-		else:
-			self.reconstruction_gadget = CFRDGadget(self.tree.board, player_range, opponent_cfvs)
+		else: # opponent_range is None:
+			self.reconstruction_gadget = CFRDGadget(self.tree.board, opponent_cfvs)
 			self._compute(reconstruct_opponent_cfvs=True)
 
 
 	def _compute(self, reconstruct_opponent_cfvs):
-		''' Re-solves the lookahead.
-		'''
-		# 1.0 main loop
-		for iter in range(arguments.cfr_iters):
+		''' Re-solves the lookahead '''
+		from tqdm import tqdm
+		for iter in tqdm(range(arguments.cfr_iters)):
 			if reconstruct_opponent_cfvs:
 				self._set_opponent_starting_range(iter)
 			self._compute_current_strategies()
@@ -61,9 +134,9 @@ class Lookahead():
 			self._compute_regrets()
 			if iter > arguments.cfr_skip_iters:
 				self._compute_cumulate_average_cfvs(iter)
-		# 2.0 at the end normalize average strategy
+		# at the end normalize average strategy
 		self._compute_normalize_average_strategies()
-		# 2.1 normalize root's CFVs
+		# normalize root's CFVs
 		self._compute_normalize_average_cfvs()
 
 
@@ -203,7 +276,7 @@ class Lookahead():
 			next_street_boxes_inputs = next_street_boxes_outputs.copy()
 			next_street_boxes_outputs[ : , : , 0, : ] = next_street_boxes_inputs[ : , : , 1, : ].copy()
 			next_street_boxes_outputs[ : , : , 1, : ] = next_street_boxes_inputs[ : , : , 0, : ].copy()
-
+		# store outputs into respective nodes
 		for d in range(1, self.depth):
 			layer = self.layers[d]
 			if d > 1 or self.first_call_transition:
@@ -218,33 +291,6 @@ class Lookahead():
 					# print(layer.cfvs.shape, self.next_street_boxes_outputs.shape)
 					# print(layer.cfvs[ 1, p_start:p_end , : , : , : , : ].shape, self.next_street_boxes_outputs[ layer.indices[0]:layer.indices[1], : , : , : ].shape)
 					layer.cfvs[ 1, p_start:p_end , : , : , : , : ] = cfvs.copy()
-
-
-
-	def get_chance_action_cfv(self, action, board):
-		''' Gives the average counterfactual values for the opponent during
-			re-solving after a chance event
-			(the betting round changes and more cards are dealt).
-			Used during continual re-solving to track opponent cfvs.
-			The lookahead must first be re-solved with
-			@{resolve} or @{resolve_first_node}.
-		@param: action_index the action taken by the re-solving player
-				at the start of the lookahead
-		@param: board a tensor of board cards, updated by the chance event
-		@return a vector of cfvs
-		''' # ? - can be problem with chance nodes (needs another look)
-		PC, HC = constants.players_count, constants.hand_count
-		box_outputs = self.next_street_boxes_outputs.reshape([-1,PC,HC])
-		next_street_box = self.next_street_boxes
-		batch_index = self.action_to_index[action]
-		assert(batch_index is not None)
-		pot_mult = self.next_round_pot_sizes[batch_index]
-		if box_outputs is None:
-			assert(False)
-		next_street_box.get_value_on_board(board, box_outputs)
-		out = box_outputs[batch_index][self.tree.current_player]
-		out *= pot_mult
-		return out
 
 
 	def _compute_terminal_equities(self):
@@ -355,75 +401,17 @@ class Lookahead():
 			np.clip(layer.regrets, 0, constants.max_number, out=layer.regrets)
 
 
-	def get_results(self, reconstruct_opponent_cfvs):
-		''' Gets the results of re-solving the lookahead.
-			The lookahead must first be re-solved with @{resolve} or @{resolve_first_node}.
-		@return a table containing the fields:
-				* `strategy`: an (A,K) tensor containing the re-solve player's
-				strategy at the root of the lookahead, where
-				A is the number of actions and K is the range size
-				* `achieved_cfvs`: a vector of the opponent's
-				average counterfactual values at the root of the lookahead
-				* `children_cfvs`: an (A,K) tensor of opponent
-				average counterfactual values after each action
-				that the re-solve player can take at the root of the lookahead
-		'''
-		num_actions = self.layers[1].strategies_avg.shape[0]
-		PC, HC, AC, batch_size = constants.players_count, constants.hand_count, num_actions, self.batch_size
-		out = LookaheadResults()
-		# 1.0 average strategy
-		# [actions x range]
-		# lookahead already computes the averate strategy we just convert the dimensions
-		# reshape: [A{0}, 1, 1, b, I] -> [A{0}, b, I]
-		out.strategy = self.layers[1].strategies_avg.reshape([-1,batch_size,HC]).copy()
-		# 2.0 achieved opponent's CFVs at the starting node
-		# reshape: [ 1, 1, 1, b, P, I] -> [b, P, I]
-		out.achieved_cfvs = self.layers[0].cfvs_avg.reshape([batch_size,PC,HC]).copy()
-		# 3.0 CFVs for the acting player only when resolving first node
-		if reconstruct_opponent_cfvs:
-			out.root_cfvs = None
-		else:
-			# reshape: [1, 1, 1, b, P, I] - > [b, P, I]
-			first_layer_avg_cfvs = self.layers[0].cfvs_avg.reshape([batch_size,PC,HC])
-			# slicing: [b, P, I] [1] -> [b, I]
-			out.root_cfvs = first_layer_avg_cfvs[ : , 1 , : ].copy()
-			# swap cfvs indexing
-			# [b, P, I] <-  [1, 1, 1, b, P, I]
-			out.root_cfvs_both_players = first_layer_avg_cfvs.copy()
-			out.root_cfvs_both_players[ : , 1 , : ] = first_layer_avg_cfvs[ : , 0 , : ].copy()
-			out.root_cfvs_both_players[ : , 0 , : ] = first_layer_avg_cfvs[ : , 1 , : ].copy()
-		# 4.0 children CFVs
-		# slicing and reshaping: [A{0}, 1, 1, b, P, I] -> [A{0}, b, I]
-		out.children_cfvs = self.layers[1].cfvs_avg[ : , : , : , : , 0, : ].copy().reshape([-1,batch_size,HC])
-		# IMPORTANT divide average CFVs by average strategy in here
-		# reshape: [A{0}, 1, 1, b, I] -> [A{0}, b, I]
-		scaler = self.layers[1].strategies_avg.reshape([-1,batch_size,HC]).copy()
-		# slicing and reshaping: [ 1, 1, 1, b, P, I] -> [1, b, I]
-		range_mul = self.layers[0].ranges[ : , : , : , : , 0, : ].reshape([1,batch_size,HC]).copy()
-		# broadcasting range_mul: [1, b, I] -> [A{0}, b, I]
-		scaler = scaler * range_mul
-		# [A{0}, b, 1] = sum([A{0}, b, I])
-		scaler = np.sum(scaler, axis=2, keepdims=True)
-		# [A{0}, b, 1] *= scalar
-		scaler = scaler * (arguments.cfr_iters - arguments.cfr_skip_iters)
-		# broadcasting scaler: [A{0}, b, 1] -> [A{0}, b, I]
-		# [A{0}, b, I] /= [A{0}, b, 1]
-		out.children_cfvs /= scaler
-		assert(out.strategy is not None)
-		assert(out.achieved_cfvs is not None)
-		assert(out.children_cfvs is not None)
-		return out
-
-
 	def _set_opponent_starting_range(self, iteration):
 		''' Generates the opponent's range for the current re-solve iteration
 			using the @{cfrd_gadget|CFRDGadget}.
 		@param: iteration the current iteration number of re-solving
 		'''
+		P1, P2, HC = constants.players.P1, constants.players.P2, constants.hand_count
 		# note that CFVs indexing is swapped, thus the CFVs for the reconstruction player are for player '1'
-		opponent_range = self.reconstruction_gadget.compute_opponent_range(self.layers[0].cfvs[ : , : , : , : , 0 , : ], iteration)
+		opponent_cfvs = self.layers[0].cfvs[ : , : , : , : , P1 , : ].reshape(HC)
+		opponent_range = self.reconstruction_gadget.compute_opponent_range(opponent_cfvs)
 		# [1, 1, 1, P, I] = [I]
-		self.layers[0].ranges[ : , : , : , : , 1 , : ] = opponent_range.copy()
+		self.layers[0].ranges[ : , : , : , : , P2 , : ] = opponent_range
 
 
 

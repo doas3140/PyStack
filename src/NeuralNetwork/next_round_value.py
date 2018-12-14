@@ -21,6 +21,7 @@ class NextRoundValue():
 
 
 	def start_computation(self, pot_sizes, batch_size):
+		self.iter = 0
 		# get next round boards
 		if self.nn.approximate == 'root_nodes':
 			self.next_boards = card_tools.get_next_round_boards(self.current_board)
@@ -78,6 +79,11 @@ class NextRoundValue():
 		'''
 		PC, BC, HC, batch_size = constants.players_count, self.next_boards_count, constants.hand_count, self.batch_size
 		assert(ranges.shape[0] == self.batch_size)
+		self.iter += 1
+		# init cumulative cfvs and their normalization
+		if self.iter == arguments.cfr_skip_iters + 1:
+			self.cumulative_norm = np.zeros([ batch_size, BC, PC ], dtype=arguments.dtype)
+			self.cumulative_cfvs = np.zeros([ batch_size, BC, PC, HC ], dtype=arguments.dtype)
 		# handling ranges
 		# broadcasting ranges_: [ b, 1, P, I ] -> [ b, B, P, I ]
 		ranges_ = ranges.reshape([batch_size,1,PC*HC])
@@ -104,16 +110,38 @@ class NextRoundValue():
 		# normalizing values back to original range sum
 		# [b,B,P,I] *= [b,B,P,1]
 		self.next_round_values *= values_norm.reshape([batch_size,BC,PC,1])
-		# clip values that are more then maximum
-		# 20,000 > nn_value x nn_pot_size x 20,000 > -20,000
-		# 1 > nn_value x nn_pot_size > -1
-		# 1/nn_pot_size > nn_value > -1/nn_pot_size
-		max_values = 1 / self.pot_sizes.reshape([batch_size,1,1,1])
-		# [b,B,P,I] = clip([b,B,P,I], [b,1,1,1], [b,1,1,1])
+		# clip values that are more then maximum   							# 20,000     > nn_value x pot_size x 20,000 > -20,000
+		max_values = 1 / self.pot_sizes.reshape([batch_size,1,1,1])  		# 1          >       nn_value x pot_size    > -1
+		# [b,B,P,I] = clip([b,B,P,I], [b,1,1,1], [b,1,1,1]) 				# 1/pot_size >           nn_value           > -1/pot_size
 		np.clip(self.next_round_values, -max_values, max_values, out=self.next_round_values)
 		# calculate mean for each hand and return it
 		# [b,P,I] = sum([b,B,P,I], axis=1) * scalar
 		values[:,:,:] = np.sum(self.next_round_values, axis=1) * self.sum_normalization
+		# save values in memory for later (use for get_value_on_board())
+		if self.iter > arguments.cfr_skip_iters:
+			self.cumulative_cfvs += self.next_round_values
+			self.cumulative_norm += values_norm
+
+
+
+	def get_stored_value_on_board(self, board):
+		assert(values.shape[0] == self.batch_size)
+		# remove divison by 0
+		self.cumulative_norm[ self.cumulative_norm == 0 ] = 1
+		# normalize cfvs
+		# [b,B,P,I] /= [b,B,P,1]
+		self.cumulative_cfvs /= np.expand_dims(self.cumulative_norm, axis=-1)
+		# return cfvs for particular board
+		if self.nn.approximate == 'root_nodes':
+			for i, next_board in enumerate(self.next_boards):
+				if (board == next_board).all():
+					return self.cumulative_cfvs[:,i,:,:]
+		else: # self.nn.approximate == 'leaf_nodes': (only one board saved)
+			# TODO: how to transition to next state if you don't have next board saved?
+			# load from next street (root nodes) neural net?
+			mask = card_tools.get_possible_hand_indexes(board)
+			self.cumulative_cfvs *= mask
+			return self.cumulative_cfvs[:,0,:,:]
 
 
 
