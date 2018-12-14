@@ -82,7 +82,8 @@ class PokerTreeBuilder():
 		a1 = parent_node.street == 1
 		a2 = parent_node.current_player == constants.players.P1
 		a3 = parent_node.num_bets == 1
-		a5 = parent_node.street != 1 or constants.streets_count == 1
+		# a3 = parent_node.node_type != constants.node_types.inner_node
+		a5 = parent_node.street != 1
 		a6 = parent_node.current_player == constants.players.P2
 		a7 = parent_node.bets[0] == parent_node.bets[1]
 		b1 = parent_node.street != constants.streets_count
@@ -132,13 +133,14 @@ class PokerTreeBuilder():
 			assert (possible_bets.shape[1] == 2)
 			for i in range(possible_bets.shape[0]):
 				child = Node()
-				# child.node_type = constants.node_types.inner_node # ? prideta papildomai
+				child.node_type = constants.node_types.inner_node # ? prideta papildomai
 				child.parent = parent_node
 				child.current_player = 1 - parent_node.current_player
 				child.street = parent_node.street
 				child.board = parent_node.board
 				child.board_string = parent_node.board_string
 				child.bets = possible_bets[i]
+				child.num_bets = 0
 				children.append(child)
 		return children
 
@@ -197,7 +199,7 @@ class PokerTreeBuilder():
 		root.num_bets = params.root_node.num_bets
 		root.current_player = params.root_node.current_player
 		root.board = params.root_node.board.copy()
-		self.bet_sizing = params.bet_sizing or BetSizing(arguments.bet_sizing)
+		self.bet_sizing = params.bet_sizing or BetSizing()
 		assert(self.bet_sizing)
 		self.limit_to_street = params.limit_to_street
 		self._build_tree_dfs(root)

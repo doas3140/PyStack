@@ -47,12 +47,6 @@ class Constants():
 		self.actions.ccall = -1 # (check/call)
 		self.actions.raise_ = -3
 
-		# String representations for actions in the ACPC protocol
-		self.acpc_actions = ACPCActions()
-		self.acpc_actions.fold = "fold"
-		self.acpc_actions.ccall = "ccall" # (check/call)
-		self.acpc_actions.raise_ = "raise"
-
 		self.max_number = 999999
 
 

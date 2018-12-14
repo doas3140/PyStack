@@ -66,8 +66,8 @@ class DataGeneration():
 		# TODO support preflop bets
 		current_node.bets = np.array([random_pot_size, random_pot_size], dtype=arguments.dtype)
 		# solve this node and return cfvs of root node
-		resolving.resolve(current_node, player_range=ranges[0], opponent_range=ranges[1])
-		root_values = resolving.get_root_cfv_both_players() # [b, P, I]
+		results = resolving.resolve(current_node, player_range=ranges[0], opponent_range=ranges[1])
+		root_values = results.root_cfvs_both_players # [b, P, I]
 		# normalize cfvs dividing by pot size
 		root_values /= random_pot_size
 		# put calculated cfvs into targets

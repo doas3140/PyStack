@@ -282,6 +282,7 @@ class CardTools():
 		@param: hand a non-empty vector of hole cards, sorted
 		@return the numerical index for the hand
 		'''
+		hand = np.sort(hand) # first card is always smaller then second
 		index = 1
 		for i in range(len(hand)):
 			index = index + card_combinations.choose((hand[i]+1) - 1, i+1)
@@ -296,14 +297,6 @@ class CardTools():
 			index += card_combinations.choose(hole[i], i+1)
 		return index - 1
 
-
-	def normalize_range(self, board, range):
-		''' Normalizes a range vector over valid hands with a given board.
-		@param: board a possibly empty vector of board cards
-		@param: range (num_cards,) a range vector
-		@return a modified version of `range` where each invalid hand is given 0 probability and the vector is normalized
-		'''
-		pass
 
 
 

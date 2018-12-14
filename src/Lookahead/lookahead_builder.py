@@ -194,20 +194,20 @@ class LookaheadBuilder():
 			layers[d].term_fold_idx = np.array([before, self.lookahead.num_term_fold_nodes], dtype=arguments.int_dtype)
 
 
-	def reset(self):
-		HC = constants.hand_count
-		layers = self.lookahead.layers
-		for d in range(0, self.lookahead.depth):
-			if d in self.lookahead.layers:
-				self.lookahead.layers[d].ranges.fill(1.0/HC)
-				self.lookahead.layers[d].strategies_avg.fill(0)
-				self.lookahead.layers[d].current_strategy.fill(0)
-				self.lookahead.layers[d].cfvs.fill(0)
-				self.lookahead.layers[d].cfvs_avg.fill(0)
-				self.lookahead.layers[d].regrets.fill(0)
-		if self.lookahead.next_street_boxes is not None:
-			self.lookahead.next_street_boxes.iter = 0
-			self.lookahead.next_street_boxes.start_computation(self.lookahead.next_round_pot_sizes, self.lookahead.batch_size)
+	# def reset(self):
+	# 	HC = constants.hand_count
+	# 	layers = self.lookahead.layers
+	# 	for d in range(0, self.lookahead.depth):
+	# 		if d in self.lookahead.layers:
+	# 			self.lookahead.layers[d].ranges.fill(1.0/HC)
+	# 			self.lookahead.layers[d].strategies_avg.fill(0)
+	# 			self.lookahead.layers[d].current_strategy.fill(0)
+	# 			self.lookahead.layers[d].cfvs.fill(0)
+	# 			self.lookahead.layers[d].cfvs_avg.fill(0)
+	# 			self.lookahead.layers[d].regrets.fill(0)
+	# 	if self.lookahead.next_street_boxes is not None:
+	# 		self.lookahead.next_street_boxes.iter = 0
+	# 		self.lookahead.next_street_boxes.start_computation(self.lookahead.next_round_pot_sizes, self.lookahead.batch_size)
 
 
 	def set_datastructures_from_tree_dfs(self, node, depth, action_id, parent_id, gp_id, cur_action_id, parent_action_id=None):

@@ -26,9 +26,9 @@ class Train(ValueNn):
 			self.keras_model = tf.keras.models.load_model( self.model_path,
 								   custom_objects = {'loss':BasicHuberLoss(delta=1.0),
 								   					 'masked_huber_loss':masked_huber_loss} )
-		# else: # compile model
-		print('COMPILING MODEL...')
-		self.compile_keras_model(self.keras_model)
+		else: # compile model
+			print('COMPILING MODEL...')
+			self.compile_keras_model(self.keras_model)
 		# set up read paths for train/valid datasets
 		self.tfrecords = [f.path for dirpath in data_dir_list for f in os.scandir(dirpath)]
 		# random.shuffle(self.tfrecords)
