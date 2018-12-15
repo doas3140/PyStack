@@ -8,39 +8,35 @@ from Settings.constants import constants
 
 class CardToStringConversion():
 	def __init__(self):
-		CC = constants.card_count
+		CC, SC = constants.card_count, constants.suit_count
 		self.suit_table = ['c', 'd', 'h', 's']
 		self.rank_table = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A']
+		# card -> rank, suit
+		self.card_to_suit_table = np.zeros([CC], dtype=arguments.int_dtype)
+		self.card_to_rank_table = np.zeros([CC], dtype=arguments.int_dtype)
+		for card in range(CC):
+			self.card_to_suit_table[card] = card % SC
+			self.card_to_rank_table[card] = np.floor(card / SC)
 		# card -> string table
-		table = {}
+		self.card_to_string_table = {}
 		for card in range(CC):
 			rank_name = self.rank_table[self.card_to_rank(card)]
 			suit_name = self.suit_table[self.card_to_suit(card)]
-			table[card] = rank_name + suit_name
-		self.card_to_string_table = table
+			self.card_to_string_table[card] = rank_name + suit_name
 		# string -> card table
-		table = {}
+		self.string_to_card_table = {}
 		for card in range(CC):
-			table[self.card_to_string_table[card]] = card
-		self.string_to_card_table = table
+			self.string_to_card_table[self.card_to_string_table[card]] = card
 
 
 	def card_to_suit(self, card):
-		''' Gets the suit of a card.
-		@param: card () the numeric representation of the card
-		@return () the index of the suit
-		'''
-		SC = constants.suit_count
-		return int(card % SC)
+		''' Gets the suit of a card '''
+		return self.card_to_suit_table[card]
 
 
 	def card_to_rank(self, card):
-		''' Gets the rank of a card.
-		@param: card () the numeric representation of the card
-		@return () the index of the rank
-		'''
-		SC = constants.suit_count
-		return int( np.floor(card / SC) )
+		''' Gets the rank of a card '''
+		return self.card_to_rank_table[card]
 
 	def card_to_string(self, card):
 		''' Converts a card's numeric representation to its string representation.

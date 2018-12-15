@@ -52,18 +52,19 @@ class CardTools():
 		out = np.zeros([num_cards + num_suits + num_ranks], dtype=np.float32)
 		if board.ndim == 0: # no cards were placed
 			return out
+		assert((board >= 0).all()) # all cards are indexes 0 - 51
 		# init vars
 		one_hot_board = np.zeros([num_cards], dtype=np.float32)
 		suit_counts = np.zeros([num_suits], dtype=np.float32)
 		rank_counts = np.zeros([num_ranks], dtype=np.float32)
-		# fill vars
+		# encode cards, so that all ones show what card is placed
+		one_hot_board[ board ] = 1
+		# count number of different suits and ranks on board
 		for card in board:
-			if card >= 0:
-				suit = card_to_string.card_to_suit(card)
-				rank = card_to_string.card_to_rank(card)
-				one_hot_board[ card ] = 1
-				suit_counts[ suit ] += 1
-				rank_counts[ rank ] += 1
+			suit = card_to_string.card_to_suit(card)
+			rank = card_to_string.card_to_rank(card)
+			suit_counts[ suit ] += 1
+			rank_counts[ rank ] += 1
 		# normalize counts
 		rank_counts /= num_ranks
 		suit_counts /= num_suits

@@ -41,7 +41,7 @@ class CardCombinations():
 		return self.choose(num_left_cards, num_cards_to_draw)
 
 
-	def count_next_boards_possible_boards(self, street):
+	def count_next_boards_possible_boards(self, street): # next_baords -> next_round
 		''' counts the number of possible boards if 2 cards where already taken (in players hand)
 			the answer will be the same for all player's holding cards
 		'''
