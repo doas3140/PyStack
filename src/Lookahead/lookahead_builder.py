@@ -5,8 +5,8 @@ import numpy as np
 
 from Settings.arguments import arguments
 from Settings.constants import constants
+from Game.card_to_string_conversion import card_to_string
 from NeuralNetwork.next_round_value import NextRoundValue
-from NeuralNetwork.value_nn import ValueNn
 from helper_classes import LookaheadLayer
 
 
@@ -51,16 +51,16 @@ class LookaheadBuilder():
 				p_start, p_end = (0,1) if d == 1 else (0,-1) # parent indices
 				pot_sizes = self.lookahead.layers[d].pot_size[ 1, p_start:p_end, : , 0, 0, 0 ].reshape([-1])
 				self.lookahead.next_round_pot_sizes[ self.lookahead.layers[d].indices[0]:self.lookahead.layers[d].indices[1] ] = pot_sizes.copy()
-				if d <= 2:
-					if d == 1:
-						assert(self.lookahead.layers[d].indices[0] == self.lookahead.layers[d].indices[1]-1)
-						self.lookahead.action_to_index[constants.actions.ccall] = self.lookahead.layers[d].indices[0]
-					else:
-						assert(self.lookahead.layers[d].pot_size[1, p_start:p_end].shape[1] == 1) # bad num_indices
-						for parent_action_idx in range(0, self.lookahead.layers[d].pot_size[1].shape[0]):
-							action_id = self.lookahead.parent_action_id[parent_action_idx]
-							assert(action_id not in self.lookahead.action_to_index)
-							self.lookahead.action_to_index[action_id] = self.lookahead.layers[d].indices[0] + parent_action_idx
+				if d == 1:
+					assert(self.lookahead.layers[1].indices[0] == self.lookahead.layers[1].indices[1]-1)
+					self.lookahead.action_to_index[constants.actions.ccall] = self.lookahead.layers[1].indices[0]
+				elif d == 2:
+					assert(self.lookahead.layers[2].pot_size[1, p_start:p_end].shape[1] == 1) # bad num_indices
+					num_root_node_bets = self.lookahead.layers[2].pot_size.shape[1]
+					for action_idx in range(num_root_node_bets):
+						action = self.lookahead.parent_action_id[action_idx]
+						assert(action not in self.lookahead.action_to_index)
+						self.lookahead.action_to_index[action] = self.lookahead.layers[d].indices[0] + action_idx
 
 		# print(self.lookahead.next_round_pot_sizes)
 		# print(self.lookahead.num_pot_sizes)
@@ -76,21 +76,22 @@ class LookaheadBuilder():
 			print(self.lookahead.parent_action_id)
 			assert(False)
 
-		# PC, HC = constants.players_count, constants.hand_count
-		# # load neural net (of next layer) if not already loaded
-		if self.lookahead.tree.street == 1:
-			# if first street approximate leaf nodes, because to calculate
-			# mean of 22100 next street root nodes takes a lot of time
-			nn = ValueNn(self.lookahead.tree.street, approximate='leaf_nodes', pretrained_weights=True, verbose=0)
-		else: # evaluate next street's root nodes
-			next_street = self.lookahead.tree.street + 1
-			nn = ValueNn(next_street, approximate='root_nodes', pretrained_weights=True, verbose=0)
-		# set up neural net to calculate next street values (or leaf nodes if street == 1)
-		self.lookahead.next_street_boxes = NextRoundValue(nn, self.lookahead.terminal_equity.board)
-
-		self.lookahead.next_street_boxes.start_computation(self.lookahead.next_round_pot_sizes, self.lookahead.batch_size)
-		# self.lookahead.next_street_boxes_inputs = np.zeros([self.lookahead.num_pot_sizes, self.lookahead.batch_size, PC, HC], dtype=arguments.dtype)
-		# self.lookahead.next_street_boxes_outputs = self.lookahead.next_street_boxes_inputs.copy()
+		# set up cfvs approximation using neural networks
+		# 	if street == 1:
+		# 		then use most of iterations to approximate cfvs from leaf nodes,
+		# 		because to calculate mean of 22100 next street root nodes takes a lot of time
+		# 	elif street == 2 or street == 3:
+		# 		here, we need to average only 49/48 next street boards, so we use
+		# 		more iterations on approximating next street's root nodes cfvs
+		# 	elif street == 4:
+		#  		no need, we can use terminal equity, which is based on rules of the game
+		street, board = self.lookahead.tree.street, self.lookahead.terminal_equity.board
+		street_name = card_to_string.street2name(street)
+		self.lookahead.cfvs_approximator = NextRoundValue( street, board,
+														   leaf_nodes_iterations=arguments.leaf_nodes_iterations[street_name],
+														   skip_iterations=arguments.cfr_skip_iters )
+		# init input/output variables in NextRoundValue
+		self.lookahead.cfvs_approximator.init_computation(self.lookahead.next_round_pot_sizes, self.lookahead.batch_size)
 
 
 	def _compute_structure(self):
@@ -114,16 +115,11 @@ class LookaheadBuilder():
 		layers[1].num_all_nodes = layers[0].num_actions
 		layers[0].num_allin_nodes = 0
 		layers[1].num_allin_nodes = 1
-		# neural network input and output boxes
-		# self.lookahead.next_street_boxes_inputs = {}
-		# self.lookahead.next_street_boxes_outputs = {}
 		for d in range(1, self.lookahead.depth):
 			layers[d+1].num_all_nodes = layers[d-1].num_nonterminal_nonallin_nodes * layers[d-1].num_bets * layers[d].num_actions
 			layers[d+1].num_allin_nodes = layers[d-1].num_nonterminal_nonallin_nodes * layers[d-1].num_bets * 1
 			layers[d+1].num_nonterminal_nodes = layers[d-1].num_nonterminal_nonallin_nodes * layers[d-1].num_nonallin_bets * layers[d].num_bets
 			layers[d+1].num_nonterminal_nonallin_nodes = layers[d-1].num_nonterminal_nonallin_nodes * layers[d-1].num_nonallin_bets * layers[d].num_nonallin_bets
-			# layers[d].next_street_boxes_inputs = None
-			# layers[d].next_street_boxes_outputs = None
 
 
 	def construct_data_structures(self):
@@ -205,9 +201,8 @@ class LookaheadBuilder():
 	# 			self.lookahead.layers[d].cfvs.fill(0)
 	# 			self.lookahead.layers[d].cfvs_avg.fill(0)
 	# 			self.lookahead.layers[d].regrets.fill(0)
-	# 	if self.lookahead.next_street_boxes is not None:
-	# 		self.lookahead.next_street_boxes.iter = 0
-	# 		self.lookahead.next_street_boxes.start_computation(self.lookahead.next_round_pot_sizes, self.lookahead.batch_size)
+	# 	if self.lookahead.cfvs_approximator is not None:
+	# 		self.lookahead.cfvs_approximator.init_computation(self.lookahead.next_round_pot_sizes, self.lookahead.batch_size)
 
 
 	def set_datastructures_from_tree_dfs(self, node, depth, action_id, parent_id, gp_id, cur_action_id, parent_action_id=None):
@@ -251,23 +246,26 @@ class LookaheadBuilder():
 					if existing_num_bets == 0:
 						if depth > 0:
 							assert(action_id == self.lookahead.layers[depth-1].num_actions-1)
-					for child_id in range(num_terminal_actions):
-						child_node = node.children[child_id]
-						# go deeper
-						self.set_datastructures_from_tree_dfs(child_node, depth+1, child_id, next_parent_id, next_gp_id, node.actions[child_id], cur_action_id)
-					# we need to make sure that even though there are fewer actions, the last action/allin is has the same last index as if we had full number of actions
-					# we manually set the action_id as the last action (allin)
-					for b in range(2, existing_num_bets-1):
-						self.set_datastructures_from_tree_dfs(node.children[len(node.children)-b], depth+1, self.lookahead.layers[depth].num_actions-b, next_parent_id, next_gp_id,  node.actions[len(node.children)-b], cur_action_id)
+					for action_id in range(num_terminal_actions): # go deeper
+						next_node, next_action = node.children[action_id], node.actions[action_id]
+						self.set_datastructures_from_tree_dfs(next_node, depth+1, action_id, next_parent_id, next_gp_id, next_action, cur_action_id)
+					# we need to make sure that even though there are fewer actions,
+					# the last action/allin is has the same last index as if we had full number of actions
+					existing_num_nonallin_bets = existing_num_bets - 1
+					for b in range(2, existing_num_nonallin_bets): # 2, because 0 - Fold, 1 - Call, 2 and more - bets, N - all-in
+						action_id = len(node.children) - b
+						next_node, next_action = node.children[action_id], node.actions[action_id]
+						action_id = self.lookahead.layers[depth].num_actions - b # we manually set the action_id as the last action (allin)
+						self.set_datastructures_from_tree_dfs(next_node, depth+1, action_id, next_parent_id, next_gp_id, next_action, cur_action_id)
 					# mask out empty actions
-					a = self.lookahead.layers[depth+1].empty_action_mask.shape[0] - existing_num_bets
+					# self.lookahead.layers[depth+1].empty_action_mask.shape[0] == self.lookahead.layers[depth].num_actions
+					a = self.lookahead.layers[depth+1].empty_action_mask.shape[0] - existing_num_bets # A{d} - node.A + TA{d}
 					self.lookahead.layers[depth+1].empty_action_mask[ num_terminal_actions:a, next_parent_id, next_gp_id, : ] = 0
 				else:
 					# node has full action count, easy to handle
-					for child_id in range(len(node.children)):
-						child_node = node.children[child_id]
-						# go deeper
-						self.set_datastructures_from_tree_dfs(child_node, depth+1, child_id, next_parent_id, next_gp_id, node.actions[child_id], cur_action_id)
+					for action_id in range(len(node.children)): # go deeper
+						next_node, next_action = node.children[action_id], node.actions[action_id]
+						self.set_datastructures_from_tree_dfs(next_node, depth+1, action_id, next_parent_id, next_gp_id, next_action, cur_action_id)
 
 
 	def build_from_tree(self, tree):

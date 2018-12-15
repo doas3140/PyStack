@@ -46,10 +46,18 @@ class Parameters():
 		self.data_path = './Data/TrainSamples/'
 		# self.data_path = r'D:\Datasets\Pystack\NoLimitTexasHoldem'
 		# the number of iterations that DeepStack runs CFR for
-		self.cfr_iters = 100
+		self.cfr_iters = 1000
 		# the number of preliminary CFR iterations which DeepStack doesn't
 		# factor into the average strategy (included in cfr_iters)
-		self.cfr_skip_iters = 0
+		self.cfr_skip_iters = 500
+		# the number of starting iters used on approximating leaf nodes
+		# after these iterations next street's root nodes are approximated and averaged
+		# no need for 'river', because you get values from leaf nodes anyway (using terminal equity)
+		self.leaf_nodes_iterations = {
+			'preflop':980,
+			'flop':500,
+			'turn':500
+		}
 		# how many solved poker situations are generated
 		self.gen_different_boards = 5
 		# how many poker situations are solved simultaneously during

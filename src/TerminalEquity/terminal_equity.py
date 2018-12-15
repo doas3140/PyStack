@@ -95,17 +95,17 @@ class TerminalEquity():
 
 
 
-	def _handle_blocking_cards(self, equity_matrix, board):
+	def _handle_blocking_cards(self, matrix, board):
 		''' Zeroes entries in an equity matrix that correspond to invalid hands.
 			 A hand is invalid if it shares any cards with the board.
-		@param: equity_matrix the matrix to modify
+		@param: matrix the matrix to modify
 		@param: board a possibly empty vector of board cards
 		'''
 		HC, CC = constants.hand_count, constants.card_count
 		possible_hand_indexes = card_tools.get_possible_hand_indexes(board)
-		equity_matrix[:,:] *= possible_hand_indexes.reshape([1,HC])
-		equity_matrix[:,:] *= possible_hand_indexes.reshape([HC,1])
-		equity_matrix[:,:] *= self._block_matrix
+		matrix[:,:] *= possible_hand_indexes.reshape([1,HC])
+		matrix[:,:] *= possible_hand_indexes.reshape([HC,1])
+		matrix[:,:] *= self._block_matrix
 
 
 	def get_hand_strengths(self):
@@ -141,27 +141,27 @@ class TerminalEquity():
 
 
 
-	def call_value(self, ranges, result):
-		''' Computes (a batch of) counterfactual values that a player achieves
-			at a terminal node where no player has folded.
-		@{set_board} must be called before this function.
-		@param: ranges a batch of opponent ranges in an (N,K) tensor, where
-				N is the batch size and K is the range size
-		@param: result a (N,K) tensor in which to save the cfvs
-		'''
-		result[ : , : ] = np.dot(ranges, self.equity_matrix)
+	# def get_call_value(self, ranges):
+	# 	''' Computes (a batch of) counterfactual values that a player achieves
+	# 		at a terminal node where no player has folded.
+	# 	@{set_board} must be called before this function.
+	# 	@param: ranges a batch of opponent ranges in an (N,K) tensor, where
+	# 			N is the batch size and K is the range size
+	# 	@param: result a (N,K) tensor in which to save the cfvs
+	# 	'''
+	# 	return np.dot(ranges, self.equity_matrix)
 
 
-	def fold_value(self, ranges, result):
-		''' Computes (a batch of) counterfactual values that a player achieves
-			at a terminal node where a player has folded.
-		@{set_board} must be called before this function.
-		@param: ranges a batch of opponent ranges in an (N,K) tensor, where
-				N is the batch size and K is the range size
-		@param: result A (N,K) tensor in which to save the cfvs. Positive cfvs
-				are returned, and must be negated if the player in question folded.
-		'''
-		result[ : , : ] = np.dot(ranges, self.fold_matrix)
+	# def get_fold_value(self, ranges):
+	# 	''' Computes (a batch of) counterfactual values that a player achieves
+	# 		at a terminal node where a player has folded.
+	# 	@{set_board} must be called before this function.
+	# 	@param: ranges a batch of opponent ranges in an (N,K) tensor, where
+	# 			N is the batch size and K is the range size
+	# 	@param: result A (N,K) tensor in which to save the cfvs. Positive cfvs
+	# 			are returned, and must be negated if the player in question folded.
+	# 	'''
+	# 	return np.dot(ranges, self.fold_matrix)
 
 
 	def get_call_matrix(self):
