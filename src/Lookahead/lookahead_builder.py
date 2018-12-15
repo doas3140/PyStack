@@ -170,14 +170,15 @@ class LookaheadBuilder():
 		self.lookahead.num_term_fold_nodes = 0
 		# calculate term_call_indices
 		for d in range(1,self.lookahead.depth):
-			if self.lookahead.tree.street != constants.streets_count:
-				if d > 1 or self.lookahead.first_call_terminal:
+			print(layers[d].ranges[1][-1].shape[0] == layers[d].ranges[1].shape[1])
+			assert(layers[d].ranges[1][-1].shape[0] == layers[d].ranges[1].shape[1])
+			if d > 1 or self.lookahead.first_call_terminal:
+				if self.lookahead.tree.street != constants.streets_count:
 					before = self.lookahead.num_term_call_nodes
 					num_nonterminal_nonallin_grandparents = layers[d].ranges[1][-1].shape[0]
 					self.lookahead.num_term_call_nodes += num_nonterminal_nonallin_grandparents
 					layers[d].term_call_idx = np.array([before, self.lookahead.num_term_call_nodes], dtype=arguments.int_dtype)
-			else:
-				if d > 1 or self.lookahead.first_call_terminal:
+				else:
 					before = self.lookahead.num_term_call_nodes
 					num_grandparent_bets = layers[d].ranges[1].shape[0]
 					num_nonterminal_nonallin_grandparents = layers[d].ranges[1].shape[1]
