@@ -37,11 +37,8 @@ class Resolving():
 	def resolve(self, node, player_range, opponent_range=None, opponent_cfvs=None):
 		if opponent_range is not None and opponent_cfvs is not None: raise('only 1 var can be passed')
 		if opponent_range is None and opponent_cfvs is None: raise('one of those vars must be passed')
-		batch_size = player_range.shape[0]
-		if player_range.ndim == 1:
-			player_range = player_range.reshape([1, player_range.shape[0]])
-			opponent_range = opponent_range.reshape([1, opponent_range.shape[0]]) if opponent_range is not None else opponent_range
 		# opponent_cfvs = None if we only need to resolve first node
+		batch_size = player_range.shape[0]
 		self._create_lookahead_tree(node)
 		self.lookahead = Lookahead(self.terminal_equity, batch_size)
 		if self.verbose > 0: t0 = time.time()

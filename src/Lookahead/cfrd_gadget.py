@@ -35,6 +35,7 @@ class CFRDGadget():
 		@return the opponent range vector for this iteration
 		'''
 		HC = constants.hand_count
+		# remove first dimension (batches), because it should always be equal to 1
 		play_values = current_opponent_cfvs.reshape([HC])
 		terminate_values = self.input_opponent_value.reshape([HC])
 		# compute and add current regrets to cumulative regrets: self.play_regrets and self.terminate_regrets
