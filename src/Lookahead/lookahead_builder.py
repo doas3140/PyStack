@@ -53,7 +53,7 @@ class LookaheadBuilder():
 				self.lookahead.next_round_pot_sizes[ self.lookahead.layers[d].indices[0]:self.lookahead.layers[d].indices[1] ] = pot_sizes.copy()
 				if d <= 2:
 					if d == 1:
-						assert(self.lookahead.layers[d].indices[0] == self.lookahead.layers[d].indices[1])
+						assert(self.lookahead.layers[d].indices[0] == self.lookahead.layers[d].indices[1]-1)
 						self.lookahead.action_to_index[constants.actions.ccall] = self.lookahead.layers[d].indices[0]
 					else:
 						assert(self.lookahead.layers[d].pot_size[1, p_start:p_end].shape[1] == 1) # bad num_indices
@@ -228,7 +228,8 @@ class LookaheadBuilder():
 		# node.lookahead_coordinates = np.array([action_id, parent_id, gp_id], dtype=arguments.dtype)
 		# transition call cannot be allin call
 		if node.current_player == constants.players.chance:
-			assert(parent_id <= self.lookahead.layers[depth-2].num_nonallin_bets)
+			num_nonallin_bets = self.lookahead.layers[depth-2].num_nonallin_bets if depth > 1 else 1
+			assert(parent_id <= num_nonallin_bets)
 		if depth < self.lookahead.depth + 1:
 			gp_num_nonallin_bets = self.lookahead.layers[depth-2].num_nonallin_bets if depth > 1 else 1
 			p_num_terminal_actions = self.lookahead.layers[depth-1].num_terminal_actions if depth > 0 else 0
