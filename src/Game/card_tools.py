@@ -50,7 +50,7 @@ class CardTools():
 		num_ranks, num_suits, num_cards = constants.rank_count, constants.suit_count, constants.card_count
 		# init output
 		out = np.zeros([num_cards + num_suits + num_ranks], dtype=np.float32)
-		if board.ndim == 0: # no cards were placed
+		if board.ndim == 0 or board.shape[0] == 0: # no cards were placed
 			return out
 		assert((board >= 0).all()) # all cards are indexes 0 - 51
 		# init vars
@@ -85,7 +85,7 @@ class CardTools():
 		'''
 		HC, CC = constants.hand_count, constants.card_count
 		out = np.zeros([HC], dtype=arguments.int_dtype)
-		if board.ndim == 0:
+		if board.ndim == 0 or board.shape[0] == 0:
 			out.fill(1)
 			return out
 
@@ -159,7 +159,7 @@ class CardTools():
 		@return () int of the current betting round
 		'''
 		BCC, SC = constants.board_card_count, constants.streets_count
-		if board.ndim == 0:
+		if board.ndim == 0 or board.shape[0] == 0:
 			return 1
 		else:
 			for i in range(SC):
@@ -205,7 +205,7 @@ class CardTools():
 		#
 		self._build_boards(boards, cur_board, out, BCC[street-1] + 1, BCC[street], BCC[street-1] + 1)
 		out -= 1
-		if self.flop_board_idx is None and board.ndim == 0:
+		if self.flop_board_idx is None and board.ndim == 0 or board.shape[0] == 0:
 			self.flop_board_idx = np.zeros([CC,CC,CC], dtype=arguments.int_dtype)
 			for i in range(boards_count): # + 1
 				card1, card2, card3 = int(out[i][0]), int(out[i][1]), int(out[i][2])
