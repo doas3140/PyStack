@@ -32,7 +32,7 @@ class Parameters():
 		self.model_filename ='weights' # without ending
 		# the neural net architecture
 		self.num_neurons = [500,500,500,500] # must be size of num_layers
-		self.learning_rate = 2e-3
+		self.learning_rate = 1e-3
 		self.batch_size = 1024
 		self.num_epochs = 200
 		# how often to save the model during training

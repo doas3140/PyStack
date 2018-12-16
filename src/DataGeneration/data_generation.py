@@ -109,14 +109,14 @@ class DataGeneration():
 		nn_output = np.zeros([batch_size, self.target_size], dtype=arguments.dtype)
 		# iterate through all possible boards
 		next_boards = card_tools.get_next_round_boards(board)
-		for next_board in tqdm(next_boards):
+		for next_board in next_boards:
 			board_features = card_tools.convert_board_to_nn_feature(next_board)
 			nn_input[ : , self.input_size: ] = board_features
 			mask = card_tools.get_possible_hand_indexes(next_board)
 			nn_input[ : , :self.input_size ] = inputs.copy()
 			nn_input[ : , 0:HC ] *= mask
 			nn_input[ : , HC:2*HC ] *= mask
-			nn.get_value( nn_input, nn_output )
+			nn.predict(nn_input, out=nn_output)
 			targets += nn_output
 		# calculate targets mean (from all next boards)
 		num_possible_boards = card_combinations.count_next_boards_possible_boards(self.street)

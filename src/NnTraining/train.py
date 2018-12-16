@@ -79,7 +79,7 @@ class Train(ValueNn):
 		# Save model callback
 		mc = ModelCheckpoint(self.model_path, save_best_only=True, monitor='val_loss', mode='min')
 		# Change learning rate
-		lrs = LearningRateScheduler( lambda epoch: arguments.learning_rate/np.sqrt(epoch+1) )
+		lrs = LearningRateScheduler( lambda epoch: arguments.learning_rate )
 		# Reducting LR callback
 		lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, verbose=1, min_delta=1e-4, mode='min')
 		# set keras callback for training
