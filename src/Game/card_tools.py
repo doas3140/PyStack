@@ -205,16 +205,16 @@ class CardTools():
 		#
 		self._build_boards(boards, cur_board, out, BCC[street-1] + 1, BCC[street], BCC[street-1] + 1)
 		out -= 1
-		if self.flop_board_idx is None and board.ndim == 0 or board.shape[0] == 0:
-			self.flop_board_idx = np.zeros([CC,CC,CC], dtype=arguments.int_dtype)
-			for i in range(boards_count): # + 1
-				card1, card2, card3 = int(out[i][0]), int(out[i][1]), int(out[i][2])
-				self.flop_board_idx[card1][card2][card3] = i
-				self.flop_board_idx[card1][card3][card2] = i
-				self.flop_board_idx[card2][card1][card3] = i
-				self.flop_board_idx[card2][card3][card1] = i
-				self.flop_board_idx[card3][card1][card2] = i
-				self.flop_board_idx[card3][card2][card1] = i
+		# if self.flop_board_idx is None and board.ndim == 0 or board.shape[0] == 0:
+		# 	self.flop_board_idx = np.zeros([CC,CC,CC], dtype=arguments.int_dtype)
+		# 	for i in range(boards_count): # + 1
+		# 		card1, card2, card3 = int(out[i][0]), int(out[i][1]), int(out[i][2])
+		# 		self.flop_board_idx[card1][card2][card3] = i
+		# 		self.flop_board_idx[card1][card3][card2] = i
+		# 		self.flop_board_idx[card2][card1][card3] = i
+		# 		self.flop_board_idx[card2][card3][card1] = i
+		# 		self.flop_board_idx[card3][card1][card2] = i
+		# 		self.flop_board_idx[card3][card2][card1] = i
 		return out
 
 
