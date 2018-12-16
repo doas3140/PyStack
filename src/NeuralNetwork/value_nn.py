@@ -32,14 +32,18 @@ class ValueNn():
 			self.keras_model.summary()
 
 
-	def get_value(self, inputs, output):
+	def predict(self, inputs, out):
 		''' Gives the neural net output for a batch of inputs.
 		@param: inputs An (N,I) tensor containing N instances of
 				neural net inputs. See @{net_builder} for details of each input.
 		@param: output An (N,O) tensor in which to store N sets of
 				neural net outputs. See @{net_builder} for details of each output.
 		'''
-		output[:,:] = self.keras_model.predict(inputs)
+		total_elements, batch_size = inputs.shape[0], 5000
+		for i in range(0, total_elements, batch_size):
+			start, end = i, i + batch_size
+			end = end if end < total_elements else total_elements
+			out[ start:end, : ] = self.keras_model.predict(inputs[ start:end, : ])
 
 
 	def _set_shapes(self):

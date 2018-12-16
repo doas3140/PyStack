@@ -38,7 +38,8 @@ class NextRoundValue():
 		# handling board feature for nn [BC,69] and initing board masks (what hands are possible given that board)
 		next_boards_features = np.zeros([BC, self.num_board_features], dtype=arguments.dtype)
 		self.next_boards_mask = np.zeros([BC,HC], dtype=bool)
-		for i, next_board in enumerate(self.next_boards):
+		from tqdm import tqdm
+		for i, next_board in enumerate(tqdm(self.next_boards)):
 			next_boards_features[i] = card_tools.convert_board_to_nn_feature(next_board)
 			self.next_boards_mask[i] = card_tools.get_possible_hand_indexes(next_board)
 		next_boards_features = np.expand_dims(next_boards_features, axis=0) # reshape: [B,69] -> [1,B,69]
@@ -137,8 +138,9 @@ class NextRoundValue():
 		ranges /= np.expand_dims(ranges_sum, axis=-1) # [b,B,P,I] /= [b,B,P,1]
 		# putting ranges into inputs
 		nn_inputs[ : , : , :PC*HC ] = ranges.reshape([batch_size,BC,PC*HC])
+		del ranges
 		# computing value in the next round (outputs are already masked, see neural network)
-		neural_network.get_value( nn_inputs.reshape([batch_size*BC,-1]), nn_outputs.reshape([batch_size*BC,-1]) )
+		neural_network.predict( nn_inputs.reshape([batch_size*BC,-1]), out=nn_outputs.reshape([batch_size*BC,-1]) )
 		# normalizing values back to original range sum
 		nn_outputs *= values_norm.reshape([batch_size,BC,PC,1]) # [b,B,P,I] *= [b,1,P,1]
 		# clip values that are more then maximum
