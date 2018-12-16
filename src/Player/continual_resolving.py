@@ -30,11 +30,12 @@ class ContinualResolving():
 				ex: '2c', '6d', 'Jh', 'Ks', 'Ad'. note: for 10 use 'Ts' not '10s'
 		'''
 		card1, card2 = card_to_string.string_to_card(card1), card_to_string.string_to_card(card2)
+		hand = np.sort([card1,card2]) # must be ordered
 		P1, P2 = constants.players.P1, constants.players.P2
 		self.prev_street = -1
 		self.prev_bet = None
 		self.player_position = P1 if player_is_small_blind else P2
-		self.hand_id = card_tools.get_hole_index([card1, card2])
+		self.hand_id = card_tools.get_hole_index(hand)
 		# init player range and opponent cfvs
 		self.player_range = self.uniform_range.copy()
 		start_cfvs = self.starting_cfvs_as_P1 if self.player_position == P2 else self.starting_cfvs_as_P2

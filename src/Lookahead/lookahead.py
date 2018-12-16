@@ -43,8 +43,9 @@ class Lookahead():
 		assert(self.num_pot_sizes * self.batch_size == box_outputs.shape[0])
 		# convert action idx to batch index
 		action = self.lookahead_tree.actions[action_idx]
-		batch_index = self.action_to_index[action]
-		#
+		batch_index = self.action_to_index[action] # probably dont need a_idx -> a -> a_idx
+		print(action_idx, batch_index)
+		# get cfvs for current player, given some action
 		cfvs = box_outputs[ batch_index , self.tree.current_player ]
 		pot = self.next_round_pot_sizes[batch_index]
 		cfvs *= pot

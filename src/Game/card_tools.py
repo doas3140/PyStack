@@ -90,16 +90,16 @@ class CardTools():
 			return out
 
 		used = np.zeros([CC], dtype=bool)
-
-		for i in range(board.shape[0]):
-			used[ board[i] ] = 1
+		for card in board:
+			used[ card ] = 1
 
 		for card1 in range(CC):
 			if not used[card1]:
 				for card2 in range(card1+1,CC):
 					if not used[card2]:
-						out[ self.get_hole_index( [card1,card2] ) ] = 1
-
+						hand = [card1, card2]
+						hand_index = self.get_hole_index(hand)
+						out[ hand_index ] = 1
 		return out
 
 
@@ -280,10 +280,10 @@ class CardTools():
 
 	def get_hole_index(self, hand): # verified
 		''' Gives a numerical index for a set of hole cards.
+			first card is always smaller then second!
 		@param: hand a non-empty vector of hole cards, sorted
 		@return the numerical index for the hand
 		'''
-		hand = np.sort(hand) # first card is always smaller then second
 		index = 1
 		for i in range(len(hand)):
 			index = index + card_combinations.choose((hand[i]+1) - 1, i+1)
