@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg version="1.2" baseProfile="tiny"
+    xmlns="http://www.w3.org/2000/svg"
+    xmlns:svg="http://www.w3.org/2000/svg"
+    xmlns:xlink="http://www.w3.org/1999/xlink"
+    viewBox="0 0 225 314" width="225px" height="314px">
+    <defs>
+        <style>
+            .maxi-card { display: none; }
+            @media (min-width: 75px) {
+                .maxi-card { display: block; }
+                .mini-card { display: none; }
+            }
+        </style>
+
+        <path id="suit" d="M26.406,40.187c0.015-1.979-1.561-2.017-1.542-0.573c-0.133,7.257-6.311,10.83-10.799,9.982
+            c-6.92-1.307-9.129-8.129-9.062-12.148C5.205,25.046,17.775,15.9,29.116,0c8.311,14.351,22.028,25.623,22.839,36.717
+            c1.08,14.749-17.711,20.25-20.394,3.06c-0.173-1.214-1.613-1.759-1.501-0.063c0.408,4.711-0.171,6.674,5.179,18.287H21.252
+            C24.351,52.574,26.195,45.911,26.406,40.187L26.406,40.187z"/>
+        <path id="numeral" d="M0,32.676l0.164-2.018c0.51-6.24,1.875-8.348,9.623-14.856c3.76-3.159,4.994-4.717,5.168-6.525
+            c0.49-4.261-3.352-5.592-5.855-5.613c-3.241-0.03-6.909,1.911-5.161,6.414l-3.638,1.066C-0.432,6.945,0.32,3.002,3.727,1.251
+            c4.548-2.279,10.382-1.385,13.324,2.207c1.979,2.414,2.429,5.746,1.367,8.355c-3.1,6.671-13.621,9.605-14.49,17.318
+            h11.631v-4.295h3.427v7.908L0,32.676z"/>
+    </defs>
+
+    <rect width="100%" height="100%" fill="#fefefe"/>
+
+    <!-- Little Card -->
+    <g class="mini-card">
+        <use xlink:href="#numeral" transform="matrix(3.5,0,0,3.5,78.4,33.95)"/>
+        <use xlink:href="#suit" transform="matrix(2,0,0,2,55.5,170)"/>
+    </g>
+
+    <!-- Big Card -->
+    <g class="maxi-card">
+
+        <!-- Top Numeral and Suit -->
+        <use xlink:href="#numeral" transform="matrix(1,0,0,1,7,12)"/>
+        <use xlink:href="#suit" transform="matrix(0.4,0,0,0.4,6,51)"/>
+
+        <!-- Bottom Numeral and Suit -->
+        <use xlink:href="#numeral" transform="matrix(-1,0,0,-1,218,302)"/>
+        <use xlink:href="#suit" transform="matrix(-0.4,0,0,-0.4,218,263)"/>
+
+        <!-- Card Face -->
+        <use xlink:href="#suit" transform="matrix(1,0,0,1,84,28)"/><!-- top center -->
+        <use xlink:href="#suit" transform="matrix(-1,0,0,-1,141,286)"/><!-- bottom center -->
+    </g>
+</svg>

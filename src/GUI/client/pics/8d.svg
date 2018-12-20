@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg version="1.2" baseProfile="tiny"
+    xmlns="http://www.w3.org/2000/svg"
+    xmlns:svg="http://www.w3.org/2000/svg"
+    xmlns:xlink="http://www.w3.org/1999/xlink"
+    viewBox="0 0 225 314" width="225px" height="314px"
+    fill="#d40000">
+    <defs>
+        <style>
+            .maxi-card { display: none; }
+            @media (min-width: 75px) {
+                .maxi-card { display: block; }
+                .mini-card { display: none; }
+            }
+        </style>
+
+        <polygon id="suit" points="28.5,0 48.612,29 28.5,58 8.388,29"/>
+        <path id="numeral" d="M0.004,23.055c0.16-4.375,1.771-6.02,4.944-8.311c-2.531-1.795-3.599-4.437-3.384-6.687c0.521-5.446,4.812-8.172,9.485-8.054c4.675,0.119,8.704,3.763,9.019,7.722c0.272,3.443-0.771,5.103-3.257,6.914c2.952,2.441,4.841,4.051,4.769,8.361c-0.072,4.31-3.806,9.438-10.314,9.598C4.758,32.756-0.156,27.43,0.004,23.055L0.004,23.055z M18.176,23.068c0.279-3.961-3.288-6.635-7.312-6.676c-3.923-0.041-7.432,3.246-7.433,6.803c0,3.822,4.563,5.896,7.511,5.908C14.525,29.117,17.936,26.48,18.176,23.068L18.176,23.068z M16.889,8.897c0.078-3.339-3.057-5.73-6.288-5.636C7.725,3.347,4.679,5.503,4.678,8.292c-0.003,3.49,3.462,5.232,6.417,5.299C13.775,13.651,16.83,11.416,16.889,8.897z"/>
+    </defs>
+
+    <rect width="100%" height="100%" fill="#fefefe"/>
+
+    <!-- Little Card -->
+    <g class="mini-card">
+        <use xlink:href="#numeral" transform="matrix(3.5,0,0,3.5,78.4,33.95)"/>
+        <use xlink:href="#suit" transform="matrix(2,0,0,2,55.5,170)"/>
+    </g>
+
+    <!-- Big Card -->
+    <g class="maxi-card">
+
+        <!-- Top Numeral and Suit -->
+        <use xlink:href="#numeral" transform="matrix(1,0,0,1,7,12)"/>
+        <use xlink:href="#suit" transform="matrix(0.4,0,0,0.4,6,51)"/>
+
+        <!-- Bottom Numeral and Suit -->
+        <use xlink:href="#numeral" transform="matrix(-1,0,0,-1,218,302)"/>
+        <use xlink:href="#suit" transform="matrix(-0.4,0,0,-0.4,218,263)"/>
+
+        <!-- Card Face -->
+        <use xlink:href="#suit" transform="matrix(1,0,0,1,34,28)"/><!-- top left -->
+        <use xlink:href="#suit" transform="matrix(1,0,0,1,134,28)"/><!-- top right -->
+        <use xlink:href="#suit" transform="matrix(1,0,0,1,84,82.5)"/><!-- top center offset -->
+
+        <use xlink:href="#suit" transform="matrix(1,0,0,1,34,128.5)"/><!-- center left -->
+        <use xlink:href="#suit" transform="matrix(1,0,0,1,134,128.5)"/><!-- center right -->
+
+        <use xlink:href="#suit" transform="matrix(-1,0,0,-1,91,286)"/><!-- bottom left -->
+        <use xlink:href="#suit" transform="matrix(-1,0,0,-1,191,286)"/><!-- bottom right -->
+        <use xlink:href="#suit" transform="matrix(-1,0,0,-1,140,236)"/><!-- bottom center offset -->
+    </g>
+</svg>

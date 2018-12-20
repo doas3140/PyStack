@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- UTIL LIBRARIES -->
+    <link rel="stylesheet" href="utils/bootstrap.min.css">
+    <script src="utils/jquery.slim.min.js"></script>
+    <script src="utils/socket.io.js"></script>
+    <script src="utils/popper.min.js"></script>
+    <script src="utils/bootstrap.min.js"></script>
+    <script src="utils/bootstrap.slider.min.js"></script>
+    <link rel="stylesheet" href="utils/bootstrap.slider.min.css">
+    <link rel="stylesheet" href="utils/loading.css">
+
+    <title>Doyle's Game</title>
+
+    <style>
+
+        body {
+          background-color: #dcedc8;
+        }
+
+        #table {
+          margin-top: 10px;
+          margin-bottom: auto;
+          margin-left: auto;
+          margin-right: auto;
+          padding: 50px;
+          padding-top: 10px;
+          background-color: #c5e1a5;
+          border-radius: 100px;
+        }
+
+        .card {
+          margin: 10px;
+          width: 107px;
+          height: 150px;
+          border-width: 0;
+          border-radius: 7px;
+          box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+          background-color: #2D2B29;
+        }
+
+        #chips {
+          height: 70px;
+        }
+        .chips-text {
+          font-family: "Verdana";
+          font-style: normal;
+          text-align: center;
+        }
+
+        #hand {
+          display: block;
+          float: right;
+          margin-left: auto;
+          margin-right: auto;
+        }
+
+        .button {
+          margin: 10px;
+        }
+
+        .slider.slider-horizontal {
+          width:600px !important; /* sample value - set it as you like*/
+        }
+
+        .loader {
+          height: 64px;
+        }
+
+        .stats {
+          position: absolute;
+          height: 50px;
+          width: 210px;
+          border-radius: 10px;
+          background-color: rgba(0, 0, 0, 0.1);
+          direction: rtl;
+          margin-top: 30px;
+          padding-left: 10px;
+          padding-top: 10px;
+        }
+
+        .stats-text {
+          color: rgba(0, 0, 0, 0.5);
+        }
+    </style>
+
+  </head>
+  <body>
+
+    <div class="container" id="table">
+
+      <div class="stats">
+        <p class="h4 font-weight-bold stats-text">Avg. Win: <i id="avg_wins">0</i> </p>
+      </div>
+
+      <div class="row align-items-center">
+          <div class="col"></div>
+            <img class="card" id="opp1" src="pics/NO.svg">
+            <img class="card" id="opp2" src="pics/NO.svg">
+          <div class="col"></div>
+      </div>
+
+      <div class="row align-items-center loader">
+          <div class="col"></div>
+            <div class="lds-ellipsis" id="waiting_for_bot">
+              <div></div> <div></div> <div></div> <div></div>
+            </div>
+          <div class="col"></div>
+      </div>
+
+      <div class="row align-items-center" style="margin-top: 20px">
+        <div class="col"></div>
+        <div>
+        <img id="chips" src="pics/chips.png">
+        <p class="h3 font-weight-bold chips-text" id="opponent_chips"> 20000 </p>
+        </div>
+        <div class="col"></div>
+      </div>
+
+      <div class="row align-items-center">
+          <div class="col"></div>
+            <img class="card" id="b1" src="pics/NO.svg">
+            <img class="card" id="b2" src="pics/NO.svg">
+            <img class="card" id="b3" src="pics/NO.svg">
+            <img class="card" id="b4" src="pics/NO.svg">
+            <img class="card" id="b5" src="pics/NO.svg">
+          <div class="col"></div>
+      </div>
+
+      <div class="row align-items-center" style="margin-top: 20px">
+        <div class="col"></div>
+        <div>
+        <img id="chips" src="pics/chips.png">
+        <p class="h3 font-weight-bold chips-text" id="player_chips"> 20000 </p>
+        </div>
+        <div class="col"></div>
+      </div>
+
+      <div class="row align-items-center loader">
+          <div class="col"></div>
+            <div class="lds-ellipsis" id="waiting_for_player">
+              <div></div> <div></div> <div></div> <div></div>
+            </div>
+          <div class="col"></div>
+      </div>
+
+      <div class="row align-items-center">
+          <div class="col"></div>
+            <img class="card" id="p1" src="pics/NO.svg">
+            <img class="card" id="p2" src="pics/NO.svg">
+          <div class="col"></div>
+      </div>
+
+      <div id="buttons_and_slider">
+        <div class="row align-items-center">
+            <div class="col"></div>
+            <button type="button" id="fold_button" class="btn btn-outline-danger btn-lg button">FOLD</button>
+            <button type="button" id="call_button" class="btn btn-outline-success btn-lg button">CALL</button>
+            <button type="button" id="raise_button" class="btn btn-outline-primary btn-lg button">RAISE</button>
+            <button type="button" id="allin_button" class="btn btn-outline-secondary btn-lg button">ALLIN</button>
+            <div class="col"></div>
+        </div>
+
+        <div class="row align-items-center" style="margin-top: 20px">
+          <div class="col"></div>
+            <input id="slider"
+            	type="text"
+            	name="somename"
+            	data-provide="slider"
+            	data-slider-ticks="[100,200,400,600,1000,1500,2000,4000,8000,12000,16000]"
+              data-slider-ticks-snap-bounds="10"
+            	data-slider-ticks-labels='["$100", "$200", "$400", "$600", "$1k", "$1.5k", "$2k", "$4k", "$8k", "$12k", "$16k"]'
+            	data-slider-ticks-positions="[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]"
+            >
+          <div class="col"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- MAIN SCRIPT -->
+    <script src="client.js"></script>
+
+  </body>
+</html>

@@ -110,7 +110,7 @@ class TerminalEquity():
 
 	def get_hand_strengths(self):
 		HC = constants.hand_count
-		return np.dot(np.ones([1,HC]), self.equity_matrix)
+		return np.sum(self.equity_matrix, axis=0)
 
 
 	def set_board(self, board):

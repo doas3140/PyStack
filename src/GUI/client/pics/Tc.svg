@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg version="1.2" baseProfile="tiny"
+    xmlns="http://www.w3.org/2000/svg"
+    xmlns:svg="http://www.w3.org/2000/svg"
+    xmlns:xlink="http://www.w3.org/1999/xlink"
+    viewBox="0 0 225 314" width="225px" height="314px">
+    <defs>
+        <style>
+            .maxi-card { display: none; }
+            @media (min-width: 75px) {
+                .maxi-card { display: block; }
+                .mini-card { display: none; }
+            }
+        </style>
+
+        <path id="suit" d="M20.976,57.141c2.879-5.775,4.976-11.7,5.348-18.037c0.342-2.331-1.074-2.37-1.288-0.729
+            c-4.076,15.593-25.763,11.37-25.017-3.296c0.604-11.896,12.42-14.454,18.582-10.565c2.434,1.434,2.295,0.575,0.967-0.911
+            C10.416,13.391,15.958,0.241,28.331,0c13.38,0.793,16.853,14.87,8.646,23.147c-1.021,0.994-3.283,4.191,0.123,1.956
+            c8.287-5.888,19.787,0.443,19.553,9.521c-0.434,16.738-20.84,17.986-25.203,4.006c-0.42-1.55-1.629-2.328-1.295,0.305
+            c0.604,4.767,1.855,11.953,5.438,18.205L20.976,57.141L20.976,57.141z"/>
+        <path id="numeral" d="M0,31.505V0H3.11v31.505H0L0,31.505z M12.328,0c-2.994,0-5.4,2.687-5.4,6.021v19.461c0,3.336,2.406,6.021,5.4,6.021h1.746
+            c2.994,0,5.406-2.686,5.406-6.021V6.022C19.481,2.686,17.069,0,14.074,0H12.328z M13.232,2.978c1.768,0,3.19,1.337,3.19,3.002
+            v19.723c0,1.664-1.424,3.006-3.19,3.006c-1.771,0-3.191-1.342-3.191-3.006V5.98C10.039,4.315,11.461,2.978,13.232,2.978z"/>
+    </defs>
+
+    <rect width="100%" height="100%" fill="#fefefe"/>
+
+    <!-- Little Card -->
+    <g class="mini-card">
+        <use xlink:href="#numeral" transform="matrix(3.5,0,0,3.5,78.4,33.95)"/>
+        <use xlink:href="#suit" transform="matrix(2,0,0,2,55.5,170)"/>
+    </g>
+
+    <!-- Big Card -->
+    <g class="maxi-card">
+
+        <!-- Top Numeral and Suit -->
+        <use xlink:href="#numeral" transform="matrix(1,0,0,1,7,12)"/>
+        <use xlink:href="#suit" transform="matrix(0.4,0,0,0.4,6,51)"/>
+
+        <!-- Bottom Numeral and Suit -->
+        <use xlink:href="#numeral" transform="matrix(-1,0,0,-1,218,302)"/>
+        <use xlink:href="#suit" transform="matrix(-0.4,0,0,-0.4,218,263)"/>
+
+        <!-- Card Face -->
+        <use xlink:href="#suit" transform="matrix(1,0,0,1,34,28)"/><!-- top left -->
+        <use xlink:href="#suit" transform="matrix(1,0,0,1,34,95)"/><!-- center top left -->
+        <use xlink:href="#suit" transform="matrix(1,0,0,1,84,64.5)"/><!-- center top offset -->
+        <use xlink:href="#suit" transform="matrix(-1,0,0,-1,91,221)"/><!-- center bottom left -->
+        <use xlink:href="#suit" transform="matrix(-1,0,0,-1,91,286)"/><!-- bottom left -->
+
+        <use xlink:href="#suit" transform="matrix(1,0,0,1,134,28)"/><!-- top right -->
+        <use xlink:href="#suit" transform="matrix(1,0,0,1,134,95)"/><!-- center top right -->
+        <use xlink:href="#suit" transform="matrix(-1,0,0,-1,141,248.5)"/><!-- center bottom offset -->
+        <use xlink:href="#suit" transform="matrix(-1,0,0,-1,191,221)"/><!-- center bottom right -->
+        <use xlink:href="#suit" transform="matrix(-1,0,0,-1,191,286)"/><!-- bottom right -->
+    </g>
+</svg>

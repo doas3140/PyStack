@@ -29,12 +29,12 @@ class Evaluator():
 
 
 	def evaluate_fast(self, hands, mask):
-		ret = self._texas_lookup[ hands[ : , 0 ] + 54 ]
+		rank = self._texas_lookup[ hands[ : , 0 ] + 54 ]
 		for c in range(1, hands.shape[1]):
-			ret = self._texas_lookup[ hands[ : , c ] + ret + 1 ]
-		ret *= mask
-		ret *= -1
-		return ret
+			rank = self._texas_lookup[ hands[ : , c ] + rank + 1 ]
+		rank *= mask
+		rank *= -1
+		return rank
 
 
 	def batch_eval_fast(self, board): # works the same as previous one (faster 40ms -> 3)
