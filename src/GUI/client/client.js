@@ -39,20 +39,24 @@ socket.on('game_over', (res)=>{
     $('#buttons_and_slider').hide()
     winner = res.winner
     socket.emit('player_received_end_game_msg')
-    alert(winner.concat(' wins!'))
+    setTimeout(()=>{
+        alert(winner.concat(' wins!'))
+    }, 1000)
 })
 
 socket.on('new_turn', (res)=>{
-    if(res.player == 'player'){
-        $('#waiting_for_player').show()
-        $('#waiting_for_bot').hide()
-        $('#buttons_and_slider').show()
-    } else
-    if(res.player == 'bot'){
-        $('#waiting_for_player').hide()
-        $('#waiting_for_bot').show()
-        $('#buttons_and_slider').hide()
-    }
+    $('#waiting_for_player').hide()
+    $('#waiting_for_bot').hide()
+    $('#buttons_and_slider').hide()
+    setTimeout(()=>{
+        if(res.player == 'player'){
+            $('#waiting_for_player').show()
+            $('#buttons_and_slider').show()
+        } else
+        if(res.player == 'bot'){
+            $('#waiting_for_bot').show()
+        }
+    }, 1000)
 })
 
 socket.on('change_cards', (res)=>{

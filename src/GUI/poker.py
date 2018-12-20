@@ -79,6 +79,10 @@ class DoylesGame():
 			pot = self.stack - self.player_chips
 			self.player_chips = self.stack - pot
 			self.bot_chips = self.stack + pot
+		elif winner == 'noone': # draw
+			pot = 0
+			self.player_chips = self.stack
+			self.bot_chips = self.stack
 		browser.change_chips(self.player_chips, self.bot_chips)
 		# append winner to logs
 		self.logger.append_winner(winner, won_pot=pot)
@@ -214,7 +218,10 @@ class DoylesGame():
 		print('==========================================')
 		print('player:', player_hand_strength)
 		print('bot:', bot_hand_strength)
-		return 'player' if player_hand_strength > bot_hand_strength else 'bot'
+		if player_hand_strength == bot_hand_strength:
+			return 'noone' # draw
+		else:
+			return 'player' if player_hand_strength > bot_hand_strength else 'bot'
 
 
 	def bot_action(self):
