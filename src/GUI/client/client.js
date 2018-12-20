@@ -8,6 +8,7 @@ let SERVER_ADDRESS = 'http://localhost:8000'
 let socket = io.connect(SERVER_ADDRESS)
 
 $('#buttons_and_slider').hide()
+$('#error').hide()
 
 socket.on('connect', ()=>{
     console.log('connected!')
@@ -17,6 +18,10 @@ socket.on('connect', ()=>{
         $('#buttons_and_slider').show()
       }
     })
+})
+
+socket.on('show_error', (res)=>{
+    $('#error').show()
 })
 
 socket.on('change_chips', (res)=>{

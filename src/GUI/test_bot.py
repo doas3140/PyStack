@@ -11,7 +11,6 @@ class TestBot():
 
 
     def compute_action(self, board_string, player_bet, opponent_bet):
-        print('============== BOT ACTION =================')
         while True:
             action = input('enter action:')
             if action in ['fold','call','raise','allin']:

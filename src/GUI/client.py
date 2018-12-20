@@ -23,6 +23,9 @@ class Client():
     def change_stats(self, avg_wins):
         emit('change_stats', {'avg_wins':avg_wins})
 
+    def show_error(self):
+        emit('show_error')
+
 
 
 client = Client()

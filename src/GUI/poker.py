@@ -119,10 +119,10 @@ class DoylesGame():
 		if self.current_player == 'player':
 			# do nothing (wait for response from browser)
 			browser.notify_new_turn('player')
-			print('PLAYERS TURN')
+			print('============ PLAYER ACTION ================')
 		elif self.current_player == 'bot':
 			browser.notify_new_turn('bot')
-			print('BOTS TURN')
+			print('============== BOT ACTION =================')
 			self.bot_action()
 		else:
 			pass
