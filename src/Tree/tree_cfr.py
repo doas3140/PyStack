@@ -18,7 +18,6 @@ class TreeCFR():
 		''' for ease of implementation, we use small epsilon rather than
 			zero when working with regrets
 		'''
-		self.regret_epsilon = 1/1000000000
 		self._cached_terminal_equities = {}
 
 
@@ -70,11 +69,11 @@ class TreeCFR():
 				current_strategy = node.strategy
 			else: # we have to compute current strategy at the beginning of each iteraton
 				# initialize regrets in the first iteration
-				if node.regrets is None: node.regrets = np.full([AC,HC], self.regret_epsilon, dtype=arguments.dtype)
-				if node.possitive_regrets is None: node.possitive_regrets = np.full([AC,HC], self.regret_epsilon, dtype=arguments.dtype)
+				if node.regrets is None: node.regrets = np.full([AC,HC], constants.regret_epsilon, dtype=arguments.dtype)
+				if node.possitive_regrets is None: node.possitive_regrets = np.full([AC,HC], constants.regret_epsilon, dtype=arguments.dtype)
 				# compute positive regrets so that we can compute the current strategy from them
 				node.possitive_regrets = node.regrets.copy()
-				node.possitive_regrets[node.possitive_regrets <= self.regret_epsilon] = self.regret_epsilon
+				node.possitive_regrets[node.possitive_regrets <= constants.regret_epsilon] = constants.regret_epsilon
 				# compute the current strategy
 				regrets_sum = node.possitive_regrets.sum(axis=action_dim, keepdims=True)
 				current_strategy = node.possitive_regrets.copy()
@@ -122,7 +121,7 @@ class TreeCFR():
 		@param: current_regrets the regrets from the current iteration of CFR
 		'''
 		node.regrets += current_regrets
-		node.regrets[ node.regrets <= self.regret_epsilon ] = self.regret_epsilon
+		node.regrets[ node.regrets <= constants.regret_epsilon ] = constants.regret_epsilon
 
 
 	def update_average_strategy(self, node, current_strategy, iter):
@@ -137,7 +136,7 @@ class TreeCFR():
 			node.strategy = np.zeros([AC,HC], dtype=arguments.dtype) if node.strategy is None else node.strategy
 			node.iter_weight_sum = np.zeros([HC], dtype=arguments.dtype) if node.iter_weight_sum is None else node.iter_weight_sum
 			iter_weight_contribution = node.ranges_absolute[node.current_player].copy()
-			iter_weight_contribution[iter_weight_contribution <= 0] = self.regret_epsilon
+			iter_weight_contribution[iter_weight_contribution <= 0] = constants.regret_epsilon
 			node.iter_weight_sum += iter_weight_contribution
 			iter_weight = iter_weight_contribution / node.iter_weight_sum
 			expanded_weight = iter_weight.reshape([1,HC]) * np.ones_like(node.strategy)
