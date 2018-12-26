@@ -11,7 +11,7 @@ from Game.card_combinations import card_combinations
 from NeuralNetwork.value_nn import ValueNn
 
 class NextRoundValue():
-	def __init__(self, street, board, skip_iterations, leaf_nodes_iterations=0):
+	def __init__(self, street, skip_iterations, leaf_nodes_iterations=0):
 		'''  '''
 		self.street = street
 		# setting up neural network for root nodes of next street and current street leaf nodes
@@ -22,15 +22,11 @@ class NextRoundValue():
 		except:
 			self.leaf_nodes_nn, self.num_leaf_nodes_approximation_iters = None, 0
 			print( "WARNING: leaf node model for street '{}' was not found. using only next street root nodes".format(card_to_string.street2name(street)) )
-		# setting up current board and possible next boards
-		self.current_board = board
-		self.next_boards = card_tools.get_next_round_boards(self.current_board)
-		self.next_boards_count = self.next_boards.shape[0]
 
 
 	def _init_root_approximation_vars(self):
 		''' same as in _init_leaf_approximation_vars, just for all possible boards (in next street),
-		 	only difference: it creates cumulative cfvs for every next board '''
+			 only difference: it creates cumulative cfvs for every next board '''
 		BC, PC, batch_size, HC = self.next_boards_count, constants.players_count, self.batch_size, constants.hand_count
 		# init inputs and outputs to neural net
 		self.next_round_inputs = np.zeros([batch_size,BC,HC*PC + 1 + self.num_board_features], dtype=arguments.dtype)
@@ -76,8 +72,12 @@ class NextRoundValue():
 		self.leaf_nodes_sum_normalization = 1 / self.current_board_mask.sum()
 
 
-	def init_computation(self, pot_sizes, batch_size):
+	def init_computation(self, board, pot_sizes, batch_size):
 		self.iter = 0
+		# setting up current board and possible next boards
+		self.current_board = board
+		self.next_boards = card_tools.get_next_round_boards(self.current_board)
+		self.next_boards_count = self.next_boards.shape[0]
 		# init pot sizes [b, 1], where p - number of pot sizes, b - batch size (here not the same as in other files)
 		self.pot_sizes = pot_sizes.reshape([-1,1]) # [p,1]
 		self.pot_sizes = self.pot_sizes * np.ones([self.pot_sizes.shape[0], batch_size], dtype=arguments.dtype)
@@ -165,6 +165,19 @@ class NextRoundValue():
 		# [b,B,P,I] /= [b,B,P,1] (normalize cfvs)
 		self.cumulative_cfvs /= np.expand_dims(self.cumulative_norm, axis=-1)
 		return self.cumulative_cfvs
+
+
+
+
+
+NEXT_ROUND_VALUES = {}
+for street in range(1,4):
+	street_name = card_to_string.street2name(street)
+	NEXT_ROUND_VALUES[street] = NextRoundValue( street, skip_iterations=arguments.cfr_skip_iters,
+												leaf_nodes_iterations=arguments.leaf_nodes_iterations[street_name] )
+
+def get_next_round_value(street):
+	return NEXT_ROUND_VALUES[street]
 
 
 

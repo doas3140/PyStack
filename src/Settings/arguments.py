@@ -16,8 +16,8 @@ class Parameters():
 		# server port running the ACPC dealer
 		self.acpc_server_port = 20000
 		# cached results path (caching only first street)
-		# self.cache_path = './Data/cache/'
-		self.cache_path = r'D:\Datasets\Pystack\cache'
+		self.cache_path = './Data/cache/'
+		# self.cache_path = r'D:\Datasets\Pystack\cache'
 		# GAME INFORMATION
 		# list of pot-scaled bet sizes to use in tree
 		self.bet_sizing = { 'preflop':[1], 'flop':[1], 'turn':[1], 'river':[1] }
@@ -50,7 +50,7 @@ class Parameters():
 		# self.data_path = './Data/TrainSamples/'
 		self.data_path = r'D:\Datasets\Pystack\NoLimitTexasHoldem'
 		# the number of iterations that DeepStack runs CFR for
-		self.cfr_iters = 1000
+		self.cfr_iters = 800
 		# the number of preliminary CFR iterations which DeepStack doesn't
 		# factor into the average strategy (included in cfr_iters)
 		self.cfr_skip_iters = 500
@@ -58,7 +58,7 @@ class Parameters():
 		# after these iterations next street's root nodes are approximated and averaged
 		# no need for 'river', because you get values from leaf nodes anyway (using terminal equity)
 		self.leaf_nodes_iterations = {
-			'preflop':980,
+			'preflop':780,
 			'flop':500,
 			'turn':500
 		}

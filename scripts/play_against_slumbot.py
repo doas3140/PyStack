@@ -20,10 +20,12 @@ sys.path.append( os.path.join(os.getcwd(),'src') )
 def main():
     from Player.continual_resolving import ContinualResolving
     bot = ContinualResolving()
-    play_against_slumbot(bot)
+    name = 'pystackv1'
+    password = 'pystackv1'
+    play_against_slumbot(bot, name, password)
 
 
-def play_against_slumbot(bot):
+def play_against_slumbot(bot, slumbot_acc_name, slumbot_acc_password):
 
     slumbot_utils = SlumBotUtils()
 
@@ -38,9 +40,9 @@ def play_against_slumbot(bot):
     time.sleep(1)
     name = driver.find_element_by_id("loginname")
     password = driver.find_element_by_id("loginpw")
-    name.send_keys("asdfasdf")
+    name.send_keys(slumbot_acc_name)
     time.sleep(0.5)
-    password.send_keys("asdfasdf")
+    password.send_keys(slumbot_acc_password)
     time.sleep(0.5)
     password.send_keys(Keys.RETURN)
     time.sleep(1)

@@ -6,7 +6,7 @@ import numpy as np
 from Settings.arguments import arguments
 from Settings.constants import constants
 from Game.card_to_string_conversion import card_to_string
-from NeuralNetwork.next_round_value import NextRoundValue
+from NeuralNetwork.next_round_value import NextRoundValue, get_next_round_value
 from helper_classes import LookaheadLayer
 
 
@@ -86,12 +86,9 @@ class LookaheadBuilder():
 		# 	elif street == 4:
 		#  		no need, we can use terminal equity, which is based on rules of the game
 		street, board = self.lookahead.tree.street, self.lookahead.terminal_equity.board
-		street_name = card_to_string.street2name(street)
-		self.lookahead.cfvs_approximator = NextRoundValue( street, board,
-														   leaf_nodes_iterations=arguments.leaf_nodes_iterations[street_name],
-														   skip_iterations=arguments.cfr_skip_iters )
+		self.lookahead.cfvs_approximator = get_next_round_value(street) # (loads preloaded models)
 		# init input/output variables in NextRoundValue
-		self.lookahead.cfvs_approximator.init_computation(self.lookahead.next_round_pot_sizes, self.lookahead.batch_size)
+		self.lookahead.cfvs_approximator.init_computation(board, self.lookahead.next_round_pot_sizes, self.lookahead.batch_size)
 
 
 	def _compute_structure(self):
