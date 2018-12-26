@@ -35,8 +35,12 @@ class Resolving():
 
 
 	def resolve(self, node, player_range, opponent_range=None, opponent_cfvs=None):
-		if opponent_range is not None and opponent_cfvs is not None: raise('only 1 var can be passed')
-		if opponent_range is None and opponent_cfvs is None: raise('one of those vars must be passed')
+		if opponent_range is not None:
+			if opponent_range.ndim != 2: raise(Exception('opponent_range has to have batch size as first dim. (can be 1)'))
+		if opponent_cfvs is not None:
+			if opponent_cfvs.ndim != 1: raise(Exception('opponent_cfvs has to have only one dimension of 1326 numbers.'))
+		if opponent_range is not None and opponent_cfvs is not None: raise(Exception('only 1 var can be passed'))
+		if opponent_range is None and opponent_cfvs is None: raise(Exception('one of those vars must be passed'))
 		# opponent_cfvs = None if we only need to resolve first node
 		batch_size = player_range.shape[0]
 		self._create_lookahead_tree(node)
@@ -71,17 +75,6 @@ class Resolving():
 	def get_possible_actions(self):
 		''' Gives a list of possible actions at the node being re-solved '''
 		return self.lookahead_tree.actions
-
-
-	def get_chance_action_cfv(self, action_idx, board):
-		''' Gives the average counterfactual values that the opponent received
-			during re-solving after a chance event (the betting round changes and
-			more cards are dealt).
-			Used during continual re-solving to track opponent cfvs.
-			The node must first be re-solved with @{resolve} or @{resolve_first_node}
-		'''
-		return self.lookahead.get_chance_action_cfv(action_idx, board)
-
 
 
 

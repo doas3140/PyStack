@@ -39,11 +39,11 @@ class ValueNn():
 		@param: output An (N,O) tensor in which to store N sets of
 				neural net outputs. See @{net_builder} for details of each output.
 		'''
-		total_elements, batch_size = inputs.shape[0], 5000
+		total_elements, batch_size = inputs.shape[0], 10000
 		for i in range(0, total_elements, batch_size):
 			start, end = i, i + batch_size
 			end = end if end < total_elements else total_elements
-			out[ start:end, : ] = self.keras_model.predict(inputs[ start:end, : ])
+			out[ start:end, : ] = self.keras_model.predict_on_batch(inputs[ start:end, : ])
 
 
 	def _set_shapes(self):

@@ -76,6 +76,13 @@ class LookaheadResults():
 		self.root_cfvs = None				# [b, I]
 		self.root_cfvs_both_players = None  # [b, P, I]
 		self.children_cfvs = None 			# [A{0}, b, I]
+		# vars below are used to store next round cfvs
+		self.next_street_cfvs = None		# [b x trans_nodes, B, P, I]
+		self.next_boards = None				# [B, 0-5]
+		self.actions = None					# [A] (bets)
+		self.action_to_index = None			# {'bet size':'next_street_cfvs index'}
+		self.next_round_pot_sizes = None	# [b x trans_nodes, B]
+
 
 	def __str__(self):
 		s = 'strat\n {} \ncfvs\n {} \nroot_cfvs\n {} \nboth_P_root_cfvs\n {} \nchildren_cfvs\n {}'. \

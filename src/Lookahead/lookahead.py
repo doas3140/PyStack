@@ -32,26 +32,6 @@ class Lookahead():
 	# 	self.builder.reset()
 
 
-	def get_chance_action_cfv(self, action_idx, board):
-		''' Gives the average counterfactual values for the opponent during
-			re-solving after a chance event
-			(the betting round changes and more cards are dealt).
-			Used during continual re-solving to track opponent cfvs.
-		'''
-		# get next street root node outputs. shape = [self.num_pot_sizes * self.batch_size, P, I]
-		box_outputs = self.cfvs_approximator.get_stored_value_on_board(board)
-		assert(self.num_pot_sizes * self.batch_size == box_outputs.shape[0])
-		# convert action idx to batch index
-		action = self.lookahead_tree.actions[action_idx]
-		batch_index = self.action_to_index[action] # probably dont need a_idx -> a -> a_idx
-		print(action_idx, batch_index)
-		# get cfvs for current player, given some action
-		cfvs = box_outputs[ batch_index , self.tree.current_player ]
-		pot = self.next_round_pot_sizes[batch_index]
-		cfvs *= pot
-		return cfvs
-
-
 	def _action_index_to_batch_index(self, action_idx):
 		action = self.lookahead_tree.actions[action_idx]
 		self.action_to_index[action]
@@ -71,7 +51,18 @@ class Lookahead():
 		'''
 		num_actions = self.layers[1].strategies_avg.shape[0]
 		PC, HC, AC, batch_size = constants.players_count, constants.hand_count, num_actions, self.batch_size
+		P1, P2 = constants.players.P1, constants.players.P2
 		out = LookaheadResults()
+		# next street CFV's
+		try:
+			out.next_street_cfvs = self.cfvs_approximator.get_stored_cfvs_of_all_next_round_boards()
+			out.next_boards = self.cfvs_approximator.next_boards
+			out.action_to_index = self.action_to_index
+			out.next_round_pot_sizes = self.next_round_pot_sizes
+		except:
+			print('WARNING: THERE ARE NO NODES THAT NEEDS APPROXIMATION (lookahead.cfvs_approximator is not defined)')
+		# save actions
+		out.actions = self.tree.actions
 		# 1.0 average strategy
 		# [actions x range]
 		# lookahead already computes the averate strategy we just convert the dimensions
@@ -87,26 +78,25 @@ class Lookahead():
 			# reshape: [1, 1, 1, b, P, I] - > [b, P, I]
 			first_layer_avg_cfvs = self.layers[0].cfvs_avg.reshape([batch_size,PC,HC])
 			# slicing: [b, P, I] [1] -> [b, I]
-			out.root_cfvs = first_layer_avg_cfvs[ : , 1 , : ].copy()
+			out.root_cfvs = first_layer_avg_cfvs[ : , P2 , : ].copy()
 			# swap cfvs indexing
 			# [b, P, I] <-  [1, 1, 1, b, P, I]
-			out.root_cfvs_both_players = first_layer_avg_cfvs.copy()
-			out.root_cfvs_both_players[ : , 1 , : ] = first_layer_avg_cfvs[ : , 0 , : ].copy()
-			out.root_cfvs_both_players[ : , 0 , : ] = first_layer_avg_cfvs[ : , 1 , : ].copy()
+			out.root_cfvs_both_players = np.zeros_like(first_layer_avg_cfvs)
+			out.root_cfvs_both_players[ : , P2 , : ] = first_layer_avg_cfvs[ : , P1 , : ].copy()
+			out.root_cfvs_both_players[ : , P1 , : ] = first_layer_avg_cfvs[ : , P2 , : ].copy()
 		# 4.0 children CFVs
 		# slicing and reshaping: [A{0}, 1, 1, b, P, I] -> [A{0}, b, I]
-		out.children_cfvs = self.layers[1].cfvs_avg[ : , : , : , : , 0, : ].copy().reshape([-1,batch_size,HC])
+		out.children_cfvs = self.layers[1].cfvs_avg[ : , : , : , : , P1 , : ].reshape([-1,batch_size,HC])
 		# IMPORTANT divide average CFVs by average strategy in here
 		# reshape: [A{0}, 1, 1, b, I] -> [A{0}, b, I]
-		scaler = self.layers[1].strategies_avg.reshape([-1,batch_size,HC]).copy()
+		strategy = self.layers[1].strategies_avg.reshape([-1,batch_size,HC])
 		# slicing and reshaping: [ 1, 1, 1, b, P, I] -> [1, b, I]
-		range_mul = self.layers[0].ranges[ : , : , : , : , 0, : ].reshape([1,batch_size,HC]).copy()
+		range_mul = self.layers[0].ranges[ : , : , : , : , P1 , : ].reshape([1,batch_size,HC])
 		# broadcasting range_mul: [1, b, I] -> [A{0}, b, I]
-		scaler = scaler * range_mul
 		# [A{0}, b, 1] = sum([A{0}, b, I])
-		scaler = np.sum(scaler, axis=2, keepdims=True)
+		scaler = np.sum(strategy * range_mul, axis=2, keepdims=True)
 		# [A{0}, b, 1] *= scalar
-		scaler = scaler * (arguments.cfr_iters - arguments.cfr_skip_iters)
+		scaler *= arguments.cfr_iters - arguments.cfr_skip_iters
 		# broadcasting scaler: [A{0}, b, 1] -> [A{0}, b, I]
 		# [A{0}, b, I] /= [A{0}, b, 1]
 		out.children_cfvs /= scaler
@@ -114,8 +104,6 @@ class Lookahead():
 
 
 	def resolve(self, player_range, opponent_range=None, opponent_cfvs=None):
-		if opponent_range is not None and opponent_cfvs is not None: raise('only 1 var can be passed')
-		if opponent_range is None and opponent_cfvs is None: raise('one of those vars must be passed')
 		P1, P2 = constants.players.P1, constants.players.P2
 		# can be cfvs or range
 		self.layers[0].ranges[ 0 , 0 , 0 , : , P1 , : ] = player_range.copy()
@@ -312,11 +300,8 @@ class Lookahead():
 			These include terminal states of the game and depth-limited states.
 		'''
 		P1, P2, HC = constants.players.P1, constants.players.P2, constants.hand_count
-		# if this is not last street, then approximate equity from neural network
-		if self.tree.street != constants.streets_count:
-			# if no transitioning nodes, then skip
-			if self.num_pot_sizes == 0:
-				return
+		# if this is not last street and there are nodes to approximate, then approximate equity from neural network
+		if self.tree.street != constants.streets_count and self.num_pot_sizes != 0:
 			# store ranges of all nodes, that are transitioning to next street
 			# ranges.shape = [ self.num_pot_sizes x self.batch_size, P, I ]
 			ranges = self._get_ranges_from_transitioning_nodes()

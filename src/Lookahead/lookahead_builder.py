@@ -62,7 +62,7 @@ class LookaheadBuilder():
 						assert(action not in self.lookahead.action_to_index)
 						self.lookahead.action_to_index[action] = self.lookahead.layers[d].indices[0] + action_idx
 
-		# print(self.lookahead.next_round_pot_sizes)
+		print('num_transition_nodes:', self.lookahead.next_round_pot_sizes)
 		# print(self.lookahead.num_pot_sizes)
 		# # for d in range(1,self.lookahead.depth):
 		# # 	print(self.lookahead.layers[d].indices)
