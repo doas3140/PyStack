@@ -154,7 +154,7 @@ class Lookahead():
 		for d in range(1,self.depth):
 			layer = self.layers[d]
 			# [A{d-1}, B{d-2}, NTNAN{d-2}, b, I] = [A{d-1}, B{d-2}, NTNAN{d-2}, b, I]
-			positive_regrets = np.clip(layer.regrets, self.regret_epsilon, constants.max_number)
+			positive_regrets = np.clip(layer.regrets, constants.regret_epsilon, constants.max_number)
 			# 1.0 set regret of empty actions to 0
 			# [A{d-1}, B{d-2}, NTNAN{d-2}, b, I] *= [A{d-1}, B{d-2}, NTNAN{d-2}, b, I]
 			positive_regrets *= layer.empty_action_mask

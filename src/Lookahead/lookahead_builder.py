@@ -99,7 +99,6 @@ class LookaheadBuilder():
 			Used to find the size for the tensors which store lookahead data.
 		'''
 		assert(self.lookahead.tree.street >= 1 and self.lookahead.tree.street <= constants.streets_count)
-		self.lookahead.regret_epsilon = 1.0 / 1000000000
 		layers = self.lookahead.layers
 		# which player acts at particular depth
 		layers[0].acting_player = 0
@@ -158,7 +157,7 @@ class LookaheadBuilder():
 			# data structures [actions x parent_action x grandparent_id x batch x 1 x range]
 			layers[d].strategies_avg = np.zeros([layers[d-1].num_actions, layers[d-2].num_bets, layers[d-2].num_nonterminal_nonallin_nodes, batch_size, HC], dtype=arguments.dtype)
 			layers[d].current_strategy = layers[d].strategies_avg.copy()
-			layers[d].regrets = np.full_like(layers[d].strategies_avg, self.lookahead.regret_epsilon)
+			layers[d].regrets = np.full_like(layers[d].strategies_avg, constants.regret_epsilon)
 			# self.lookahead.layers[d].current_regrets = np.zeros_like(self.lookahead.layers[d].strategies_avg)
 			layers[d].empty_action_mask = np.ones_like(layers[d].strategies_avg)
 		# create the optimized data structures for terminal equity

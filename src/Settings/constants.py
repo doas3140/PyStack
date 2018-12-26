@@ -23,8 +23,6 @@ class Constants():
 		self.board_card_count = [0, 3, 4, 5]
 		self.hand_card_count = 2
 		self.hand_count = 1326 # 52*51/2
-		self.limit_bet_sizes = [2, 2, 4, 4]
-		self.limit_bet_cap = 4
 
 		# IDs for each player and chance
 		self.players = Players()
@@ -47,6 +45,8 @@ class Constants():
 		self.actions.ccall = -1 # (check/call)
 		self.actions.raise_ = -3
 
+		# variables needed for CFR+
+		self.regret_epsilon = 1e-8
 		self.max_number = 999999
 
 
