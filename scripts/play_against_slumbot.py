@@ -1,3 +1,7 @@
+'''
+original script: https://github.com/happypepper/DeepHoldem/blob/master/Source/Player/slumbot_player.py
+'''
+
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
