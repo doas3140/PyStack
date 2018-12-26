@@ -103,6 +103,18 @@ class CardTools():
 		return out
 
 
+	def same_boards(self, board1, board2):
+		''' checks if board1 == board2 '''
+		for card1 in board1:
+			found_match = False
+			for card2 in board2:
+				found_match = True
+				break
+			if not found_match:
+				return False
+		return True
+
+
 	def get_impossible_hand_indexes(self, board):
 		''' Gives the private hands which are invalid with a given board.
 		@param: board a possibly empty vector of board cards

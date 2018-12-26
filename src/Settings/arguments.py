@@ -58,7 +58,7 @@ class Parameters():
 		# after these iterations next street's root nodes are approximated and averaged
 		# no need for 'river', because you get values from leaf nodes anyway (using terminal equity)
 		self.leaf_nodes_iterations = {
-			'preflop':500,
+			'preflop':980,
 			'flop':500,
 			'turn':500
 		}

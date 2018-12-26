@@ -45,19 +45,21 @@ class ContinualResolving():
 		self.opponent_cfvs = start_cfvs.copy()
 
 
-	def _get_chance_action_cfv(self, node, resolve_results, action_idx):
+	def _get_chance_action_cfv(self, current_board, resolve_results, action_idx):
 		''' Gives the average counterfactual values for the opponent during
 			re-solving after a chance event
 			(the betting round changes and more cards are dealt).
 			Used during continual re-solving to track opponent cfvs.
 		'''
-		if node.street == 1 and self.cache.exists(node.bets):
-			next_street_cfvs = self.cache.get_next_street_cfvs(node.bets)
+		if self.prev_street == 1 and self.cache.exists(self.prev_bets):
+			print('LOADING NEXT STREET CFVS FROM CACHE')
+			next_street_cfvs = self.cache.get_next_street_cfvs(self.prev_bets)
 		else: # resolve_results.next_street_cfvs is not None:
+			print('LOADING FROM PREV RESULTS')
 			next_street_cfvs = resolve_results.next_street_cfvs
 		# save cfvs for particular board
 		for i, next_board in enumerate(resolve_results.next_boards):
-			if (node.board == next_board).all():
+			if card_tools.same_boards(current_board, next_board):
 				board_cfvs = next_street_cfvs[:,i,:,:]
 		# get next street root node outputs. shape = [self.num_pot_sizes * self.batch_size, P, I]
 		# assert(self.num_pot_sizes * self.batch_size == board_cfvs.shape[0])
@@ -75,11 +77,10 @@ class ContinualResolving():
 		node = self._create_node(board_string, player_bet, opponent_bet)
 		# if street changed (last node was chance node), then update cfvs and ranges
 		if self.prev_street+1 == node.street:
-			node.board = card_to_string.string_to_board(board_string)
 			# opponent cfvs: if the street has changed, the resonstruction API simply gives us CFVs
-			self.opponent_cfvs = self._get_chance_action_cfv(node, self.prev_results, self.prev_action)
+			self.opponent_cfvs = self._get_chance_action_cfv(node.board, self.prev_results, self.prev_action)
 			# player range: if street has change, we have to mask out the colliding hands
-			mask = self.get_possible_hand_indexes(node.board)
+			mask = card_tools.get_possible_hand_indexes(node.board)
 			self.player_range *= mask						# mask available combinations given particular board
 			self.player_range /= self.player_range.sum()	# normalize
 			# set terminal equity for new board
@@ -102,12 +103,15 @@ class ContinualResolving():
 		# update history variables
 		self.prev_results = results
 		self.prev_action = action_idx
+		self.prev_bets = node.bets
 		self.prev_street = node.street
 		# return action
 		if sampled_bet == constants.actions.fold:
 			return {'action':'fold', 'amount': -1}
 		elif sampled_bet == constants.actions.ccall:
 			return {'action':'call', 'amount': -1}
+		elif sampled_bet == 20000:
+			return {'action':'allin', 'amount': -1}
 		else:
 			return {'action':'raise', 'amount': sampled_bet}
 

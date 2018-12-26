@@ -98,6 +98,8 @@ def play_against_slumbot(bot):
             _, opponent_bet = slumbot_utils.acpcify_actions(actions)
             response = bot.compute_action(board_string=board, player_bet=bot_bet, opponent_bet=opponent_bet)
             advice, amount = response['action'], response['amount']
+            if amount == 20000:
+                advice = 'allin'
 
             if advice == "call":
                 if call_button.is_displayed() and call_button.is_enabled():
