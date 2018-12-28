@@ -18,7 +18,7 @@ def main():
 	# parse CLI arguments
 	args = sys.argv[1:]
 	street, starting_idx, approximate = parse_arguments(args)
-	street_name = card_to_string.street2name(street)
+	street_name = card_to_string.street_to_name(street)
 	# directories
 	NPY_DIR = os.path.join( arguments.data_path, street_name, '{}_{}'.format(approximate, 'npy') )
 	TFRECORDS_DIR = os.path.join( arguments.data_path, street_name, '{}_{}'.format(approximate, 'tfrecords') )

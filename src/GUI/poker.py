@@ -208,9 +208,9 @@ class DoylesGame():
 			assert(False)
 		board = card_to_string.string_to_board( ''.join(self.board) )
 		player_hand = card_to_string.string_to_board( ''.join(self.player_hand) )
-		player_hand_idx = card_tools.get_hole_index(np.sort(player_hand))
+		player_hand_idx = card_tools.get_hand_index(np.sort(player_hand))
 		bot_hand = card_to_string.string_to_board( ''.join(self.bot_hand) )
-		bot_hand_idx = card_tools.get_hole_index(np.sort(bot_hand))
+		bot_hand_idx = card_tools.get_hand_index(np.sort(bot_hand))
 		self.terminal_equity.set_board(board)
 		strengths = self.terminal_equity.get_hand_strengths()
 		player_hand_strength = strengths[ player_hand_idx ]

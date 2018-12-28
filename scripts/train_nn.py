@@ -26,7 +26,7 @@ if arguments.XLA:
 def main():
 	args = sys.argv[1:]
 	street, starting_idx, approximate = parse_arguments(args)
-	street_name = card_to_string.street2name(street)
+	street_name = card_to_string.street_to_name(street)
 	# create data directories
 	data_dirs = []
 	data_dirs.append( os.path.join(os.getcwd(), 'Data', 'TrainSamples', street_name, '{}_{}'.format(approximate, 'tfrecords')) )

@@ -21,7 +21,7 @@ class NextRoundValue():
 			self.num_leaf_nodes_approximation_iters = leaf_nodes_iterations
 		except:
 			self.leaf_nodes_nn, self.num_leaf_nodes_approximation_iters = None, 0
-			print( "WARNING: leaf node model for street '{}' was not found. using only next street root nodes".format(card_to_string.street2name(street)) )
+			print( "WARNING: leaf node model for street '{}' was not found. using only next street root nodes".format(card_to_string.street_to_name(street)) )
 
 
 	def _init_root_approximation_vars(self):
@@ -37,7 +37,7 @@ class NextRoundValue():
 		from tqdm import tqdm
 		for i, next_board in enumerate(tqdm(self.next_boards)):
 			next_boards_features[i] = card_tools.convert_board_to_nn_feature(next_board)
-			self.next_boards_mask[i] = card_tools.get_possible_hand_indexes(next_board)
+			self.next_boards_mask[i] = card_tools.get_possible_hands_mask(next_board)
 		next_boards_features = np.expand_dims(next_boards_features, axis=0) # reshape: [B,69] -> [1,B,69]
 		# repeating next_boards_features: [ 1, B, 69 ] -> [ b, B, 69 ]
 		self.next_round_inputs[ : , : , PC*HC+1: ] = np.repeat(next_boards_features, batch_size, axis=0) # [ b, B, PxI +1+69 ] = [ b, B, 69 ]
@@ -61,7 +61,7 @@ class NextRoundValue():
 		self.current_round_values = np.zeros([batch_size, 1,PC,HC], dtype=arguments.dtype)
 		# init current board's mask (possible hands, given that board)
 		self.current_board_mask = np.zeros([1,HC], dtype=bool)
-		self.current_board_mask[0] = card_tools.get_possible_hand_indexes(self.current_board)
+		self.current_board_mask[0] = card_tools.get_possible_hands_mask(self.current_board)
 		# fill inputs with board features
 		board_features = card_tools.convert_board_to_nn_feature(self.current_board)
 		board_features = np.expand_dims(board_features, axis=0) # reshape: [69] -> [1,69]
@@ -172,7 +172,7 @@ class NextRoundValue():
 
 NEXT_ROUND_VALUES = {}
 for street in range(1,4):
-	street_name = card_to_string.street2name(street)
+	street_name = card_to_string.street_to_name(street)
 	NEXT_ROUND_VALUES[street] = NextRoundValue( street, skip_iterations=arguments.cfr_skip_iters,
 												leaf_nodes_iterations=arguments.leaf_nodes_iterations[street_name] )
 

@@ -13,7 +13,7 @@ class ValueNn():
 	def __init__(self, street, pretrained_weights=False, approximate='root_nodes', verbose=1):
 		# set directories
 		self.approximate = approximate # set to approximate leaf or root nodes of specified street
-		street_name = card_to_string.street2name(street)
+		street_name = card_to_string.street_to_name(street)
 		self.model_dir_path = os.path.join(arguments.model_path, street_name)
 		model_name = '{}.{}.hdf5'.format(arguments.model_filename, self.approximate)
 		self.model_path = os.path.join(self.model_dir_path, model_name)

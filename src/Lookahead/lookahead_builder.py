@@ -62,29 +62,6 @@ class LookaheadBuilder():
 						assert(action not in self.lookahead.action_to_index)
 						self.lookahead.action_to_index[action] = self.lookahead.layers[d].indices[0] + action_idx
 
-		print('num_transition_nodes:', self.lookahead.next_round_pot_sizes)
-		# print(self.lookahead.num_pot_sizes)
-		# # for d in range(1,self.lookahead.depth):
-		# # 	print(self.lookahead.layers[d].indices)
-		# # for d in range(1,self.lookahead.depth):
-		# # 	print(self.lookahead.layers[d].pot_size)
-		print(self.lookahead.action_to_index)
-
-
-		if constants.actions.ccall not in self.lookahead.action_to_index:
-			print(self.lookahead.action_to_index)
-			print(self.lookahead.parent_action_id)
-			assert(False)
-
-		# set up cfvs approximation using neural networks
-		# 	if street == 1:
-		# 		then use most of iterations to approximate cfvs from leaf nodes,
-		# 		because to calculate mean of 22100 next street root nodes takes a lot of time
-		# 	elif street == 2 or street == 3:
-		# 		here, we need to average only 49/48 next street boards, so we use
-		# 		more iterations on approximating next street's root nodes cfvs
-		# 	elif street == 4:
-		#  		no need, we can use terminal equity, which is based on rules of the game
 		street, board = self.lookahead.tree.street, self.lookahead.terminal_equity.board
 		self.lookahead.cfvs_approximator = get_next_round_value(street) # (loads preloaded models)
 		# init input/output variables in NextRoundValue
@@ -184,21 +161,6 @@ class LookaheadBuilder():
 			num_nonterminal_parents = num_nonterminal_nonallin_grandparents * num_grandparent_bets
 			self.lookahead.num_term_fold_nodes += num_nonterminal_parents
 			layers[d].term_fold_idx = np.array([before, self.lookahead.num_term_fold_nodes], dtype=arguments.int_dtype)
-
-
-	# def reset(self):
-	# 	HC = constants.hand_count
-	# 	layers = self.lookahead.layers
-	# 	for d in range(0, self.lookahead.depth):
-	# 		if d in self.lookahead.layers:
-	# 			self.lookahead.layers[d].ranges.fill(1.0/HC)
-	# 			self.lookahead.layers[d].strategies_avg.fill(0)
-	# 			self.lookahead.layers[d].current_strategy.fill(0)
-	# 			self.lookahead.layers[d].cfvs.fill(0)
-	# 			self.lookahead.layers[d].cfvs_avg.fill(0)
-	# 			self.lookahead.layers[d].regrets.fill(0)
-	# 	if self.lookahead.cfvs_approximator is not None:
-	# 		self.lookahead.cfvs_approximator.init_computation(self.lookahead.next_round_pot_sizes, self.lookahead.batch_size)
 
 
 	def set_datastructures_from_tree_dfs(self, node, depth, action_id, parent_id, gp_id, cur_action_id, parent_action_id=None):

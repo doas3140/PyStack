@@ -57,7 +57,6 @@ class TreeParams():
 	def __init__(self):
 		self.root_node = None # Node obj
 		self.limit_to_street = None # boolean
-		self.bet_sizing = None
 
 class ResolvingParams():
 	def __init__(self):

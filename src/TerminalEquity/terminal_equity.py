@@ -29,10 +29,10 @@ class TerminalEquity():
 		self._block_matrix = np.ones([HC,HC], dtype=bool)
 		for p1_card1 in range(CC):
 			for p1_card2 in range(p1_card1+1, CC):
-				p1_idx = card_tools.get_hole_index([p1_card1, p1_card2])
+				p1_idx = card_tools.get_hand_index([p1_card1, p1_card2])
 				for p2_card1 in range(CC):
 					for p2_card2 in range(p2_card1+1, CC):
-						p2_idx = card_tools.get_hole_index([p2_card1, p2_card2])
+						p2_idx = card_tools.get_hand_index([p2_card1, p2_card2])
 						if p1_card1 == p2_card1 or p1_card1 == p2_card2 or \
 						   p1_card2 == p2_card1 or p1_card2 == p2_card2:
 						   self._block_matrix[p1_idx, p2_idx] = 0
@@ -50,7 +50,7 @@ class TerminalEquity():
 		if board_cards.ndim != 0:
 			assert(board_cards.shape[0] == 1 or board_cards.shape[0] == 2 or board_cards.shape[0] == 5) # Only Leduc, extended Leduc, and Texas Holdem are supported
 		# batch eval with only single batch, because its last round
-		strength = evaluator.batch_eval_fast(board_cards)
+		strength = evaluator.evaluate_batch(board_cards)
 		# handling hand stregths (winning probs)
 		strength_view_1 = strength.reshape([HC,1]) # * np.ones_like(call_matrix)
 		strength_view_2 = strength.reshape([1,HC]) # * np.ones_like(call_matrix)
@@ -71,7 +71,7 @@ class TerminalEquity():
 		if last_round_boards.ndim != 0:
 			assert(last_round_boards.shape[1] == 0 or last_round_boards.shape[1] == 2 or last_round_boards.shape[1] == 5) # Only Leduc, extended Leduc, and Texas Holdem are supported
 		# evaluating all possible last round boards
-		strength = evaluator.batch_eval_fast(last_round_boards) # [b,I]
+		strength = evaluator.evaluate_batch(last_round_boards) # [b,I]
 		# strength from player 1 perspective for all the boards and all the card combinations
 		strength_view_1 = strength.reshape([num_boards,HC,1]) # * np.ones([num_boards, HC, HC], dtype=strength.dtype)
 		# strength from player 2 perspective
@@ -102,7 +102,7 @@ class TerminalEquity():
 		@param: board a possibly empty vector of board cards
 		'''
 		HC, CC = constants.hand_count, constants.card_count
-		possible_hand_indexes = card_tools.get_possible_hand_indexes(board)
+		possible_hand_indexes = card_tools.get_possible_hands_mask(board)
 		matrix[:,:] *= possible_hand_indexes.reshape([1,HC])
 		matrix[:,:] *= possible_hand_indexes.reshape([HC,1])
 		matrix[:,:] *= self._block_matrix

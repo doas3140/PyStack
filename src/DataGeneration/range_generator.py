@@ -64,11 +64,11 @@ class RangeGenerator():
 		if board.ndim == 0:
 			hand_strengths = np.squeeze(terminal_equity.get_hand_strengths())
 		elif board.shape[0] == 5:
-			hand_strengths = evaluator.batch_eval_fast(board)
+			hand_strengths = evaluator.evaluate_batch(board)
 		else:
 			hand_strengths = np.squeeze(terminal_equity.get_hand_strengths())
 		# get possible hands mask for particular board
-		possible_hand_indexes = card_tools.get_possible_hand_indexes(board).astype(bool)
+		possible_hand_indexes = card_tools.get_possible_hands_mask(board).astype(bool)
 		self.possible_hands_count = possible_hand_indexes.sum(axis=0)
 		self.possible_hands_mask = possible_hand_indexes.reshape([1,-1])
 		# non_coliding_strengths shape: [self.possible_hands_count]

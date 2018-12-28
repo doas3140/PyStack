@@ -19,7 +19,6 @@ import numpy as np
 from Settings.arguments import arguments
 from Game.card_tools import card_tools
 from Settings.constants import constants
-# from Lookahead.mock_resolving import MockResolving # dont need here?
 from Lookahead.resolving import Resolving
 from helper_classes import ResolvingParams
 
@@ -45,7 +44,7 @@ class TreeStrategyFilling():
 			# setting strategy for impossible hands to 0
 			for i in range(len(node.children)):
 				child_node = node.children[i]
-				mask = card_tools.get_possible_hand_indexes(child_node.board).astype(bool)
+				mask = card_tools.get_possible_hands_mask(child_node.board).astype(bool)
 				node.strategy[i][mask] = 1.0 / (self.board_count-2)
 		for i in range(len(node.children)):
 			child_node = node.children[i]
@@ -235,7 +234,7 @@ class TreeStrategyFilling():
 			child_cf_values = resolving.get_chance_action_cfv(our_last_action, child_node.board)
 			# we need to remove impossible hands from the range and then renormalize it
 			child_range = range_.copy()
-			mask = card_tools.get_possible_hand_indexes(child_node.board)
+			mask = card_tools.get_possible_hands_mask(child_node.board)
 			child_range *= mask
 			range_weight = np.sum(child_range, axis=0, keepdims=True)[0] # weight should be single number
 			child_range *= 1 / range_weight

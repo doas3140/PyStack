@@ -28,6 +28,22 @@ class CardCombinations():
 		return self.C[n*self.max_choose + k]
 
 
+	def count_last_street_boards(self, street):
+		BCC, SC, CC = constants.board_card_count, constants.streets_count, constants.card_count
+		used_cards = BCC[street-1]
+		new_cards = BCC[SC-1] - BCC[street-1]
+		return card_combinations.choose(CC - used_cards, new_cards)
+
+
+	def count_next_street_boards(self, street):
+		''' counts the number of boards in next street 
+		'''
+		BCC, CC = constants.board_card_count, constants.card_count
+		used_cards = BCC[street-1] # street-1 = current_street
+		new_cards = BCC[street] - BCC[street-1]
+		return card_combinations.choose(CC - used_cards, new_cards)
+
+
 	def count_last_boards_possible_boards(self, street):
 		''' counts the number of possible boards if 2 cards where already taken (in players hand)
 			the answer will be the same for all player's holding cards

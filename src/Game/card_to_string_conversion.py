@@ -43,8 +43,7 @@ class CardToStringConversion():
 		@param: card () the numeric representation of a card
 		@return the string representation of the card
 		'''
-		CC = constants.card_count
-		assert(card >= 0 and card < CC)
+		assert(card >= 0 and card < constants.card_count)
 		return self.card_to_string_table[card]
 
 
@@ -86,7 +85,7 @@ class CardToStringConversion():
 			return board
 
 
-	def street2name(self, street):
+	def street_to_name(self, street):
 	    if street == 1:
 	        return 'preflop'
 	    elif street == 2:

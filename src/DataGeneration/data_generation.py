@@ -112,7 +112,7 @@ class DataGeneration():
 		for next_board in next_boards:
 			board_features = card_tools.convert_board_to_nn_feature(next_board)
 			nn_input[ : , self.input_size: ] = board_features
-			mask = card_tools.get_possible_hand_indexes(next_board)
+			mask = card_tools.get_possible_hands_mask(next_board)
 			nn_input[ : , :self.input_size ] = inputs.copy()
 			nn_input[ : , 0:HC ] *= mask
 			nn_input[ : , HC:2*HC ] *= mask

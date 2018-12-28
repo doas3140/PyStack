@@ -41,7 +41,7 @@ class Constants():
 
 		# IDs for fold and check/call actions
 		self.actions = Actions()
-		self.actions.fold = -2 #
+		self.actions.fold = -2
 		self.actions.ccall = -1 # (check/call)
 		self.actions.raise_ = -3
 

@@ -46,8 +46,6 @@ class Resolving():
 		self._create_lookahead_tree(node)
 		self.lookahead = Lookahead(self.terminal_equity, batch_size)
 		if self.verbose > 0: t0 = time.time()
-		self.lookahead.build_lookahead(self.lookahead_tree)
-		if self.verbose > 0: print('Build time: {}'.format(time.time() - t0)); t0 = time.time()
 		if opponent_range is not None:
 			self.lookahead.resolve(player_range=player_range, opponent_range=opponent_range)
 			self.resolve_results = self.lookahead.get_results(reconstruct_opponent_cfvs=False)

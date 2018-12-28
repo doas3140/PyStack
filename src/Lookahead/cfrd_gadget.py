@@ -25,7 +25,7 @@ class CFRDGadget():
 		self.terminate_strategy = np.ones([HC], dtype=arguments.dtype)			# [I]
 		self.play_strategy      = np.zeros([HC], dtype=arguments.dtype)			# [I]
 		# init range mask for masking out impossible hands
-		self.range_mask = card_tools.get_possible_hand_indexes(board) 			# [I]
+		self.range_mask = card_tools.get_possible_hands_mask(board) 			# [I]
 
 
 	def compute_opponent_range(self, current_opponent_cfvs):

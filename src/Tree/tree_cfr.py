@@ -20,6 +20,22 @@ class TreeCFR():
 		'''
 		self._cached_terminal_equities = {}
 
+	def get_board_index(self, board):
+		''' Gives a numerical index for a set of board cards.
+		@param: board a non-empty vector of board cards
+		@return the numerical index for the board
+		'''
+		CC = constants.card_count
+		used_cards = np.zeros([CC], dtype=arguments.dtype)
+		for i in range(board.shape[0] - 1):
+			used_cards[ board[i] ] = 1
+		ans = -1
+		for i in range(CC):
+			if used_cards[i] == 0:
+				ans += 1
+			if i == board[-1]:
+				return ans
+		return -1
 
 	def _get_terminal_equity(self, node):
 		''' Gets an evaluator for player equities at a terminal node.
@@ -30,7 +46,7 @@ class TreeCFR():
 		'''
 		# board_idx = card_to_string.cards_to_string(node.board)
 		if node.board.ndim == 0: board_idx = -2
-		else: board_idx = card_tools.get_board_index(node.board)
+		else: board_idx = self.get_board_index(node.board)
 		try:
 			cached = self._cached_terminal_equities[board_idx]
 		except:

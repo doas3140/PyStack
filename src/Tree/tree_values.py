@@ -40,7 +40,7 @@ class TreeValues():
 		assert((node.ranges_absolute < 0).sum() == 0)
 		assert((node.ranges_absolute > 1).sum() == 0)
 		# check if the range consists only of cards that don't overlap with the board
-		hands_mask = card_tools.get_possible_hand_indexes(node.board)
+		hands_mask = card_tools.get_possible_hands_mask(node.board)
 		impossible_hands_mask = np.ones_like(hands_mask,dtype=arguments.int_dtype) - hands_mask
 		impossible_range_sum = (node.ranges_absolute.copy() * impossible_hands_mask.reshape([1,HC])).sum() # ? delete .copy()
 		assert(impossible_range_sum == 0, impossible_range_sum)

@@ -6,15 +6,9 @@ import numpy as np
 
 class Parameters():
 	def __init__(self):
-		# whether to run on GPU
-		self.gpu = False
 		# the tensor datatype used for storing DeepStack's internal data
 		self.dtype = np.float32
 		self.int_dtype = np.int16
-		# server running the ACPC dealer
-		self.acpc_server = "localhost"
-		# server port running the ACPC dealer
-		self.acpc_server_port = 20000
 		# cached results path (caching only first street)
 		self.cache_path = './Data/cache/'
 		# self.cache_path = r'D:\Datasets\Pystack\cache'
@@ -30,7 +24,7 @@ class Parameters():
 		# NEURAL NETWORK
 		self.XLA = True
 		# path to the neural net model
-		# self.model_path = './Data/Models/'
+		# self.model_path = './data/Models/'
 		self.model_path = r'D:\Datasets\Pystack\models'
 		# self.model_filename = 'weights.{epoch:02d}-{val_loss:.2f}' # show epoch and loss on filename
 		self.model_filename ='weights' # without ending
@@ -47,7 +41,7 @@ class Parameters():
 		self.tfrecords_batch_size = 1024*10 # ~200MB
 		# DATA GENERATION
 		# path to the solved poker situation data used to train the neural net
-		# self.data_path = './Data/TrainSamples/'
+		# self.data_path = './data/TrainSamples/'
 		self.data_path = r'D:\Datasets\Pystack\NoLimitTexasHoldem'
 		# the number of iterations that DeepStack runs CFR for
 		self.cfr_iters = 800

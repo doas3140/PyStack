@@ -37,7 +37,7 @@ class ContinualResolving():
 		hand = np.sort([card1,card2]) # must be ordered
 		self.prev_street, self.prev_action = 1, None
 		self.player_position = P1 if player_is_small_blind else P2
-		self.holding_hand_idx = card_tools.get_hole_index(hand)
+		self.holding_hand_idx = card_tools.get_hand_index(hand)
 		self.terminal_equity.set_board(np.zeros([])) # set empty board
 		# init player range and opponent cfvs
 		self.player_range = self.uniform_range.copy()
@@ -80,7 +80,7 @@ class ContinualResolving():
 			# opponent cfvs: if the street has changed, the resonstruction API simply gives us CFVs
 			self.opponent_cfvs = self._get_chance_action_cfv(node.board, self.prev_results, self.prev_action)
 			# player range: if street has change, we have to mask out the colliding hands
-			mask = card_tools.get_possible_hand_indexes(node.board)
+			mask = card_tools.get_possible_hands_mask(node.board)
 			self.player_range *= mask						# mask available combinations given particular board
 			self.player_range /= self.player_range.sum()	# normalize
 			# set terminal equity for new board
@@ -131,7 +131,7 @@ class ContinualResolving():
 		# if self.verbose != 0:
 		# 	for card1 in range(52):
 		# 		for card2 in range(card1+1, 52):
-		# 			idx = card_tools.get_hole_index([card1,card2])
+		# 			idx = card_tools.get_hand_index([card1,card2])
 		# 			c1, c2 = card_to_string.card_to_string(card1), card_to_string.card_to_string(card2)
 		# 			print(c1, c2, np.array2string(results.strategy[:,0,idx], suppress_small=True, precision=2))
 		return results

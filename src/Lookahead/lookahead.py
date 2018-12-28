@@ -18,23 +18,8 @@ class Lookahead():
 		self.builder = LookaheadBuilder(self)
 		self.terminal_equity = terminal_equity
 		self.batch_size = batch_size
-
-
-	def build_lookahead(self, tree):
-		''' Constructs the lookahead from a game's public tree.
-			Must be called to initialize the lookahead.
-		@param: tree a public tree
-		'''
+		# build lookahead
 		self.builder.build_from_tree(tree)
-
-
-	# def reset(self):
-	# 	self.builder.reset()
-
-
-	def _action_index_to_batch_index(self, action_idx):
-		action = self.lookahead_tree.actions[action_idx]
-		self.action_to_index[action]
 
 
 	def get_results(self, reconstruct_opponent_cfvs):
