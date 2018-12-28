@@ -14,7 +14,7 @@ from Settings.constants import constants
 from helper_classes import LookaheadResults
 
 class Lookahead():
-	def __init__(self, terminal_equity, batch_size):
+	def __init__(self, tree, terminal_equity, batch_size):
 		self.builder = LookaheadBuilder(self)
 		self.terminal_equity = terminal_equity
 		self.batch_size = batch_size

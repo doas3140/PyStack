@@ -21,7 +21,6 @@ class Resolving():
 		self.tree_builder = PokerTreeBuilder()
 		self.verbose = verbose
 		self.terminal_equity = terminal_equity
-		self.lookahead = Lookahead(None, None)
 
 
 	def _create_lookahead_tree(self, node):
@@ -44,7 +43,7 @@ class Resolving():
 		# opponent_cfvs = None if we only need to resolve first node
 		batch_size = player_range.shape[0]
 		self._create_lookahead_tree(node)
-		self.lookahead = Lookahead(self.terminal_equity, batch_size)
+		self.lookahead = Lookahead(self.lookahead_tree, self.terminal_equity, batch_size)
 		if self.verbose > 0: t0 = time.time()
 		if opponent_range is not None:
 			self.lookahead.resolve(player_range=player_range, opponent_range=opponent_range)
@@ -68,11 +67,6 @@ class Resolving():
 			a = self.resolve_results.strategy.shape[0]
 			print(np.array2string(self.resolve_results.strategy[ : , batch, : ].reshape([a,-1])[ : , 1320:1326 ], suppress_small=True, precision=2))
 		return self.resolve_results
-
-
-	def get_possible_actions(self):
-		''' Gives a list of possible actions at the node being re-solved '''
-		return self.lookahead_tree.actions
 
 
 

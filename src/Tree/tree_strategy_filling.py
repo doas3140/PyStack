@@ -152,7 +152,7 @@ class TreeStrategyFilling():
 		'''
 		assert(resolving)
 		assert(node.current_player == player)
-		player_actions = resolving.get_possible_actions()
+		player_actions = resolving.lookahead_tree.actions
 		actions_count = len(node.children)
 		CC, AC = constants.card_count, actions_count
 		assert(actions_count == node.actions.shape[0])
