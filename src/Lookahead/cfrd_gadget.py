@@ -12,8 +12,8 @@ from Game.card_tools import card_tools
 class CFRDGadget():
 	def __init__(self, board, opponent_cfvs):
 		''' Constructor
-		@param: board board card
-		@param: opponent_cfvs the opponent counterfactual values vector used for re-solving
+		@param: [0-5] :vector of board cards (int)
+		@param: [I]   :initial opponent counterfactual values vector used for re-solving
 		'''
 		HC = constants.hand_count
 		# store initial cfvs (used to get terminal values)
@@ -31,10 +31,8 @@ class CFRDGadget():
 	def compute_opponent_range(self, current_opponent_cfvs):
 		''' Uses one iteration of the gadget game to generate an opponent
 			range for the current re-solving iteration.
-		@param: current_opponent_cfvs the vector of cfvs that the opponent
-				receives with the current strategy in the re-solve game
-		@param: iteration the current iteration number of re-solving
-		@return the opponent range vector for this iteration
+		@param: [I] :vector of cfvs that the opponent receives with the current strategy in the re-solve game
+		@return [I] :opponent range vector for this iteration
 		'''
 		HC = constants.hand_count
 		# remove first dimension (batches), which should be always be 1

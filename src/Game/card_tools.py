@@ -18,8 +18,8 @@ class CardTools():
 
 	def convert_board_to_nn_feature(self, board):
 		'''
-		@param: vector of shape [num_cards on board] each with id of card
-		@return vector of shape [total cards in deck + suit count + rank count] = [52+4+13] = [69]
+		@param: [0-5]     :vector of board cards, where card is unique index (int)
+		@return [52+4+13] :vector of shape [total cards in deck + suit count + rank count]
 		'''
 		num_ranks, num_suits, num_cards = constants.rank_count, constants.suit_count, constants.card_count
 		# init output
@@ -51,11 +51,9 @@ class CardTools():
 
 	def get_possible_hands_mask(self, board):
 		''' Gives the private hands which are valid with a given board.
-		@param: board a possibly empty vector of board cards
-		@return vector (num_cards,) with an entry for every possible hand
-				(private card), which is `1` if the hand shares no cards
-				with the board and `0` otherwise
-				! pakeista: 0 -> False, 1 -> True !
+		@param: [0-5] :vector of board cards, where card is unique index (int)
+		@return [I]   :vector with an entry for every possible hand (private card),
+				which is `1` if the hand shares no cards with the board and `0` otherwise
 		'''
 		HC, CC = constants.hand_count, constants.card_count
 		out = np.zeros([HC], dtype=arguments.int_dtype)
@@ -78,7 +76,10 @@ class CardTools():
 
 
 	def same_boards(self, board1, board2):
-		''' checks if board1 == board2 '''
+		''' checks if board1 == board2
+		@param: [0-5] :vector of board cards, where card is unique index (int)
+		@param: [0-5] :vector of board cards, where card is unique index (int)
+		'''
 		for card1 in board1:
 			found_match = False
 			for card2 in board2:
@@ -90,9 +91,9 @@ class CardTools():
 
 
 	def board_to_street(self, board):
-		''' Gives the current betting round based on a board vector.
-		@param: board a possibly empty vector of board cards
-		@return () int of the current betting round
+		''' Gives the current betting round based on a board vector
+		@param: [0-5] :vector of board cards, where card is unique index (int)
+		@return int   :current betting round/street
 		'''
 		BCC, SC = constants.board_card_count, constants.streets_count
 		if board.ndim == 0 or board.shape[0] == 0:
@@ -126,8 +127,8 @@ class CardTools():
 
 	def get_next_round_boards(self, board):
 		''' Gives all possible sets of board cards for the game.
-		@return an NxK tensor, where N is the number of possible boards, and K is
-				the number of cards on each board
+		@param: [0-5] :vector of board cards, where card is unique index (int)
+		@return [B,I] :tensor, where B is all possible next round boards
 		'''
 		BCC, CC = constants.board_card_count, constants.card_count
 		street = self.board_to_street(board)
@@ -145,6 +146,10 @@ class CardTools():
 
 
 	def get_last_round_boards(self, board):
+		''' Gives all possible sets of board cards for the game.
+		@param: [0-5] :vector of board cards, where card is unique index (int)
+		@return [B,I] :tensor, where B is all possible next round boards
+		'''
 		BCC, SC = constants.board_card_count, constants.streets_count
 		street = self.board_to_street(board)
 		boards_count = card_combinations.count_last_street_boards(street)
@@ -160,10 +165,10 @@ class CardTools():
 
 
 	def get_hand_index(self, hand):
-		''' Gives a numerical index for a set of hole cards.
-			first card is always smaller then second!
-		@param: hand a non-empty vector of hole cards, sorted
-		@return the numerical index for the hand
+		''' Gives a numerical index for a set of hand
+		@param: [2] :vector of player private cards, where card is unique index (int)
+		@return int :numerical index for the hand (0-1326)
+		(first card is always smaller then second!)
 		'''
 		index = 1
 		for i in range(len(hand)):

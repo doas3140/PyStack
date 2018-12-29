@@ -30,24 +30,25 @@ class CardToStringConversion():
 
 
 	def card_to_suit(self, card):
-		''' Gets the suit of a card '''
+		''' Gets the suit of a card (int) '''
 		return self.card_to_suit_table[card]
 
 
 	def card_to_rank(self, card):
-		''' Gets the rank of a card '''
+		''' Gets the rank of a card (int) '''
 		return self.card_to_rank_table[card]
 
 	def card_to_string(self, card):
 		''' Converts a card's numeric representation to its string representation.
-		@param: card () the numeric representation of a card
-		@return the string representation of the card
+		@param: int :numeric representation of a card
+		@return str :string representation of the card
 		'''
 		assert(card >= 0 and card < constants.card_count)
 		return self.card_to_string_table[card]
 
 
 	def cards_to_string(self, cards):
+		''' Does self.card_to_string, just for list of cards '''
 		if cards.ndim == 0:
 			return ''
 		out = ''
@@ -57,9 +58,9 @@ class CardToStringConversion():
 
 
 	def string_to_card(self, card_string):
-		''' Converts a card's string representation to its numeric representation.
-		@param: card_string the string representation of a card
-		@return the numeric representation of the card
+		''' Converts a card's string representation to its numeric representation
+		@param: str :string representation of the card
+		@return int :numeric representation of a card
 		'''
 		CC = constants.card_count
 		card = self.string_to_card_table[card_string]
@@ -67,13 +68,10 @@ class CardToStringConversion():
 		return card
 
 
-	def string_to_board(self, card_string): # verified
-		''' Converts a string representing zero or one board cards to a
-			vector of numeric representations.
-		@param: card_string either the empty string or a string representation
-				of a card
-		@return either an empty tensor or a tensor containing the numeric
-				representation of the card
+	def string_to_board(self, card_string):
+		''' Converts a string representing zero or one board cards to a vector of numeric representations
+		@param: str       :string representation of the board (ex: 'AhKsQdJhTs9c')
+		@return [int,...] :tensor containing the numeric representation of the board
 		'''
 		if card_string == '':
 			return np.zeros([], dtype=arguments.int_dtype)
@@ -86,14 +84,15 @@ class CardToStringConversion():
 
 
 	def street_to_name(self, street):
-	    if street == 1:
-	        return 'preflop'
-	    elif street == 2:
-	        return 'flop'
-	    elif street == 3:
-	        return 'turn'
-	    elif street == 4:
-	        return 'river'
+		''' converts street/round (int) to name (str) '''
+		if street == 1:
+			return 'preflop'
+		elif street == 2:
+			return 'flop'
+		elif street == 3:
+			return 'turn'
+		elif street == 4:
+			return 'river'
 
 
 

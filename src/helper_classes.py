@@ -22,36 +22,28 @@ class Actions():
 		self.ccall = 0
 		self.raise_ = 0
 
-class ACPCActions():
-	def __init__(self):
-		self.fold = ""
-		self.ccall = ""
-		self.raise_ = ""
-
 class Node():
 	def __init__(self):
 		self.type = None # int
 		self.node_type = None # int
-		self.street = None # int
-		self.board = None # np.array (current_board_cards,)
+		self.street = None # int (the current betting round)
+		self.board = None # [0-5] (vector of cards on board)
 		self.board_string = None # str
 		self.current_player = None # int
-		self.bets = None # np.array (num_players,)
-		self.num_bets = None
-		self.pot = None # int
-		self.children = [] # list
-		self.terminal = None # boolean
+		self.bets = None # [P] (current bets from both players)
+		self.num_bets = None # int (used for additional betting in first round)
+		self.pot = None # int ( pot = max(self.bets) )
+		self.children = [] # [Node,...] (list of nodes)
+		self.terminal = None # boolean (is this node terminal)
 		self.parent = None # Node
-		self.actions = None # np.array (len(children),)
-		self.strategy = None # np.array (len(children), CC)
+		self.actions = None # [len(children)] (available bet sizes + call + fold actions)
+		self.strategy = None # [len(children), I] (strategy for each hand)
 		# cfr
-		self.iter_weight_sum = None # np.array (CC,)
-		self.regrets = None # np.array (AC,CC)
-		self.possitive_regrets = None # np.array (AC,CC)
-		self.cf_values = None # np.array (PC,CC)
-		self.ranges_absolute = None # np.array (PC,CC)
-
-
+		self.iter_weight_sum = None # [I]
+		self.regrets = None # [A,I]
+		self.possitive_regrets = None # [A,I] (clipped self.regrets)
+		self.cf_values = None # [P,I]
+		self.ranges = None # [P,I]
 
 class TreeParams():
 	def __init__(self):
@@ -60,13 +52,13 @@ class TreeParams():
 
 class ResolvingParams():
 	def __init__(self):
-		self.node = None # node
-		self.range = None # p2_range
-		self.player = None # player
-		self.cf_values = None # cf_values
-		self.resolving = None
-		self.our_last_action = None
-		self.opponent_range = None
+		self.node = None # Node
+		self.range = None # [I] (probability vector over the player's private hands at the node)
+		self.player = None # int
+		self.cf_values = None # [I] (vector of opponent counterfactual values at the node)
+		self.resolving = None # Resolving (object which was used to re-solve the last player node)
+		self.our_last_action = None # (the action taken by the player at their last node)
+		self.opponent_range = None # [I] (probability vector over the player's private hands at the node)
 
 class LookaheadResults():
 	def __init__(self):
@@ -82,24 +74,11 @@ class LookaheadResults():
 		self.action_to_index = None			# {'bet size':'next_street_cfvs index'}
 		self.next_round_pot_sizes = None	# [b x trans_nodes, B]
 
-
-	def __str__(self):
-		s = 'strat\n {} \ncfvs\n {} \nroot_cfvs\n {} \nboth_P_root_cfvs\n {} \nchildren_cfvs\n {}'. \
-							format(  self.strategy, self.achieved_cfvs, \
-		 							 self.root_cfvs, self.root_cfvs_both_players, \
-									 self.children_cfvs )
-		return s
-
-class Lookahead():
-	def __init__(self):
-		self.ccall_action_index = None # int
-		self.fold_action_index = None # int
-		self.tree = None # Node obj
-		self.next_street_boxes = None # NextRoundValue obj
-		self.regret_epsilon = None # const int
-		self.depth = None # int
-
-
+	# def __str__(self):
+	# 	return 'strat\n {} \ncfvs\n {} \nroot_cfvs\n {} \nboth_P_root_cfvs\n {} \nchildren_cfvs\n {}'. \
+	# 						format(  self.strategy, self.achieved_cfvs, \
+	# 	 							 self.root_cfvs, self.root_cfvs_both_players, \
+	# 								 self.children_cfvs )
 
 class LookaheadLayer():
 	def __init__(self):
@@ -115,38 +94,23 @@ class LookaheadLayer():
 		self.num_nonterminal_nodes = None # [1 - d]
 		self.num_nonterminal_nonallin_nodes = None # [1 - d]
 		self.num_all_nodes = None # [1 - d]
-		# self.terminal_nodes_count = None # [1 - d]
 		self.num_allin_nodes = None # [1 - d]
-		#  None ?
 		self.next_street_boxes_inputs = None # [1 - d]
 		self.next_street_boxes_outputs = None # [d - d]
 		# construct_data_structures
-		# (actions, parent_action, grandparent_id, batch, players, range)
+		# [A{d-1}, B{d-2}, NTNAN{d-2}, b, P, I]
 		self.ranges = None # [0 - d]
 		self.pot_size = None # [0 - d]
 		self.cfvs = None # [0 - d]
-		# self.placeholder_data = None # [0 - d]
 		self.cfvs_avg = None # [0 - d]
-		# (actions, parent_action, grandparent_id, 1, range)
+		# [A{d-1}, B{d-2}, NTNAN{d-2}, b, 1, I]
 		self.strategies_avg = None # [0 - d]
 		self.current_strategy = None # [0 - d]
 		self.regrets = None # [0 - d]
-		# self.current_regrets = None # [0 - d]
-		# self.positive_regrets = None # [0 - d]
 		self.empty_action_mask = None # [0 - d]
-		# sum over actions (1, parent_action, grandparent_id, range)
-		# self.regrets_sum = None # [0 - d]
-		# inner nodes (nor terminal, nor allin)
-		# (bets, parent_nonallinbetscount, grandparent_id, batch, players, range)
-		# self.inner_nodes = None # [0 - d]
-		# self.swap_data = None # [0 - d]
-		# self.inner_nodes_p1 = None # [0 - d]
 		# for terminal equity (2,)
 		self.term_call_idx = None # [1 - d]
 		self.term_fold_idx = None # [1 - d]
-		# set_datastructures_from_tree_dfs
-		# self.empty_action_mask = None # [0 - d]
-		# self.num_bets = None # [0 - d]
 		# _construct_transition_boxes
 		self.indices = None # (2,) [1 - d]
 

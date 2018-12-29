@@ -18,14 +18,18 @@ from Tree.tree_cfr import TreeCFR
 
 class Resolving():
 	def __init__(self, terminal_equity, verbose=0):
+		'''
+		@param: TerminalEquity :object that evaluates rewards with specified board
+		@param: int            :printing outputs if >0
+		'''
 		self.tree_builder = PokerTreeBuilder()
 		self.verbose = verbose
 		self.terminal_equity = terminal_equity
 
 
 	def _create_lookahead_tree(self, node):
-		''' Builds a depth-limited public tree rooted at a given game node.
-		@param: node the root of the tree
+		''' Builds a depth-limited public tree rooted at a given game node
+		@param: Node :root of the tree
 		'''
 		build_tree_params = TreeParams()
 		build_tree_params.root_node = node
@@ -34,6 +38,14 @@ class Resolving():
 
 
 	def resolve(self, node, player_range, opponent_range=None, opponent_cfvs=None):
+		''' Creates lookahead and solves it
+		@param: Node             :root node of the tree
+		@param: [I]              :current player's range
+		@param: [I]              :opponent's range
+		@param: [I]              :opponent's cfvs (used to reconstruct opponent's range)
+		@return LookaheadResults :results
+		(only one of `opponent_range` and `opponent_cfvs` should be used)
+		'''
 		if opponent_range is not None:
 			if opponent_range.ndim != 2: raise(Exception('opponent_range has to have batch size as first dim. (can be 1)'))
 		if opponent_cfvs is not None:

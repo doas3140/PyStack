@@ -20,6 +20,9 @@ from helper_classes import Node
 
 class DataGeneration():
 	def __init__(self, dirpath):
+		'''
+		@param: str :directory where to store npy files
+		'''
 		self.dirpath = dirpath
 		self.counter = 0
 		# init range generator and term eq
@@ -32,10 +35,15 @@ class DataGeneration():
 
 
 	def solve_root_node(self, board, batch_size):
+		''' solves random root nodes to get cfvs
+		@param: [0-5] :vector of board cards, where card is unique index (int)
+		@param: int   :batch of how many situations are evaluated simultaneously (usually will be = 1)
+		'''
 		HC, PC = constants.hand_count, constants.players_count
 		# set board in terminal equity and range generator
 		self.term_eq.set_board(board)
-		self.range_generator.set_board(self.term_eq, board)
+		hand_strengths = self.term_eq.get_hand_strengths() # [I]
+		self.range_generator.set_board(hand_strengths, board)
 		# init inputs and outputs
 		targets = np.zeros([batch_size, self.target_size], dtype=arguments.dtype)
 		inputs = np.zeros([batch_size, self.input_size], dtype=arguments.dtype)
@@ -78,10 +86,15 @@ class DataGeneration():
 
 
 	def solve_leaf_node(self, board, batch_size):
+		''' computes average cfvs out of next street root nodes approximated cfvs
+		@param: [0-5] :vector of board cards, where card is unique index (int)
+		@param: int   :batch of how many situations are evaluated simultaneously (usually will be = 1)
+		'''
 		HC, PC = constants.hand_count, constants.players_count
 		# set board in terminal equity and range generator
 		self.term_eq.set_board(board)
-		self.range_generator.set_board(self.term_eq, board)
+		hand_strengths = self.term_eq.get_hand_strengths() # [I]
+		self.range_generator.set_board(hand_strengths, board)
 		# init inputs and outputs
 		inputs = np.zeros([batch_size,self.input_size], dtype=arguments.dtype)
 		targets = np.zeros([batch_size,self.target_size], dtype=arguments.dtype)
@@ -127,6 +140,11 @@ class DataGeneration():
 
 
 	def generate_data(self, street, approximate='root_nodes', starting_idx=0):
+		'''
+		@param: int :current round/street
+		@param: str :to approximate current round "root_nodes"/"leaf_nodes"
+		@param: int :starting index for naming files
+		'''
 		card_count = constants.card_count
 		# set up scalar variables
 		self.street = street

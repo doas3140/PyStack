@@ -11,6 +11,12 @@ from NeuralNetwork.metrics import BasicHuberLoss, masked_huber_loss
 
 class ValueNn():
 	def __init__(self, street, pretrained_weights=False, approximate='root_nodes', verbose=1):
+		'''
+		@param: int  :current street/round
+		@param: bool :to load pretrained model or init random weights
+		@param: str  :approximate current street "root_nodes"/"leaf_nodes"
+		@param: int  :display output if >0
+		'''
 		# set directories
 		self.approximate = approximate # set to approximate leaf or root nodes of specified street
 		street_name = card_to_string.street_to_name(street)
@@ -23,7 +29,7 @@ class ValueNn():
 		if pretrained_weights:
 			self.keras_model = tf.keras.models.load_model( self.model_path,
 								   custom_objects = {'loss':BasicHuberLoss(delta=1.0),
-								   					 'masked_huber_loss':masked_huber_loss} )
+													 'masked_huber_loss':masked_huber_loss} )
 		else: # create keras model
 			self.keras_model = self._build_net()
 		# print architecture summary
@@ -33,11 +39,9 @@ class ValueNn():
 
 
 	def predict(self, inputs, out):
-		''' Gives the neural net output for a batch of inputs.
-		@param: inputs An (N,I) tensor containing N instances of
-				neural net inputs. See @{net_builder} for details of each input.
-		@param: output An (N,O) tensor in which to store N sets of
-				neural net outputs. See @{net_builder} for details of each output.
+		''' Gives the neural net output for a batch of inputs
+		@param: [b,nnI] :tensor containing b batches instances of neural net inputs
+		@param: [b,nnO] :tensor in which to store b batches of neural net outputs
 		'''
 		total_elements, batch_size = inputs.shape[0], 10000
 		for i in range(0, total_elements, batch_size):

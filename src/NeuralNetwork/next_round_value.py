@@ -1,5 +1,7 @@
 '''
 	Uses the neural net to estimate value at the end of the first betting round.
+	Approximates cfvs from current street/round leaf states for first iterations.
+	On last iterations, uses next street/round root states and averages them.
 '''
 import numpy as np
 
@@ -12,7 +14,11 @@ from NeuralNetwork.value_nn import ValueNn
 
 class NextRoundValue():
 	def __init__(self, street, skip_iterations, leaf_nodes_iterations=0):
-		'''  '''
+		'''
+		@param: int :street/round to approximate
+		@param: int :iterations to ommit (doesn't matter if approximates leaf/root nodes)
+		@param: int :iterations used for faster approximation (approximates current street/round leaf nodes)
+		'''
 		self.street = street
 		# setting up neural network for root nodes of next street and current street leaf nodes
 		self.next_street_nn = ValueNn(street+1, approximate='root_nodes', pretrained_weights=True, verbose=0)
@@ -25,8 +31,8 @@ class NextRoundValue():
 
 
 	def _init_root_approximation_vars(self):
-		''' same as in _init_leaf_approximation_vars, just for all possible boards (in next street),
-			 only difference: it creates cumulative cfvs for every next board '''
+		''' same as in self._init_leaf_approximation_vars, just for all possible boards (in next street),
+			only difference: it creates cumulative cfvs for every next board '''
 		BC, PC, batch_size, HC = self.next_boards_count, constants.players_count, self.batch_size, constants.hand_count
 		# init inputs and outputs to neural net
 		self.next_round_inputs = np.zeros([batch_size,BC,HC*PC + 1 + self.num_board_features], dtype=arguments.dtype)
@@ -54,7 +60,7 @@ class NextRoundValue():
 
 
 	def _init_leaf_approximation_vars(self):
-		''' input is only single board (self.current_board) '''
+		''' init datastructures, where input is only single board (self.current_board) '''
 		PC, batch_size, HC = constants.players_count, self.batch_size, constants.hand_count
 		# init inputs and outputs to neural net
 		self.current_round_inputs = np.zeros([batch_size, 1,HC*PC + 1 + self.num_board_features], dtype=arguments.dtype)
@@ -73,14 +79,18 @@ class NextRoundValue():
 
 
 	def init_computation(self, board, pot_sizes, batch_size):
+		'''
+		@param: [0-5] :board with 0-5 card int values on it
+		@param: [b]   :pot sizes for each state (total states=b)
+		@param: int   :batch of how many situations are evaluated simultaneously (usually will be = 1)
+		'''
 		self.iter = 0
 		# setting up current board and possible next boards
 		self.current_board = board
 		self.next_boards = card_tools.get_next_round_boards(self.current_board)
 		self.next_boards_count = self.next_boards.shape[0]
 		# init pot sizes [b, 1], where p - number of pot sizes, b - batch size (here not the same as in other files)
-		self.pot_sizes = pot_sizes.reshape([-1,1]) # [p,1]
-		self.pot_sizes = self.pot_sizes * np.ones([self.pot_sizes.shape[0], batch_size], dtype=arguments.dtype)
+		self.pot_sizes = np.repeat(pot_sizes.reshape([-1,1]), batch_size, axis=1)
 		self.pot_sizes = self.pot_sizes.reshape([-1,1])
 		self.batch_size = self.pot_sizes.shape[0]
 		# setting up num board features used in neural network (all boards will give same shape = 69)
@@ -93,16 +103,10 @@ class NextRoundValue():
 
 	def evaluate_ranges(self, ranges):
 		''' Gives the predicted counterfactual values at each evaluated state,
-			given input ranges.
-		@{start_computation} must be called first. Each state to be evaluated must
-				be given in the same order that pot sizes were given for that function.
-				Keeps track of iterations internally, so should be called exactly
-				once for every iteration of continual re-solving.
-		@param: ranges (are left the same after this computation) An (N,2,K) tensor, where N is the number of states evaluated
-				(must match input to @{start_computation}), 2 is the number of players,
-				and K is the number of private hands. Contains N sets of 2 range vectors.
-		@param: values an (N,2,K) tensor in which to store the N sets of 2 value vectors
-				which are output
+			given input ranges. Keeps track of iterations internally, so should
+			be called exactly once for every iteration of continual re-solving
+		@param: [b,P,I] :ranges, here b is the number of states evaluated (must match input to self.init_computation)
+		@return [b,P,I] :cfvs, calculated by averaging all cfvs of next street/round boards
 		'''
 		PC, HC, batch_size = constants.players_count, constants.hand_count, self.batch_size
 		assert(ranges.shape[0] == self.batch_size)
@@ -160,6 +164,7 @@ class NextRoundValue():
 
 
 	def get_stored_cfvs_of_all_next_round_boards(self):
+		''' returns stored cfvs for all next boards (computed during resolving) '''
 		# remove divison by 0
 		self.cumulative_norm[ self.cumulative_norm == 0 ] = 1
 		# [b,B,P,I] /= [b,B,P,1] (normalize cfvs)

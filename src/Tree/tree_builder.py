@@ -1,14 +1,5 @@
 '''
-	Builds a public tree for Leduc Hold'em or variants.
-	Each node of the tree contains the following fields:
-		* `node_type`: () int. an element of @{constants.node_types} (if applicable)
-		* `street`: () int. the current betting round
-		* `board`: (current_board_cards,) a possibly empty vector of board cards
-		* `board_string`: str. a string representation of the board cards
-		* `current_player`: () int. the player acting at the node
-		* `bets`: (num_players,) the number of chips that each player has committed to the pot
-		* `pot`: bets.min() half the pot size, equal to the smaller number in `bets`
-		* `children`: [] a list of children nodes
+	Builds a public tree for Texas-Holdem with limited bet sizes
 '''
 import numpy as np
 
@@ -24,11 +15,10 @@ class PokerTreeBuilder():
 	def __init__(self):
 		pass
 
-
-	def _get_children_nodes_chance_node(self, parent_node): # wtf
-		''' Creates the children nodes after a chance node.
-		@param: parent_node the chance node
-		@return a list of children nodes
+	def _get_children_nodes_chance_node(self, parent_node):
+		''' Creates the children nodes after a chance node
+		@param: Node       :chance node
+		@return [Node,...] :list of children nodes
 		'''
 		assert(parent_node.current_player == constants.players.chance)
 		if self.limit_to_street:
@@ -52,20 +42,11 @@ class PokerTreeBuilder():
 		return children
 
 
-	def _fill_additional_attributes(self, node):
-		''' Fills in additional convenience attributes which only depend
-			on existing node attributes.
-		@param: node
-		'''
-		node.pot = node.bets.min()
-
-
 	def _get_children_player_node(self, parent_node):
-		''' Creates the children nodes after a player node.
-		@param: parent_node the chance node
-		@return a list of children nodes
+		''' Creates the children nodes after a player node
+		@param: Node       :chance node
+		@return [Node,...] :list of children nodes
 		'''
-		assert(parent_node.current_player != constants.players.chance)
 		children = []
 		# 1.0 fold action
 		fold_node = Node()
@@ -81,7 +62,6 @@ class PokerTreeBuilder():
 		a1 = parent_node.street == 1
 		a2 = parent_node.current_player == constants.players.P1
 		a3 = parent_node.num_bets == 1
-		# a3 = parent_node.node_type != constants.node_types.inner_node
 		a5 = parent_node.street != 1
 		a6 = parent_node.current_player == constants.players.P2
 		a7 = parent_node.bets[0] == parent_node.bets[1]
@@ -112,7 +92,7 @@ class PokerTreeBuilder():
 			chance_node.board = parent_node.board
 			chance_node.board_string = parent_node.board_string
 			chance_node.current_player = constants.players.chance
-			chance_node.bets = np.full_like(parent_node.bets.copy(), parent_node.bets.max())
+			chance_node.bets = np.full_like(parent_node.bets, parent_node.bets.max())
 			chance_node.num_bets = 0
 			children.append(chance_node)
 		# 2.0 terminal call - either last street or allin
@@ -124,15 +104,15 @@ class PokerTreeBuilder():
 			terminal_call_node.street = parent_node.street
 			terminal_call_node.board = parent_node.board
 			terminal_call_node.board_string = parent_node.board_string
-			terminal_call_node.bets = np.full_like(parent_node.bets.copy(), parent_node.bets.max())
+			terminal_call_node.bets = np.full_like(parent_node.bets, parent_node.bets.max())
 			children.append(terminal_call_node)
 		# 3.0 bet actions
-		possible_bets = self._get_possible_bets(parent_node) # (N,P), P=2
+		possible_bets = self._get_possible_bets(parent_node) # [N,P], P=2
 		if possible_bets.ndim != 0:
 			assert (possible_bets.shape[1] == 2)
 			for i in range(possible_bets.shape[0]):
 				child = Node()
-				child.node_type = constants.node_types.inner_node # ? prideta papildomai
+				child.node_type = constants.node_types.inner_node
 				child.parent = parent_node
 				child.current_player = 1 - parent_node.current_player
 				child.street = parent_node.street
@@ -145,29 +125,26 @@ class PokerTreeBuilder():
 
 
 	def _get_children_nodes(self, parent_node):
-		''' Creates the children after a node.
-		@param: parent_node the node to create children for
-		@return a list of children nodes
+		''' Creates the children after a node
+		@param: Node       :node to create children for
+		@return [Node,...] :list of children nodes
 		'''
 		chance_node = parent_node.current_player == constants.players.chance
-		# transition call -> create a chance node
 		if parent_node.terminal:
 			return []
-		# chance node
 		elif chance_node:
 			return self._get_children_nodes_chance_node(parent_node)
-		# inner nodes -> handle bet sizes
-		else:
+		else: # inner nodes -> handle bet sizes
 			return self._get_children_player_node(parent_node)
 		assert(False)
 
 
 	def _build_tree_dfs(self, current_node):
-		''' Recursively build the (sub)tree rooted at the current node.
-		@param: current_node the root to build the (sub)tree from
-		@return `current_node` after the (sub)tree has been built
+		''' Recursively build the (sub)tree rooted at the current node
+		@param: Node :current_node the root to build the (sub)tree from
+		@return Node :`current_node` after the (sub)tree has been built
 		'''
-		self._fill_additional_attributes(current_node)
+		current_node.pot = current_node.bets.min()
 		children = self._get_children_nodes(current_node)
 		current_node.children = children
 		depth = 0
@@ -187,12 +164,10 @@ class PokerTreeBuilder():
 
 
 	def _get_possible_bets(self, node):
-		''' Gives the bets which are legal at a game state.
-		@param: node a representation of the current game state, with fields:
-				* bets (2,): the number of chips currently committed by each player
-				 * current_player (): the currently acting player
-		@return (N,2) tensor where N is the number of new possible game states,
-				containing N sets of new commitment levels for each player
+		''' Gives the bets which are legal at a game state
+		@param: Node  :current node
+		@return [N,P] :tensor where N is the number of new possible game states,
+					   containing N sets of new commitment levels for each player
 		'''
 		current_player = node.current_player
 		assert (current_player == 0 or current_player == 1, 'Wrong player for bet size computation')
@@ -205,11 +180,11 @@ class PokerTreeBuilder():
 		min_raise_size = max(min_raise_size, arguments.ante)
 		min_raise_size = min(max_raise_size, min_raise_size)
 		if min_raise_size == 0:
-			return np.zeros([], dtype=arguments.int_dtype) # (N,P), when N = 0
+			return np.zeros([], dtype=arguments.int_dtype) # ]N,P], when N = 0
 		elif min_raise_size == max_raise_size: # all in
 			out = np.full([1,2], opponent_bet, dtype=arguments.int_dtype)
 			out[0][current_player] = opponent_bet + min_raise_size
-			return out # (N,P)
+			return out # [N,P]
 		else:
 			# iterate through all bets and check if they are possible
 			street_name = card_to_string.street_to_name(node.street)
@@ -233,9 +208,9 @@ class PokerTreeBuilder():
 
 
 	def build_tree(self, params):
-		''' Builds the tree.
-		@param: params table of tree parameters
-		@return the root node of the built tree
+		''' Builds the tree
+		@param: TreeParams :tree creation parameters
+		@return Node       :root node of the built tree
 		'''
 		root = Node()
 		# copy necessary stuff from the root_node not to touch the input

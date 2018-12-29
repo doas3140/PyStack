@@ -29,8 +29,10 @@ class ContinualResolving():
 	def start_new_hand(self, card1, card2, player_is_small_blind):
 		''' Re-initializes the continual re-solving to start a new game
 			from the root of the game tree
-		@param: card: string of 2 chars. first is rank (if letter then only capital) and second suit (lower case).
-				ex: '2c', '6d', 'Jh', 'Ks', 'Ad'. note: for 10 use 'Ts' not '10s'
+		@param: str  :string of 2 chars. first is rank (if letter then only capital) and second suit (lower case)
+		@param: str  :string of 2 chars. first is rank (if letter then only capital) and second suit (lower case)
+		@param: bool :is this player starting with small blind
+		(ex of card string: '2c', '6d', 'Jh', 'Ks', 'Ad'. note: for 10 'Ts' is used and not '10s')
 		'''
 		P1, P2 = constants.players.P1, constants.players.P2
 		card1, card2 = card_to_string.string_to_card(card1), card_to_string.string_to_card(card2)
@@ -46,10 +48,11 @@ class ContinualResolving():
 
 
 	def _get_chance_action_cfv(self, current_board, resolve_results, action_idx):
-		''' Gives the average counterfactual values for the opponent during
-			re-solving after a chance event
-			(the betting round changes and more cards are dealt).
-			Used during continual re-solving to track opponent cfvs.
+		''' Gives the average counterfactual values for the opponent during re-solving after a chance event
+		@param: [0-5]            :current board of 0-5 cards
+		@param: LookaheadResults :lookahead resolving results
+		@param: int              :index of taken action
+		@return [I]              :counterfactual values of that board
 		'''
 		if self.prev_street == 1 and self.cache.exists(self.prev_bets):
 			print('LOADING NEXT STREET CFVS FROM CACHE')
@@ -62,18 +65,22 @@ class ContinualResolving():
 			if card_tools.same_boards(current_board, next_board):
 				board_cfvs = next_street_cfvs[:,i,:,:]
 		# get next street root node outputs. shape = [self.num_pot_sizes * self.batch_size, P, I]
-		# assert(self.num_pot_sizes * self.batch_size == board_cfvs.shape[0])
 		# convert action idx to batch index
 		action = resolve_results.actions[action_idx]
-		batch_index = resolve_results.action_to_index[action] # probably dont need a_idx -> a -> a_idx (still, box_outputs 1st dim = batch x nodes)
+		batch_index = resolve_results.action_to_index[action]
 		# get cfvs for current player, given some action
-		cfvs = board_cfvs[ batch_index , self.player_position ] # ? - turetu but priesingai? 1-p?
+		cfvs = board_cfvs[ batch_index , self.player_position ]
 		pot = resolve_results.next_round_pot_sizes[batch_index]
 		return cfvs * pot
 
 
 	def compute_action(self, board_string, player_bet, opponent_bet):
-		''' Re-solves a node and chooses the re-solving player's next action '''
+		''' Re-solves a node and chooses the re-solving player's next action
+		@param: str  :string of board cards (ex: 'AhKsQdJhTs9c')
+		@param: int  :current bet of this player
+		@param: int  :current bet of player's opponent
+		@return dict :{ "action":"fold"/"call"/"raise"/"allin", "amount":int }
+		'''
 		node = self._create_node(board_string, player_bet, opponent_bet)
 		# if street changed (last node was chance node), then update cfvs and ranges
 		if self.prev_street+1 == node.street:
@@ -117,6 +124,10 @@ class ContinualResolving():
 
 
 	def _resolve(self, node):
+		''' Creates lookahead and solves it
+		@param: Node             :node to solve
+		@return LookaheadResults :results
+		'''
 		# check if first street, then maybe use cache
 		if node.street == 1 and self.cache.exists(node.bets):
 			print('LOADING RESOLVE FROM CACHE')
@@ -138,6 +149,12 @@ class ContinualResolving():
 
 
 	def _create_node(self, board_string, player_bet, opponent_bet):
+		''' Creates root node out of following inputs
+		@param: str  :string of board cards (ex: 'AhKsQdJhTs9c')
+		@param: int  :current bet of this player
+		@param: int  :current bet of player's opponent
+		@return Node :node object representation
+		'''
 		P1, P2 = constants.players.P1, constants.players.P2
 		node = Node()
 		node.board = card_to_string.string_to_board(board_string)

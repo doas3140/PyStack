@@ -1,5 +1,5 @@
 '''
-	Samples random probability vectors for use as player ranges.
+	Samples random probability vectors for use as player ranges
 '''
 import numpy as np
 
@@ -13,11 +13,9 @@ class RangeGenerator():
 		pass
 
 	def _generate_recursion(self, cards, mass):
-		''' Recursively samples a section of the range vector.
-		@param cards an (N,J) section of the range tensor, where N is the batch size
-				and J is the length of the range sub-vector
-		@param mass a vector of remaining probability mass for each batch member
-				@see generate_range
+		''' Recursively samples a section of the range vector
+		@param: [b,j] :section of the range tensor, where j is the length of the range sub-vector
+		@param: [b]   :vector of remaining probability mass for each batch member
 		'''
 		batch_size = cards.shape[0]
 		assert(mass.shape[0] == batch_size)
@@ -43,33 +41,25 @@ class RangeGenerator():
 
 	def _generate_sorted_range(self, ranges):
 		''' Samples a batch of ranges with hands sorted by strength on the board.
-		@param: range a (N,K) tensor in which to store the sampled ranges, where N is
-				the number of ranges to sample and K is the range size
-		@see generate_range
+		@param: [b,I] :tensor in which to store the sampled ranges
 		'''
 		batch_size = ranges.shape[0]
 		mass = np.ones([batch_size], dtype=arguments.dtype)
 		self._generate_recursion(ranges, mass)
 
 
-	def set_board(self, terminal_equity, board):
+	def set_board(self, hand_strengths, board):
 		''' Sets the (possibly empty) board cards to sample ranges with.
 			The sampled ranges will assign 0 probability to any private hands that
 			share any cards with the board.
-		@param: board a possibly empty vector of board cards
+		@param: [I]   :strengths for all hands for following board
+		@param: [0-5] :vector of board cards, where card is unique index (int)
 		'''
 		HC = constants.hand_count
-		# create hand strengths of particular board
-		hand_strengths = np.zeros([HC], dtype=arguments.dtype)
-		if board.ndim == 0:
-			hand_strengths = np.squeeze(terminal_equity.get_hand_strengths())
-		elif board.shape[0] == 5:
-			hand_strengths = evaluator.evaluate_batch(board)
-		else:
-			hand_strengths = np.squeeze(terminal_equity.get_hand_strengths())
+		hand_strengths = evaluator.evaluate_board(board) if board.shape[0] == 5 else hand_strengths
 		# get possible hands mask for particular board
 		possible_hand_indexes = card_tools.get_possible_hands_mask(board).astype(bool)
-		self.possible_hands_count = possible_hand_indexes.sum(axis=0)
+		self.possible_hands_count = possible_hand_indexes.sum()
 		self.possible_hands_mask = possible_hand_indexes.reshape([1,-1])
 		# non_coliding_strengths shape: [self.possible_hands_count]
 		non_coliding_strengths = hand_strengths[ possible_hand_indexes ]
@@ -83,19 +73,17 @@ class RangeGenerator():
 			Each vector is sampled indepently by randomly splitting the probability
 			mass between the bottom half and the top half of the range, and then
 			recursing on the two halfs.
-		@{set_board} must be called first.
-		@param: range a (N,K) tensor in which to store the sampled ranges, where N is
-				the number of ranges to sample and K is the range size
+		@param: [b,I] :tensor in which to store the sampled ranges
 		'''
 		batch_size, num_possible_hands = ranges.shape[0], self.possible_hands_count
 		self.sorted_range = np.zeros([batch_size, num_possible_hands], dtype=arguments.dtype)
 		self._generate_sorted_range(self.sorted_range)
 		# we have to reorder the range back to undo the sort by strength
 		# broadcasting reverse_order: [1, possible_hands] -> [batch_size, possible_hands]
-		index = self.reverse_order * np.ones_like(self.sorted_range, dtype=arguments.int_dtype)
+		index = np.repeat(self.reverse_order.reshape([1,-1]), batch_size, axis=0)
 		self.reordered_range = np_gather(self.sorted_range, axis=1, index=index)
 		# broadcasting mask: [1, possible_hands] -> [batch_size, possible_hands]
-		mask = self.possible_hands_mask * np.ones_like(ranges, dtype=bool)
+		mask = np.repeat(self.possible_hands_mask.reshape([1,-1]), batch_size, axis=0)
 		ranges.fill(0)
 		ranges[mask] = self.reordered_range.reshape([-1])
 

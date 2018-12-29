@@ -8,12 +8,12 @@ import tensorflow as tf
 
 # main loss
 def BasicHuberLoss(delta=1.0):
-    def loss(y_true, y_pred):
-        return tf.losses.huber_loss(y_true, y_pred, delta=delta)
-    return loss
+	def loss(y_true, y_pred):
+		return tf.losses.huber_loss(y_true, y_pred, delta=delta)
+	return loss
 
 
-# only metric
+# used only as metric
 def masked_huber_loss(y_true, y_pred):
 	loss = tf.losses.huber_loss(y_true, y_pred, delta=1.0)
 	zero = tf.constant(0.0, dtype=tf.float32)

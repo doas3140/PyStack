@@ -1,10 +1,18 @@
 
 '''
 	A depth-limited lookahead of the game tree used for re-solving.
+	Most of the lookahead array's have following shapes: [A{d-1}, B{d-2}, NTNAN{d-2}, b, P, I], where:
+		* d - current depth of tree
+		* A{d-1} - number of maximum actions from parent
+		* B{d-2} - number of maximum bets (actions, that don't lead to terminal states) from grandparent
+		* NTNAN{d-2} - number of non-terminal non-allin nodes at grandparent layer
+		* b - batch of how many situations are evaluated simultaneously (usually will be = 1)
+		* P - number of players (here 2)
+		* I - number of infosets (here it is number of possible hands 52*51/2=1326)
 '''
 import time
 import numpy as np
-from numba import njit
+from tqdm import tqdm
 
 from Lookahead.lookahead_builder import LookaheadBuilder
 from TerminalEquity.terminal_equity import TerminalEquity
@@ -15,6 +23,11 @@ from helper_classes import LookaheadResults
 
 class Lookahead():
 	def __init__(self, tree, terminal_equity, batch_size):
+		'''
+		@param: Node           :root node of tree
+		@param: TerminalEquity :object that evaluates rewards with specified board
+		@param: int            :batch of how many situations are evaluated simultaneously (usually will be = 1)
+		'''
 		self.builder = LookaheadBuilder(self)
 		self.terminal_equity = terminal_equity
 		self.batch_size = batch_size
@@ -23,16 +36,8 @@ class Lookahead():
 
 
 	def get_results(self, reconstruct_opponent_cfvs):
-		''' Gets the results of re-solving the lookahead.
-		@return a table containing the fields:
-				* `strategy`: an (A,K) tensor containing the re-solve player's
-				strategy at the root of the lookahead, where
-				A is the number of actions and K is the range size
-				* `achieved_cfvs`: a vector of the opponent's
-				average counterfactual values at the root of the lookahead
-				* `children_cfvs`: an (A,K) tensor of opponent
-				average counterfactual values after each action
-				that the re-solve player can take at the root of the lookahead
+		''' Gets the results of re-solving the lookahead
+		@return LookaheadResults :results of solving lookahead
 		'''
 		num_actions = self.layers[1].strategies_avg.shape[0]
 		PC, HC, AC, batch_size = constants.players_count, constants.hand_count, num_actions, self.batch_size
@@ -48,28 +53,24 @@ class Lookahead():
 			print('WARNING: THERE ARE NO NODES THAT NEEDS APPROXIMATION (lookahead.cfvs_approximator is not defined)')
 		# save actions
 		out.actions = self.tree.actions
-		# 1.0 average strategy
-		# [actions x range]
 		# lookahead already computes the averate strategy we just convert the dimensions
 		# reshape: [A{0}, 1, 1, b, I] -> [A{0}, b, I]
 		out.strategy = self.layers[1].strategies_avg.reshape([-1,batch_size,HC]).copy()
-		# 2.0 achieved opponent's CFVs at the starting node
+		# achieved opponent's CFVs at the starting node
 		# reshape: [ 1, 1, 1, b, P, I] -> [b, P, I]
 		out.achieved_cfvs = self.layers[0].cfvs_avg.reshape([batch_size,PC,HC]).copy()
-		# 3.0 CFVs for the acting player only when resolving first node
+		# CFVs for the acting player only when resolving first node
 		if reconstruct_opponent_cfvs:
 			out.root_cfvs = None
 		else:
 			# reshape: [1, 1, 1, b, P, I] - > [b, P, I]
 			first_layer_avg_cfvs = self.layers[0].cfvs_avg.reshape([batch_size,PC,HC])
-			# slicing: [b, P, I] [1] -> [b, I]
 			out.root_cfvs = first_layer_avg_cfvs[ : , P2 , : ].copy()
 			# swap cfvs indexing
-			# [b, P, I] <-  [1, 1, 1, b, P, I]
 			out.root_cfvs_both_players = np.zeros_like(first_layer_avg_cfvs)
 			out.root_cfvs_both_players[ : , P2 , : ] = first_layer_avg_cfvs[ : , P1 , : ].copy()
 			out.root_cfvs_both_players[ : , P1 , : ] = first_layer_avg_cfvs[ : , P2 , : ].copy()
-		# 4.0 children CFVs
+		# children CFVs
 		# slicing and reshaping: [A{0}, 1, 1, b, P, I] -> [A{0}, b, I]
 		out.children_cfvs = self.layers[1].cfvs_avg[ : , : , : , : , P1 , : ].reshape([-1,batch_size,HC])
 		# IMPORTANT divide average CFVs by average strategy in here
@@ -89,6 +90,12 @@ class Lookahead():
 
 
 	def resolve(self, player_range, opponent_range=None, opponent_cfvs=None):
+		''' Creates lookahead and solves it
+		@param: [I] :current player's range
+		@param: [I] :opponent's range
+		@param: [I] :opponent's cfvs (used to reconstruct opponent's range)
+		(only one of `opponent_range` and `opponent_cfvs` should be used)
+		'''
 		P1, P2 = constants.players.P1, constants.players.P2
 		# can be cfvs or range
 		self.layers[0].ranges[ 0 , 0 , 0 , : , P1 , : ] = player_range.copy()
@@ -102,7 +109,6 @@ class Lookahead():
 
 	def _compute(self, reconstruct_opponent_cfvs):
 		''' Re-solves the lookahead '''
-		from tqdm import tqdm
 		for iter in tqdm(range(arguments.cfr_iters)):
 			if reconstruct_opponent_cfvs:
 				self._set_opponent_starting_range()
@@ -122,8 +128,7 @@ class Lookahead():
 
 
 	def _compute_current_strategies(self):
-		''' Uses regret matching to generate the players' current strategies.
-		'''
+		''' Uses regret matching to generate the players' current strategies '''
 		for d in range(1,self.depth):
 			layer = self.layers[d]
 			# [A{d-1}, B{d-2}, NTNAN{d-2}, b, I] = [A{d-1}, B{d-2}, NTNAN{d-2}, b, I]
@@ -309,8 +314,8 @@ class Lookahead():
 		# by using terminal equity/reward matrix from rules of the game
 		# equities to all nodes that are terminal (game is over) are computed
 		# using fold matrix (if last move was fold) and equity matrix (when all cards are shown)
-		equity_matrix = self.terminal_equity.equity_matrix
-		fold_matrix = self.terminal_equity.fold_matrix
+		equity_matrix = self.terminal_equity.get_equity_matrix()
+		fold_matrix = self.terminal_equity.get_fold_matrix()
 		# load ranges from nodes that are terminal
 		call_ranges = self._get_ranges_from_call_nodes() # [TN x b, P, I]
 		fold_ranges = self._get_ranges_from_fold_nodes() # [TN x b, P, I]
@@ -329,6 +334,7 @@ class Lookahead():
 
 
 	def _get_ranges_from_call_nodes(self):
+		''' gets ranges of all states that player called '''
 		HC, PC, batch_size = constants.hand_count, constants.players_count, self.batch_size
 		ranges = np.zeros([self.num_term_call_nodes, batch_size, PC, HC], dtype=arguments.dtype)
 		for d in range(1, self.depth):
@@ -344,6 +350,7 @@ class Lookahead():
 		return ranges.reshape([-1,PC,HC])
 
 	def _store_cfvs_to_call_nodes(self, cfvs):
+		''' stores cfvs to same call states '''
 		HC, PC, batch_size = constants.hand_count, constants.players_count, self.batch_size
 		cfvs = cfvs.reshape([self.num_term_call_nodes, batch_size, PC, HC])
 		for d in range(1,self.depth):
@@ -360,6 +367,7 @@ class Lookahead():
 
 
 	def _get_ranges_from_fold_nodes(self):
+		''' gets ranges of all states that player folded '''
 		HC, PC, batch_size = constants.hand_count, constants.players_count, self.batch_size
 		ranges = np.zeros([self.num_term_fold_nodes, batch_size, PC, HC], dtype=arguments.dtype)
 		for d in range(1, self.depth):
@@ -370,6 +378,7 @@ class Lookahead():
 		return ranges.reshape([-1,PC,HC])
 
 	def _store_cfvs_to_fold_nodes(self, cfvs):
+		''' stores cfvs to same fold states '''
 		HC, PC, batch_size = constants.hand_count, constants.players_count, self.batch_size
 		cfvs = cfvs.reshape([self.num_term_fold_nodes, batch_size, PC, HC])
 		for d in range(1,self.depth):
@@ -385,6 +394,7 @@ class Lookahead():
 
 
 	def _get_ranges_from_transitioning_nodes(self):
+		''' gets ranges of all states that game didin't end and is transitioning to next round/street '''
 		HC, PC, batch_size = constants.hand_count, constants.players_count, self.batch_size
 		ranges = np.zeros([self.num_pot_sizes, batch_size, PC, HC], dtype=arguments.dtype)
 		for d in range(1,self.depth):
@@ -401,6 +411,7 @@ class Lookahead():
 		return ranges.reshape([-1,PC,HC])
 
 	def _store_cfvs_to_transitioning_nodes(self, approximated_cfvs):
+		''' stores cfvs to same transitioning states '''
 		HC, PC, batch_size = constants.hand_count, constants.players_count, self.batch_size
 		approximated_cfvs = approximated_cfvs.reshape([self.num_pot_sizes, batch_size, PC, HC])
 		for d in range(1, self.depth):

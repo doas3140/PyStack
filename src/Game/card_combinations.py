@@ -11,6 +11,7 @@ class CardCombinations():
 
 
 	def _init_choose(self):
+		''' init C(k,n) = n!/(k!(n-k)!) '''
 		for i in range(0, self.max_choose+1):
 			for j in range(0, self.max_choose+1):
 				self.C[i*self.max_choose + j] = 0
@@ -25,10 +26,15 @@ class CardCombinations():
 
 
 	def choose(self, n, k):
+		''' returns C(k,n) = n!/(k!(n-k)!) '''
 		return self.C[n*self.max_choose + k]
 
 
 	def count_last_street_boards(self, street):
+		'''
+		@param: int :current street/round
+		@return int :number of possible last round boards
+		'''
 		BCC, SC, CC = constants.board_card_count, constants.streets_count, constants.card_count
 		used_cards = BCC[street-1]
 		new_cards = BCC[SC-1] - BCC[street-1]
@@ -36,7 +42,9 @@ class CardCombinations():
 
 
 	def count_next_street_boards(self, street):
-		''' counts the number of boards in next street 
+		''' counts the number of boards in next street
+		@param: int :current street/round
+		@return int :number of all next round boards
 		'''
 		BCC, CC = constants.board_card_count, constants.card_count
 		used_cards = BCC[street-1] # street-1 = current_street
@@ -47,6 +55,8 @@ class CardCombinations():
 	def count_last_boards_possible_boards(self, street):
 		''' counts the number of possible boards if 2 cards where already taken (in players hand)
 			the answer will be the same for all player's holding cards
+		@param: int :current street/round
+		@return int :number of possible last round boards
 		'''
 		num_cards_on_board = constants.board_card_count[street-1]
 		max_cards_on_board = constants.board_card_count[-1]
@@ -57,9 +67,11 @@ class CardCombinations():
 		return self.choose(num_left_cards, num_cards_to_draw)
 
 
-	def count_next_boards_possible_boards(self, street): # next_baords -> next_round
+	def count_next_boards_possible_boards(self, street):
 		''' counts the number of possible boards if 2 cards where already taken (in players hand)
 			the answer will be the same for all player's holding cards
+		@param: int :current street/round
+		@return int :number of possible next round boards
 		'''
 		num_cards_on_board = constants.board_card_count[street-1] # has to be -1, because of indexing
 		num_cards_on_next_board = constants.board_card_count[street]

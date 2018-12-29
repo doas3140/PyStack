@@ -13,8 +13,7 @@ from helper_classes import LookaheadLayer
 class LookaheadBuilder():
 	def __init__(self, lookahead):
 		self.lookahead = lookahead
-		self.lookahead.ccall_action_index = 1
-		self.lookahead.fold_action_index = 2
+
 
 	def _construct_transition_boxes(self):
 		''' Builds the neural net query boxes which estimate
@@ -96,14 +95,14 @@ class LookaheadBuilder():
 
 
 	def construct_data_structures(self):
-		''' Builds the tensors that store lookahead data during re-solving.
-		'''
+		''' Builds the tensors that store lookahead data during re-solving '''
 		PC, HC, batch_size = constants.players_count, constants.hand_count, self.lookahead.batch_size
 		layers = self.lookahead.layers
 		# lookahead main data structures
 		# all the structures are per-layer tensors, that is, each layer holds the data in n-dimensional tensors
 		# create the data structure for the first two layers
-		# data structures [actions x parent_action x grandparent_id x batch x players x range]
+		# data structures [A{d-1}, B{d-2}, NTNAN{d-2}, b, P, I]
+		# [actions, parent_action, grandparents, batch, players, range]
 		layers[0].ranges = np.full([1, 1, 1, batch_size, PC, HC], 1.0/HC, dtype=arguments.dtype)
 		layers[1].ranges = np.full([layers[0].num_actions, 1, 1, batch_size, PC, HC], 1.0/HC, dtype=arguments.dtype)
 		layers[0].pot_size = np.zeros_like(layers[0].ranges)
@@ -112,7 +111,7 @@ class LookaheadBuilder():
 		layers[1].cfvs = np.zeros_like(layers[1].ranges)
 		layers[0].cfvs_avg = np.zeros_like(layers[0].ranges)
 		layers[1].cfvs_avg = np.zeros_like(layers[1].ranges)
-		# data structures for one player [actions x parent_action x grandparent_id x 1 x range]
+		# data structures for one player [A{d-1}, B{d-2}, NTNAN{d-2}, b, 1, I]
 		layers[0].strategies_avg = None
 		layers[1].strategies_avg = np.zeros([layers[0].num_actions, 1, 1, batch_size, HC], dtype=arguments.dtype)
 		layers[0].current_strategy = None
@@ -123,18 +122,16 @@ class LookaheadBuilder():
 		layers[1].empty_action_mask = np.ones_like(layers[1].strategies_avg)
 		# create the data structures for the rest of the layers
 		for d in range(2, self.lookahead.depth):
-			# data structures [actions x parent_action x grandparent_id x batch x players x range]
+			# data structures [A{d-1}, B{d-2}, NTNAN{d-2}, b, P, I]
 			layers[d].ranges = np.zeros([layers[d-1].num_actions, layers[d-2].num_bets, layers[d-2].num_nonterminal_nonallin_nodes, batch_size, PC, HC], dtype=arguments.dtype)
 			layers[d].cfvs = layers[d].ranges.copy()
-			# self.lookahead.layers[d].placeholder_data = self.lookahead.layers[d].ranges.copy()
 			layers[d].pot_size = np.full_like(layers[d].ranges, arguments.stack)
-			# data structures [actions x parent_action x grandparent_id x batch x 1 x range]
+			# data structures [A{d-1}, B{d-2}, NTNAN{d-2}, b, 1, I]
 			layers[d].strategies_avg = np.zeros([layers[d-1].num_actions, layers[d-2].num_bets, layers[d-2].num_nonterminal_nonallin_nodes, batch_size, HC], dtype=arguments.dtype)
 			layers[d].current_strategy = layers[d].strategies_avg.copy()
 			layers[d].regrets = np.full_like(layers[d].strategies_avg, constants.regret_epsilon)
-			# self.lookahead.layers[d].current_regrets = np.zeros_like(self.lookahead.layers[d].strategies_avg)
 			layers[d].empty_action_mask = np.ones_like(layers[d].strategies_avg)
-		# create the optimized data structures for terminal equity
+		# save indexes of nodes that are terminal, so we can use them to calculate rewards from terminal equity in one batch
 		self.lookahead.num_term_call_nodes = 0
 		self.lookahead.num_term_fold_nodes = 0
 		# calculate term_call_indices
@@ -166,12 +163,14 @@ class LookaheadBuilder():
 	def set_datastructures_from_tree_dfs(self, node, depth, action_id, parent_id, gp_id, cur_action_id, parent_action_id=None):
 		''' Traverses the tree to fill in lookahead data structures that
 			summarize data contained in the tree.
-			 ex: saves pot sizes and numbers of actions at each lookahead state.
-		@param: node the current node of the public tree
-		@param: depth the depth of the current node
-		@param: action_id the index of the action that led to this node
-		@param: parent_id the index of the current node's parent
-		@param: gp_id the index of the current node's grandparent
+			(saves pot sizes and numbers of actions at each lookahead state)
+		@param: Node :node the current node of the public tree
+		@param: int  :depth of the current node
+		@param: int  :index of the action that led to this node
+		@param: int  :index of the current node's parent
+		@param: int  :index of the current node's grandparent
+		@param: int  :parent's action
+		@param: int  :grandparent's action
 		'''
 		# fill the potsize
 		assert(node.pot)
@@ -227,8 +226,8 @@ class LookaheadBuilder():
 
 
 	def build_from_tree(self, tree):
-		''' Builds the lookahead's internal data structures using the public tree.
-		@param: tree the public tree used to construct the lookahead
+		''' Builds the lookahead's internal data structures using the public tree
+		@param: Node :public tree used to construct the lookahead
 		'''
 		self.lookahead.tree = tree
 		self.lookahead.depth = tree.depth
@@ -247,12 +246,9 @@ class LookaheadBuilder():
 		self.construct_data_structures()
 		# action ids for first
 		self.lookahead.parent_action_id = {}
-		# traverse the tree and fill the datastructures (pot sizes, non-existin actions, ...)
-		# node, layer, action, parent_action, gp_id
+		# traverse the tree and fill the datastructures (pot sizes and non-existin actions masks)
 		self.set_datastructures_from_tree_dfs(tree, depth=0, action_id=0, parent_id=0, gp_id=0, cur_action_id=-100)
-		# we mask out fold as a possible action when check is for free, due to
-		# 1) fewer actions means faster convergence
-		# 2) we need to make sure prob of free fold is zero because ACPC dealer changes such action to check
+		# we mask out fold as a possible action when check is for free, due to: fewer actions means faster convergence
 		if self.lookahead.tree.bets[0] == self.lookahead.tree.bets[1]:
 			self.lookahead.layers[1].empty_action_mask[0].fill(0)
 		# construct the neural net query boxes
@@ -264,8 +260,8 @@ class LookaheadBuilder():
 			Used to find the size for the tensors which store lookahead data.
 			The maximum number of actions is used so that every node at that
 			depth can fit in the same tensor.
-		@param: current_layer a list of tree nodes at the current depth
-		@param: current_depth the depth of the current tree nodes
+		@param: [Node,...] :list of tree nodes at the current depth
+		@param: int        :depth of the current tree nodes
 		'''
 		layer_num_actions, layer_num_terminal_actions = 0, 0
 		next_layer = []

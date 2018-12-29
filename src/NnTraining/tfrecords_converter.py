@@ -15,15 +15,16 @@ from Game.card_tools import card_tools
 class TFRecordsConverter():
 	def __init__(self, batch_size):
 		'''
-		@param: number of batches in TFRecords file
+		@param: int :number of batches in TFRecords file
 		'''
 		self.batch_size = batch_size
 
 
 	def convert_npy_to_tfrecords(self, npy_dirpath, tfrecords_dirpath, start_idx):
 		'''
-		@param: path to npy files dir
-		@param: path to destination dir (tfrecords)
+		@param: str :path to npy files dir
+		@param: str :path to destination dir (tfrecords)
+		@param: int :starting index of file names
 		'''
 		# get paths to X, Y = [b], BOARDS
 		inputs, targets, boards, total_len = self._get_npy_filepaths(npy_dirpath)
@@ -64,6 +65,7 @@ class TFRecordsConverter():
 
 
 	def _extend_board(self, board_batch, batch_size):
+		''' returns bigger array of board_batch (to have same shape as x_batch, y_batch) '''
 		num_boards, num_cards = board_batch.shape
 		new_boards = np.zeros([batch_size*num_boards, num_cards], dtype=board_batch.dtype)
 		for i, board in enumerate(board_batch):
@@ -72,6 +74,7 @@ class TFRecordsConverter():
 
 
 	def _get_npy_filepaths(self, npy_dirpath):
+		''' returns all npy files filepaths '''
 		filenames = [f.name for f in os.scandir(npy_dirpath)]
 		# filter names
 		inputs = filter(lambda x: 'inputs' in x, filenames)
@@ -102,6 +105,7 @@ class TFRecordsConverter():
 
 
 	def _save_tfrecord(self, X, Y, dir_path):
+		''' saves tfrecord file into specified directory '''
 		# convert lists to np arrays
 		X = np.array(X)
 		Y = np.array(Y)
