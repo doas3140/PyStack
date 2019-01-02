@@ -24,6 +24,7 @@ class CFRDGadget():
 		self.F, self.T = 0, 1 # first dimension indexes of previously defined variables
 		# store initial cfvs (used to get terminal values)
 		self.cfvs[self.T] = opponent_cfvs.copy()
+		self.strategy[self.T] = np.ones([HC], dtype=arguments.dtype)
 		# init range/strategy mask for masking out impossible hands
 		self.mask = card_tools.get_possible_hands_mask(board) # [I]
 
