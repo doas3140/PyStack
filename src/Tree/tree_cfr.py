@@ -67,8 +67,8 @@ class TreeCFR():
 			values = np.zeros_like(node.ranges)
 			if node.type == constants.node_types.terminal_fold:
 				fold_matrix = terminal_equity.get_fold_matrix()
-				result[ 0 , : ] = np.dot(node.ranges[1], fold_matrix)
-				result[ 1 , : ] = np.dot(node.ranges[0], fold_matrix)
+				values[ 0 , : ] = np.dot(node.ranges[1], fold_matrix)
+				values[ 1 , : ] = np.dot(node.ranges[0], fold_matrix)
 				result[ opponent_index ] *= -1
 			else:
 				equity_matrix = terminal_equity.get_equity_matrix()

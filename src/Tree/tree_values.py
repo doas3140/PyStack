@@ -77,13 +77,17 @@ class TreeValues():
 			values = np.zeros_like(node.ranges)
 			if node.type == constants.node_types.terminal_fold:
 				opponent = 1 - node.current_player
-				self.terminal_equity.tree_node_fold_value(node.ranges, values, folding_player=opponent)
+				fold_matrix = self.terminal_equity.get_fold_matrix()
+				values[ 0 , : ] = np.dot(node.ranges[1], fold_matrix)
+				values[ 1 , : ] = np.dot(node.ranges[0], fold_matrix)
+				values[ opponent ] *= -1
 			else:
-				self.terminal_equity.tree_node_call_value(node.ranges, values)
+				equity_matrix = self.terminal_equity.get_equity_matrix()
+				values[ 0 , : ] = np.dot(node.ranges[1], equity_matrix)
+				values[ 1 , : ] = np.dot(node.ranges[0], equity_matrix)
 			# multiply by the pot
 			values *= node.pot
-			node.cf_values = values.reshape(node.ranges.shape)
-			node.cf_values_br = values.reshape(node.ranges.shape)
+			node.cf_values = node.cf_values_br = values
 		else:
 			actions_count = len(node.children)
 			AC, HC = actions_count, constants.hand_count
