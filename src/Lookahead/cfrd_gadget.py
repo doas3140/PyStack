@@ -16,16 +16,16 @@ class CFRDGadget():
 		@param: [I]   :initial opponent counterfactual values vector used for re-solving
 		'''
 		HC = constants.hand_count
+		# init variables for this state
+		self.cfvs = np.zeros([2,HC], dtype=arguments.dtype)
+		self.regrets = np.zeros([2,HC], dtype=arguments.dtype)
+		self.strategy = np.zeros([2,HC], dtype=arguments.dtype)
+		# 2 possible actions are: Terminal (fold action), Follow (continue playing)
+		self.F, self.T = 0, 1 # first dimension indexes of previously defined variables
 		# store initial cfvs (used to get terminal values)
-		self.input_opponent_cfvs = opponent_cfvs.copy()							# [I]
-		# update regrets in each iteration
-		self.terminate_regrets  = np.zeros([HC], dtype=arguments.dtype)			# [I]
-		self.play_regrets       = np.zeros([HC], dtype=arguments.dtype)			# [I]
-		# store updated strategy (from regrets)
-		self.terminate_strategy = np.ones([HC], dtype=arguments.dtype)			# [I]
-		self.play_strategy      = np.zeros([HC], dtype=arguments.dtype)			# [I]
-		# init range mask for masking out impossible hands
-		self.range_mask = card_tools.get_possible_hands_mask(board) 			# [I]
+		self.cfvs[self.T] = opponent_cfvs.copy()
+		# init range/strategy mask for masking out impossible hands
+		self.mask = card_tools.get_possible_hands_mask(board) # [I]
 
 
 	def compute_opponent_range(self, current_opponent_cfvs):
@@ -35,32 +35,31 @@ class CFRDGadget():
 		@return [I] :opponent range vector for this iteration
 		'''
 		HC = constants.hand_count
-		# remove first dimension (batches), which should be always be 1
-		play_values = current_opponent_cfvs.reshape([HC])
-		terminate_values = self.input_opponent_cfvs.reshape([HC])
+		# store cfvs, got from solving sub-game (if we continue playing)
+		self.cfvs[self.F] = current_opponent_cfvs
+		# conpute total possible values (depends on current strategy)
+		# [I] = sum([2,I] * [2,I], axis=0)
+		total_cfvs = np.sum(self.cfvs * self.strategy, axis=0)
+		# add current regrets (for both actions) to cumulative regrets:
+		# broadcasting total_cfvs: [I] -> [2,I]
+		# [2,I] = [2,I] - [I]
+		self.regrets += self.cfvs - total_cfvs
+		# use cfr+
+		self.regrets = np.clip(self.regrets, constants.regret_epsilon, constants.max_number)
+		# use regret matching to compute strategies for both actions
+		# broadcasting sum(regrets): [I] -> [2,I]
+		# [2,I] = [2,I] / [I]
+		self.strategy = self.regrets / np.sum(self.regrets)
 		# compute and add current regrets to cumulative regrets: self.play_regrets and self.terminate_regrets
 		# [I] = [I] * [I] + [I] * [I]
-		total_values = (self.play_strategy * play_values) + (self.terminate_strategy * terminate_values)
-		# [I] += [I]
-		self.terminate_regrets += terminate_values - total_values
-		self.play_regrets      += play_values - total_values
-		# use cfr+ in reconstruction
-		self.terminate_regrets = np.clip( self.terminate_regrets, constants.regret_epsilon, constants.max_number )
-		self.play_regrets      = np.clip( self.play_regrets,      constants.regret_epsilon, constants.max_number )
-		# regret matching
-		# [I] = [I] + [I]
-		regret_sum = self.play_regrets + self.terminate_regrets
-		# [I] = [I] / [I]
-		self.terminate_strategy = self.terminate_regrets / regret_sum
-		self.play_strategy      = self.play_regrets      / regret_sum
-		# for poker, the range size is larger than the allowed hands
-		# we need to make sure reconstruction does not choose a range
-		# that is not allowed
-		self.terminate_strategy *= self.range_mask
-		self.play_strategy      *= self.range_mask
-		# return play strategy
-		input_opponent_range = self.play_strategy
-		return input_opponent_range
+		# for poker, the range size is larger than the allowed hands, so we need
+		# to make sure reconstruction does not choose a range that is not allowed
+		# broadcasting mask: [I] -> [2,I]
+		# [2,I] *= [I]
+		self.strategy *= self.mask
+		# return strategy of Follow (continue playing) action
+		# here range = strategy, thats why we can return strategy
+		return self.strategy[self.F]
 
 
 
