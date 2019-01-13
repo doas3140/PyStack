@@ -8,9 +8,9 @@ import pickle
 
 class Cache():
 	def __init__(self, dir_path):
-        '''
-        @param: str :path to caching directory
-        '''
+		'''
+		@param: str :path to caching directory
+		'''
 		self.dir_path = dir_path
 
 

@@ -4,6 +4,7 @@
 	new game state.
 '''
 import numpy as np
+import time
 
 from Game.card_to_string_conversion import card_to_string
 from TerminalEquity.terminal_equity import TerminalEquity
@@ -24,6 +25,7 @@ class ContinualResolving():
 		self.terminal_equity = TerminalEquity()
 		self.cache = Cache(dir_path=arguments.cache_path)
 		self._compute_initial_opponent_cfvs()
+		self.times = {1:[],2:[],3:[],4:[]}
 
 
 	def start_new_hand(self, card1, card2, player_is_small_blind):
@@ -81,6 +83,7 @@ class ContinualResolving():
 		@param: int  :current bet of player's opponent
 		@return dict :{ "action":"fold"/"call"/"raise"/"allin", "amount":int }
 		'''
+		t0 = time.time()
 		node = self._create_node(board_string, player_bet, opponent_bet)
 		# if street changed (last node was chance node), then update cfvs and ranges
 		if self.prev_street+1 == node.street:
@@ -113,6 +116,10 @@ class ContinualResolving():
 		self.prev_bets = node.bets
 		self.prev_street = node.street
 		# return action
+		self.times[node.street].append(time.time()-t0)
+		for s in range(1,5):
+			if len(self.times[s]) > 2:
+				print(s, np.mean(self.times[s][1:]), np.std(self.times[s][1:]))
 		if sampled_bet == constants.actions.fold:
 			return {'action':'fold', 'amount': -1}
 		elif sampled_bet == constants.actions.ccall:

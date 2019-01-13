@@ -9,7 +9,7 @@ class Client():
         emit('change_cards', {'player_cards':player_cards, 'board_cards':board, 'bot_cards':bot_cards})
 
     def change_chips(self, player_chips, bot_chips):
-        emit('change_chips', {'player_chips':player_chips, 'opponent_chips':bot_chips})
+        emit('change_chips', {'player_chips':str(player_chips), 'opponent_chips':str(bot_chips)})
 
     def it_is_players_turn(self):
         emit('players_turn')

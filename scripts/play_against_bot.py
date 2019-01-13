@@ -8,7 +8,7 @@ sys.path.append( os.path.join(os.getcwd(),'src') )
 def run_browser():
     try:
         import webbrowser
-        webbrowser.open('src/GUI/client/game.html')
+        webbrowser.open('./src/GUI/client/game.html')
     except:
         print('WARNING: python cannot open browser')
         print('you will need to open "src/GUI/client/game.html" yourself')

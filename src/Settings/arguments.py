@@ -14,7 +14,7 @@ class Parameters():
 		# self.cache_path = r'D:\Datasets\Pystack\cache'
 		# GAME INFORMATION
 		# list of pot-scaled bet sizes to use in tree
-		self.bet_sizing = { 'preflop':[1], 'flop':[1], 'turn':[1], 'river':[1] }
+		self.bet_sizing = { 'preflop':[1], 'flop':[0.5], 'turn':[1], 'river':[1,2] }
 		# the size of the game's ante, in chips
 		self.ante = 100
 		self.sb = 50
@@ -44,17 +44,17 @@ class Parameters():
 		# self.data_path = './data/TrainSamples/'
 		self.data_path = r'D:\Datasets\Pystack\NoLimitTexasHoldem'
 		# the number of iterations that DeepStack runs CFR for
-		self.cfr_iters = 800
+		self.cfr_iters = 300
 		# the number of preliminary CFR iterations which DeepStack doesn't
 		# factor into the average strategy (included in cfr_iters)
-		self.cfr_skip_iters = 500
+		self.cfr_skip_iters = 0
 		# the number of starting iters used on approximating leaf nodes
 		# after these iterations next street's root nodes are approximated and averaged
 		# no need for 'river', because you get values from leaf nodes anyway (using terminal equity)
 		self.leaf_nodes_iterations = {
-			'preflop':780,
-			'flop':500,
-			'turn':500
+			'preflop':280,
+			'flop':200,
+			'turn':200
 		}
 		# how many solved poker situations are generated
 		self.gen_different_boards = 2

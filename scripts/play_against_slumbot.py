@@ -20,8 +20,8 @@ sys.path.append( os.path.join(os.getcwd(),'src') )
 def main():
     from Player.continual_resolving import ContinualResolving
     bot = ContinualResolving()
-    name = 'pystackv1'
-    password = 'pystackv1'
+    name = 'pystackv3'
+    password = 'pystackv3'
     play_against_slumbot(bot, name, password)
 
 

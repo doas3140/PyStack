@@ -152,7 +152,7 @@ class NextRoundValue():
 		# 20,000/pot_size >       nn_value      > -20,000/pot_size
 		max_values = arguments.stack / self.pot_sizes.reshape([batch_size,1,1,1])
 		nn_outputs = np.clip(nn_outputs, -max_values, max_values) # [b,B,P,I] = clip([b,B,P,I], [b,1,1,1], [b,1,1,1])
-		# calculate mean for each hand and return it
+		# calculate normalized sum for each hand and return it
 		current_board_values = np.sum(nn_outputs, axis=1) * sum_normalization # [b,P,I] = sum([b,B,P,I], axis=1) * scalar
 		# first iterations are ommited and iterations from leaf nodes are ommited too,
 		# we only use cfvs generated from root nodes (when transitioning from one street to another)
@@ -178,8 +178,11 @@ class NextRoundValue():
 NEXT_ROUND_VALUES = {}
 for street in range(1,4):
 	street_name = card_to_string.street_to_name(street)
-	NEXT_ROUND_VALUES[street] = NextRoundValue( street, skip_iterations=arguments.cfr_skip_iters,
-												leaf_nodes_iterations=arguments.leaf_nodes_iterations[street_name] )
+	try:
+		NEXT_ROUND_VALUES[street] = NextRoundValue( street, skip_iterations=arguments.cfr_skip_iters,
+													leaf_nodes_iterations=arguments.leaf_nodes_iterations[street_name] )
+	except:
+		print("Didin't found {} neural network... In case if this street's nn is not needed, program will not stop.")
 
 def get_next_round_value(street):
 	return NEXT_ROUND_VALUES[street]
