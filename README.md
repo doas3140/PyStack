@@ -37,9 +37,9 @@ Neural network loss was unexpectedly big (so there might be some bugs).
 
 |          | Train | Test  | Deepstack (train/test) |
 | -------- | ----- | ----- | ---------------------- |
-| pre-flop | 0.001 | 0.005 | 0.00005/0.00005        |
-| flop     | 0.153 | 0.283 | 0.0008 /0.034          |
-| turn     | 0.198 | 0.261 | 0.016  /0.024          |
+| pre-flop | 0.001 | 0.005 | 0.00005 / 0.00005        |
+| flop     | 0.153 | 0.283 | 0.0008 / 0.034          |
+| turn     | 0.198 | 0.261 | 0.016  / 0.024          |
 | river    | 0.035 | 0.106 | -      / -             |
 
 Thinking time:
@@ -76,7 +76,7 @@ convert_to_tf_data: `python convert_npy_to_tfrecords.py --street 4 --approximate
 
 Modify starting index of file and num cores (num programs to run) and num files to create (per program) in `scripts/distribute_work.sh`. Instead of running `python generate_data.py` run `sh distribute_work.sh`.
 
-## Approximating leaf nodes (faster excecution)
+## Approximating leaf nodes (faster execution)
 pseudo-code:
 ```
 for street in [turn, flop, pre-flop]:
