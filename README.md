@@ -44,7 +44,7 @@ Neural network loss was unexpectedly big (so there might be some bugs).
 
 Thinking time:
 
-|          | CPU  | CPU + GPU(only nn)  | Deepstack |
+|          | CPU  | CPU + GPU(only nn)  | Deepstack(only GPU) |
 | -------- | ---- | ---------- | --------- |
 | pre-flop | 0.1  | 0.1        | 0.2       |
 | flop     | 36.2 | 25.2       | 5.9       |
