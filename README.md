@@ -61,10 +61,10 @@ for street in [river, turn, flop, pre-flop]:
     tf_data = convert_to_tf_data(data)
     next_street_nn = train_neural_network(tf_data)
 ```
-commands:
-generate_data: `python generate_data.py --street 4 --approximate root_nodes`
-train_neural_network: `python train_nn.py --street 4 --approximate root_nodes`
-convert_to_tf_data: `python convert_npy_to_tfrecords.py --street 4 --approximate root_nodes`
+commands:  
+generate_data: `python generate_data.py --street 4 --approximate root_nodes`  
+train_neural_network: `python train_nn.py --street 4 --approximate root_nodes`  
+convert_to_tf_data: `python convert_npy_to_tfrecords.py --street 4 --approximate root_nodes`  
 
 * Make sure you are in `PyStack/scripts` directory. All data is saved in `PyStack/data` directory.
 
@@ -84,10 +84,10 @@ for street in [turn, flop, pre-flop]:
     tf_data = convert_to_tf_data(data)
     street_leaf_nn = train_neural_network(tf_data)
 ```
-commands:
-generate_data: `python generate_data.py --street 3 --approximate leaf_nodes`
-train_neural_network: `python train_nn.py --street 3 --approximate leaf_nodes`
-convert_to_tf_data: `python convert_npy_to_tfrecords.py --street 3 --approximate leaf_nodes`
+commands:  
+generate_data: `python generate_data.py --street 3 --approximate leaf_nodes`  
+train_neural_network: `python train_nn.py --street 3 --approximate leaf_nodes`  
+convert_to_tf_data: `python convert_npy_to_tfrecords.py --street 3 --approximate leaf_nodes`  
 
 * To modify number of leaf nodes approximation iterations modify `leaf_nodes_iterations` variable in  `PyStack/src/Settings/arguments.py`.
 
