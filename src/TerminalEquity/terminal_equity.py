@@ -12,9 +12,8 @@ from Game.card_combinations import card_combinations
 
 class TerminalEquity():
 	def __init__(self):
-		self.cache = {} # maps street number -> equity matrix
 		# load preflop matrix
-		self.cache[1] = np.load('src/TerminalEquity/matrices/pf_equity.npy')
+		self._pf_equity = np.load('src/TerminalEquity/matrices/pf_equity.npy')
 		# load card blocking matrix from disk if exists
 		if os.path.exists('src/TerminalEquity/matrices/block_matrix.npy'):
 			self._block_matrix = np.load('src/TerminalEquity/matrices/block_matrix.npy')
@@ -27,23 +26,20 @@ class TerminalEquity():
 		@param: [0-5] :vector of board cards (int)
 		'''
 		self.board, street, HC = board, card_tools.board_to_street(board), constants.hand_count
-		if street in self.cache:
-			self.equity_matrix = self.cache[street]
+		# set equity matrix
+		if street == 1:
+			self.equity_matrix = self._pf_equity
+		elif street == constants.streets_count:
+			self.equity_matrix = np.zeros([HC,HC], dtype=arguments.dtype)
+			self._set_last_round_equity_matrix(self.equity_matrix, board)
+			self._handle_blocking_cards(self.equity_matrix, board)
+		elif street == 2 or street == 3:
+			self.equity_matrix = np.zeros([HC,HC], dtype=arguments.dtype)
+			last_round_boards = card_tools.get_last_round_boards(board)
+			self._set_transitioning_equity_matrix(self.equity_matrix, last_round_boards, street)
+			self._handle_blocking_cards(self.equity_matrix, board)
 		else:
-			# set equity matrix
-			if street == constants.streets_count:
-				self.equity_matrix = np.zeros([HC,HC], dtype=arguments.dtype)
-				self._set_last_round_equity_matrix(self.equity_matrix, board)
-				self._handle_blocking_cards(self.equity_matrix, board)
-			elif street == 2 or street == 3:
-				self.equity_matrix = np.zeros([HC,HC], dtype=arguments.dtype)
-				last_round_boards = card_tools.get_last_round_boards(board)
-				self._set_transitioning_equity_matrix(self.equity_matrix, last_round_boards, street)
-				self._handle_blocking_cards(self.equity_matrix, board)
-			else:
-				assert(False) # bad street/board
-			# save to cache
-			self.cache[street] = self.equity_matrix.copy()
+			assert(False) # bad street/board
 		# set fold matrix
 		self.fold_matrix = np.ones([HC,HC], dtype=arguments.dtype)
 		# setting cards that block each other to zero
